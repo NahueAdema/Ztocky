@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+  
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ========== USUARIOS / WORKSPACES ==========
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  cuitCuil     String?  @map("cuit_cuil")
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(USER)
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime? @map("last_login_at")
+  supportNotes String?  @map("support_notes")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  sessions     Session[]
+  memberships  WorkspaceMember[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  members     WorkspaceMember[]
+  products    Product[]
+  suppliers   Supplier[]
+  orders      PurchaseOrder[]
+  alerts      Alert[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  userId      String        @map("user_id")
+  workspaceId String        @map("workspace_id")
+  role        WorkspaceRole @default(OWNER)
+
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+  @@map("workspace_members")
+}
+
+// ========== PRODUCTOS ==========
+model Product {
+  id            String    @id @default(cuid())
+  workspaceId   String?   @map("workspace_id")
+  name          String
+  sku           String    @unique
+  description   String?
+  currentStock  Int       @default(0)
+  minStock      Int       @default(10)
+  costPrice     Decimal   @map("cost_price")
+  sellingPrice  Decimal   @map("selling_price")
+  category      String?
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  workspace      Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sales          Sale[]
+  purchaseOrders PurchaseOrderItem[]
+  alerts         Alert[]
+  catalogItems   CatalogItems[]
+  
+  @@index([workspaceId])
+  @@map("products")
+}
+
+// ========== VENTAS ==========
+model Sale {
+  id          String   @id @default(cuid())
+  productId   String   @map("product_id")
+  quantity    Int
+  saleDate    DateTime @map("sale_date") @db.Date
+  unitPrice   Decimal  @map("unit_price")
+  totalAmount Decimal  @map("total_amount")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  @@index([productId, saleDate])
+  @@map("sales")
+}
+
+// ========== PROVEEDORES ==========
+model Supplier {
+  id              String    @id @default(cuid())
+  workspaceId     String?   @map("workspace_id")
+  name            String
+  contactEmail    String?   @map("contact_email")
+  contactPhone    String?   @map("contact_phone")
+  leadTime        Int       @default(7) // Días promedio de entrega
+  shippingCost    Decimal   @default(0) @map("shipping_cost")
+  reliability     Float     @default(4.5) // Rating 1-5
+  notes           String?
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  catalog         CatalogItems[]
+  purchaseOrders  PurchaseOrder[]
+  
+  @@index([workspaceId])
+  @@map("suppliers")
+}
+
+// ========== CATÁLOGO DE PROVEEDORES ==========
+model CatalogItems {
+  id          String   @id @default(cuid())
+  supplierId  String   @map("supplier_id")
+  productId   String   @map("product_id")
+  unitPrice   Decimal  @map("unit_price") // Precio del proveedor para este producto
+  minOrderQty Int      @default(1) @map("min_order_qty")
+  
+  // Relaciones
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  @@unique([supplierId, productId])
+  @@map("catalog_items")
+}
+
+// ========== ÓRDENES DE COMPRA ==========
+model PurchaseOrder {
+  id            String     @id @default(cuid())
+  workspaceId   String?    @map("workspace_id")
+  supplierId    String     @map("supplier_id")
+  status        OrderStatus @default(DRAFT)
+  totalAmount   Decimal    @default(0) @map("total_amount")
+  notes         String?
+  generatedByAI Boolean    @default(true) @map("generated_by_ai")
+  emailSentAt   DateTime?  @map("email_sent_at")
+  
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  
+  // Relaciones
+  workspace     Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  supplier      Supplier              @relation(fields: [supplierId], references: [id])
+  items         PurchaseOrderItem[]
+  
+  @@index([workspaceId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String        @map("purchase_order_id")
+  productId       String        @map("product_id")
+  quantity        Int
+  unitPrice       Decimal       @map("unit_price")
+  totalPrice      Decimal       @map("total_price")
+  
+  // Relaciones
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product         Product       @relation(fields: [productId], references: [id])
+  
+  @@map("purchase_order_items")
+}
+
+// ========== ALERTAS ==========
+model Alert {
+  id          String      @id @default(cuid())
+  workspaceId String?     @map("workspace_id")
+  productId   String      @map("product_id")
+  type        AlertType   
+  message     String
+  isRead      Boolean     @default(false)
+  isResolved  Boolean     @default(false)
+  metadata    Json?       // Datos adicionales como burnRate, días hasta agotamiento, etc.
+  
+  createdAt   DateTime    @default(now()) @map("created_at")
+  
+  // Relaciones
+  workspace   Workspace?  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  @@index([workspaceId])
+  @@index([productId, createdAt])
+  @@map("alerts")
+}
+
+// ========== ENUMS ==========
+enum OrderStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  SHIPPED
+  RECEIVED
+  CANCELLED
+}
+
+enum AlertType {
+  LOW_STOCK
+  CRITICAL_STOCK
+  STAGNANT_STOCK
+  PRICE_CHANGE
+  SUPPLIER_RISK
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum UserRole {
+  USER
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
