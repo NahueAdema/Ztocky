@@ -134,8 +134,8 @@ export default async function DashboardPage() {
                 <p className="text-sm font-semibold">Todo en orden</p>
                 <p className="text-xs text-muted-foreground mt-1">No hay productos en riesgo de agotamiento.</p>
               </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-border">
+            ) : (<>
+              <div className="hidden sm:block overflow-hidden rounded-xl border border-border">
                 <table className="table-modern">
                   <thead>
                     <tr>
@@ -179,7 +179,46 @@ export default async function DashboardPage() {
                   </tbody>
                 </table>
               </div>
-            )}
+
+              <div className="flex flex-col gap-3 sm:hidden">
+                {reorderRisks.map((item) => (
+                  <div key={item.sku} className="rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{item.product}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{item.sku}</p>
+                      </div>
+                      <Badge tone={item.urgency === "Critica" ? "danger" : "warning"} className="shrink-0">
+                        {item.urgency === "Critica" && <span className="mr-1">🔴</span>}
+                        Comprar {item.suggestedQty}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      <div className="rounded-lg bg-muted/60 p-2">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Stock</p>
+                        <span className={`inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-bold ${
+                          item.stock <= 10 ? "bg-danger-light text-danger" : "bg-muted text-foreground"
+                        }`}>{item.stock}</span>
+                      </div>
+                      <div className="rounded-lg bg-muted/60 p-2">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Rate</p>
+                        <p className="text-xs font-semibold">{item.burnRate}/d</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/60 p-2">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Dias</p>
+                        <Badge tone={item.daysRemaining <= 7 ? "danger" : item.daysRemaining <= 14 ? "warning" : "muted"}>
+                          {item.daysRemaining}d
+                        </Badge>
+                      </div>
+                      <div className="rounded-lg bg-muted/60 p-2">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Prov.</p>
+                        <p className="text-xs text-muted-foreground truncate">{item.supplier}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>)}
           </CardContent>
         </Card>
 
