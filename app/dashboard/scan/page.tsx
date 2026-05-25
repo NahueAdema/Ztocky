@@ -39,6 +39,7 @@ export default function ScanPage() {
   const [feedback, setFeedback] = useState<SaleFeedback | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [hasBarcodeDetector, setHasBarcodeDetector] = useState(false);
   const [history, setHistory] = useState<{ product: string; sku: string; qty: number; total: number }[]>([]);
 
   // New product form
@@ -228,6 +229,7 @@ export default function ScanPage() {
 
   useEffect(() => {
     inputRef.current?.focus();
+    setHasBarcodeDetector("BarcodeDetector" in window);
   }, []);
 
   useEffect(() => {
@@ -282,7 +284,7 @@ export default function ScanPage() {
             <button
               type="button"
               onClick={cameraActive ? stopCamera : startCamera}
-              disabled={!("BarcodeDetector" in window)}
+              disabled={!hasBarcodeDetector}
               className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-all ${
                 cameraActive
                   ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
