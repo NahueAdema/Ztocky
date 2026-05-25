@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/mail";
 
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
@@ -28,7 +28,8 @@ export async function POST(_request: NextRequest) {
     },
   });
 
-  await sendVerificationEmail(dbUser.email, token, dbUser.name);
+  const origin = request.headers.get("origin") || undefined;
+  await sendVerificationEmail(dbUser.email, token, dbUser.name, origin);
 
   return NextResponse.json({ message: "Email de verificación reenviado." });
 }

@@ -11,9 +11,8 @@ function getTransporter() {
   });
 }
 
-export async function sendVerificationEmail(email: string, token: string, name: string) {
-  const baseUrl = env.NEXT_PUBLIC_APP_URL;
-  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
+export async function sendVerificationEmail(email: string, token: string, name: string, baseUrl?: string) {
+  const verifyUrl = `${baseUrl || env.NEXT_PUBLIC_APP_URL}/api/auth/verify-email?token=${token}`;
 
   const transporter = getTransporter();
 

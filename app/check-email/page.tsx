@@ -22,6 +22,12 @@ export default function CheckEmailPage() {
           >
             Volver al inicio de sesión
           </Link>
+          <Link
+            href="/reenviar-verificacion"
+            className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border px-5 text-sm font-medium text-foreground transition-all hover:bg-muted"
+          >
+            No me llegó el mail
+          </Link>
         </div>
       </div>
     </main>

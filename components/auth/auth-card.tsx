@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
@@ -169,9 +170,17 @@ export function AuthCard() {
           )}
 
           {error && (
-            <p className="rounded-lg bg-danger-light px-3 py-2 text-sm font-medium text-danger">
-              {error}
-            </p>
+            <div className="rounded-lg bg-danger-light px-3 py-2 text-sm text-danger">
+              <p className="font-medium">{error}</p>
+              {error.includes("Verificá tu email") && (
+                <Link
+                  href="/reenviar-verificacion"
+                  className="mt-1 inline-block font-semibold text-primary hover:underline"
+                >
+                  Reenviar link de verificación
+                </Link>
+              )}
+            </div>
           )}
 
           <Button className="h-11 w-full" disabled={isLoading}>

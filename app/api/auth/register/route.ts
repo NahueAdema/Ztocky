@@ -48,7 +48,8 @@ export async function POST(request: Request) {
       },
     });
 
-    await sendVerificationEmail(email, token, name);
+    const origin = request.headers.get("origin") || undefined;
+    await sendVerificationEmail(email, token, name, origin);
 
     return NextResponse.json({
       ok: true,
