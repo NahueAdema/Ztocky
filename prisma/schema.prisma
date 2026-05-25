@@ -17,13 +17,15 @@ model User {
   role         UserRole @default(USER)
   status       UserStatus @default(ACTIVE)
   lastLoginAt  DateTime? @map("last_login_at")
-  supportNotes String?  @map("support_notes")
+  supportNotes  String?  @map("support_notes")
+  emailVerified Boolean  @default(false) @map("email_verified")
 
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt     DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  sessions     Session[]
-  memberships  WorkspaceMember[]
+  sessions           Session[]
+  verificationTokens VerificationToken[]
+  memberships        WorkspaceMember[]
 
   @@map("users")
 }
@@ -41,6 +43,21 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("verification_tokens")
 }
 
 model Workspace {

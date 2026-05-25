@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 
-import { createSession, registerUser } from "@/lib/auth";
+import { registerUser } from "@/lib/auth";
+import { getPrisma } from "@/lib/prisma";
+import { sendVerificationEmail } from "@/lib/mail";
 
 export async function POST(request: Request) {
   try {
@@ -33,11 +36,23 @@ export async function POST(request: Request) {
     }
 
     const user = await registerUser({ name, email, cuitCuil, password });
-    await createSession(user.id);
+
+    // Generar token de verificación
+    const prisma = getPrisma();
+    const token = randomBytes(32).toString("hex");
+    await prisma.verificationToken.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    await sendVerificationEmail(email, token, name);
 
     return NextResponse.json({
       ok: true,
-      redirectTo: user.role === "SUPER_ADMIN" ? "/admin" : "/dashboard",
+      redirectTo: "/check-email",
     });
   } catch (error) {
     const message =

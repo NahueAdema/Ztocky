@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-
 import { authenticateUser, createSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -20,6 +19,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Correo o contraseña incorrectos." },
       { status: 401 },
+    );
+  }
+
+  if (!user.emailVerified) {
+    return NextResponse.json(
+      { error: "Verificá tu email antes de ingresar. Revisá tu bandeja de entrada." },
+      { status: 403 },
     );
   }
 

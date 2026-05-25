@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  CheckCircle2,
   Eye,
   EyeOff,
   IdCard,
@@ -25,6 +26,17 @@ export function AuthCard() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const verified = searchParams.get("verified") === "true";
+  const tokenError = searchParams.get("error");
+
+  const tokenErrorMsg = tokenError === "token-invalido"
+    ? "Link de verificación inválido."
+    : tokenError === "token-expirado"
+      ? "El link de verificación expiró. Registrate de nuevo."
+    : tokenError === "error-verificacion"
+      ? "Error al verificar. Intentalo de nuevo."
+    : null;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,6 +73,19 @@ export function AuthCard() {
             : "Ingresá a tu cuenta"}
         </p>
       </div>
+
+      {verified && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-success/20 bg-success-light/50 p-3 text-sm text-success">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          Email verificado correctamente. Ya podés ingresar.
+        </div>
+      )}
+
+      {tokenErrorMsg && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-danger/20 bg-danger-light/50 p-3 text-sm text-danger">
+          {tokenErrorMsg}
+        </div>
+      )}
 
       <div className="mb-6 flex rounded-lg border border-border bg-muted p-1">
         <button
