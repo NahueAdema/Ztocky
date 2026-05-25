@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Camera, Check, Loader2, Package, ScanLine, X } from "lucide-react";
+import { Camera, Check, Loader2, Package, Plus, ScanLine, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,11 +27,13 @@ export default function ScanPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastCodeRef = useRef<string>("");
+  const scanningRef = useRef(false);
 
   const [sku, setSku] = useState("");
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState<ProductResult | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [saleLoading, setSaleLoading] = useState(false);
   const [feedback, setFeedback] = useState<SaleFeedback | null>(null);
@@ -39,17 +41,34 @@ export default function ScanPage() {
   const [cameraError, setCameraError] = useState("");
   const [history, setHistory] = useState<{ product: string; sku: string; qty: number; total: number }[]>([]);
 
+  // New product form
+  const [newName, setNewName] = useState("");
+  const [newSellingPrice, setNewSellingPrice] = useState("");
+  const [newCostPrice, setNewCostPrice] = useState("");
+  const [newStock, setNewStock] = useState("0");
+  const [newCategory, setNewCategory] = useState("");
+  const [creating, setCreating] = useState(false);
+
   const handleSkuSubmit = useCallback(async (code: string) => {
     if (!code.trim()) return;
     setLoading(true);
     setProduct(null);
     setNotFound(false);
+    setShowCreate(false);
     setFeedback(null);
     try {
       const res = await fetch(`/api/dashboard/products/by-sku?sku=${encodeURIComponent(code.trim())}`);
       if (!res.ok) {
-        if (res.status === 404) setNotFound(true);
-        else setFeedback({ type: "error", message: "Error al buscar el producto" });
+        if (res.status === 404) {
+          setNotFound(true);
+          setNewName("");
+          setNewSellingPrice("");
+          setNewCostPrice("");
+          setNewStock("0");
+          setNewCategory("");
+        } else {
+          setFeedback({ type: "error", message: "Error al buscar el producto" });
+        }
         return;
       }
       const data = await res.json();
@@ -61,6 +80,51 @@ export default function ScanPage() {
       setLoading(false);
     }
   }, []);
+
+  const handleCreateProduct = async () => {
+    if (!newName.trim() || !newSellingPrice) return;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/dashboard/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newName.trim(),
+          sku: sku.trim(),
+          sellingPrice: Number(newSellingPrice),
+          costPrice: Number(newCostPrice) || 0,
+          currentStock: Number(newStock) || 0,
+          category: newCategory.trim() || null,
+          minStock: 5,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setFeedback({ type: "error", message: data.error || "Error al crear el producto" });
+        return;
+      }
+      const data = await res.json();
+      setProduct({
+        id: data.id,
+        name: newName.trim(),
+        sku: sku.trim(),
+        currentStock: Number(newStock) || 0,
+        minStock: 5,
+        costPrice: Number(newCostPrice) || 0,
+        sellingPrice: Number(newSellingPrice),
+        category: newCategory.trim() || null,
+      });
+      setNotFound(false);
+      setShowCreate(false);
+      setQuantity(1);
+      setFeedback({ type: "success", message: `Producto "${newName.trim()}" creado correctamente` });
+      inputRef.current?.focus();
+    } catch {
+      setFeedback({ type: "error", message: "Error de conexión al crear el producto" });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +171,7 @@ export default function ScanPage() {
   };
 
   const stopCamera = useCallback(() => {
+    scanningRef.current = false;
     setCameraActive(false);
     setCameraError("");
     if (videoRef.current?.srcObject) {
@@ -126,16 +191,20 @@ export default function ScanPage() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
       });
-      if (!videoRef.current) return;
+      if (!videoRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
+      scanningRef.current = true;
       setCameraActive(true);
       lastCodeRef.current = "";
       const detector = new BarcodeDetector({
         formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code", "codabar", "data_matrix", "itf", "pdf417"],
       });
       const scan = async () => {
-        if (!videoRef.current || !cameraActive) return;
+        if (!videoRef.current || !scanningRef.current) return;
         try {
           const barcodes = await detector.detect(videoRef.current);
           if (barcodes.length > 0) {
@@ -149,13 +218,13 @@ export default function ScanPage() {
             }
           }
         } catch { /* detection frame error, keep going */ }
-        setTimeout(scan, 400);
+        if (scanningRef.current) setTimeout(scan, 400);
       };
       scan();
     } catch {
       setCameraError("No se pudo acceder a la cámara. Verificá los permisos.");
     }
-  }, [cameraActive, handleSkuSubmit, stopCamera]);
+  }, [handleSkuSubmit, stopCamera]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -163,12 +232,14 @@ export default function ScanPage() {
 
   useEffect(() => {
     if (!cameraActive) stopCamera();
-  }, [cameraActive, stopCamera]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraActive]);
 
   const resetSearch = () => {
     setSku("");
     setProduct(null);
     setNotFound(false);
+    setShowCreate(false);
     setFeedback(null);
     inputRef.current?.focus();
   };
@@ -253,7 +324,7 @@ export default function ScanPage() {
       )}
 
       {/* Not found */}
-      {notFound && (
+      {notFound && !showCreate && (
         <Card className="border-danger/20">
           <CardContent className="flex flex-col items-center py-8 text-center">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-danger-light">
@@ -263,12 +334,112 @@ export default function ScanPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               No existe un producto con el código <span className="font-mono font-medium text-foreground">{sku}</span>
             </p>
-            <button
-              onClick={resetSearch}
-              className="mt-4 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-            >
-              Buscar otro código
-            </button>
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={resetSearch}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Buscar otro código
+              </button>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90"
+              >
+                <Plus className="h-4 w-4" />
+                Crear producto
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Create product form */}
+      {showCreate && (
+        <Card className="border-primary/20 card-hover">
+          <div className="h-1.5 bg-gradient-to-r from-primary to-teal-400" />
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
+                <Plus className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Nuevo producto</h3>
+                <p className="text-xs text-muted-foreground">
+                  SKU: <span className="font-mono font-medium">{sku}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Nombre *</label>
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Ej: Arroz"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Precio de venta *</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={newSellingPrice}
+                  onChange={(e) => setNewSellingPrice(e.target.value)}
+                  placeholder="1200"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Precio de costo</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={newCostPrice}
+                  onChange={(e) => setNewCostPrice(e.target.value)}
+                  placeholder="800"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Stock inicial</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={newStock}
+                  onChange={(e) => setNewStock(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Categoría</label>
+                <input
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="Ej: Almacén"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowCreate(false)}
+                className="h-10 rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateProduct}
+                disabled={creating || !newName.trim() || !newSellingPrice}
+                className="flex h-10 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                Crear producto
+              </button>
+            </div>
           </CardContent>
         </Card>
       )}
