@@ -1,19 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { User, Bell, Shield, Key, Trash2, Save } from "lucide-react";
+import { User, Shield, Key, Trash2, Save, Mail, CheckCircle2, Clock, Send } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function SettingsPage() {
-  const [user, setUser] = useState<{ name: string; email: string; cuitCuil: string | null } | null>(null);
+  const [user, setUser] = useState<{
+    name: string;
+    email: string;
+    cuitCuil: string | null;
+    emailVerified: boolean;
+    globalRole: string;
+  } | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cuitCuil, setCuitCuil] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   const fetchUser = useCallback(async () => {
     try {
@@ -51,6 +59,24 @@ export default function SettingsPage() {
       // silently fail
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    setResendMsg(null);
+    try {
+      const res = await fetch("/api/auth/resend-verification-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      setResendMsg(data.message || data.error || "Reenviado.");
+    } catch {
+      setResendMsg("Error al reenviar.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -116,8 +142,8 @@ export default function SettingsPage() {
               <p className="text-sm font-medium">Rol global</p>
               <p className="text-xs text-muted-foreground">Permisos de administrador del sistema</p>
             </div>
-            <Badge tone={user && "globalRole" in user && user.globalRole === "SUPER_ADMIN" ? "danger" : "muted"}>
-              {user && "globalRole" in user ? String(user.globalRole) : "USER"}
+            <Badge tone={user?.globalRole === "SUPER_ADMIN" ? "danger" : "muted"}>
+              {user?.globalRole ?? "USER"}
             </Badge>
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
@@ -125,8 +151,44 @@ export default function SettingsPage() {
               <p className="text-sm font-medium">Workspace</p>
               <p className="text-xs text-muted-foreground">Espacio de trabajo actual</p>
             </div>
-            <Badge tone="default">{user && "workspaceName" in user ? String(user.workspaceName) : "Mi comercio"}</Badge>
+            <Badge tone="default">Mi comercio</Badge>
           </div>
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div className="flex items-center gap-3">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Email verificado</p>
+                <p className="text-xs text-muted-foreground">{email}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {user?.emailVerified ? (
+                <Badge tone="success">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Verificado
+                </Badge>
+              ) : (
+                <>
+                  <Badge tone="warning">
+                    <Clock className="h-3 w-3" />
+                    Pendiente
+                  </Badge>
+                  <Button
+                    variant="secondary"
+                    className="h-8 px-3 text-xs"
+                    onClick={handleResend}
+                    disabled={resending}
+                  >
+                    <Send className="h-3 w-3" />
+                    {resending ? "..." : "Reenviar"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          {resendMsg && (
+            <p className="text-xs text-muted-foreground text-center">{resendMsg}</p>
+          )}
         </CardContent>
       </Card>
 

@@ -247,7 +247,7 @@ export default async function Home() {
               width={160}
               height={60}
               priority
-              className="h-15  w-auto rounded object-contain"
+              className="h-15 w-auto rounded object-contain"
             />
           </Link>
 
@@ -261,12 +261,33 @@ export default async function Home() {
             <NavLink href="#contacto">Contacto</NavLink>
           </nav>
 
-          <Link
-            href={mainHref}
-            className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/30 transition-colors duration-150 hover:bg-[#027978] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
-            {mainLabel}
-          </Link>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <Link
+                href={mainHref}
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-gradient-to-r from-primary to-[#027978] px-5 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:shadow-xl hover:shadow-primary/40 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                {mainLabel}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden sm:inline-flex h-10 items-center rounded-full border border-[#4B4B4C]/20 px-5 text-sm font-medium text-[#4B4B4C] transition-all duration-200 hover:bg-white/80 hover:border-[#4B4B4C]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  Ingresar
+                </Link>
+                <Link
+                  href="/login?mode=register"
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-gradient-to-r from-primary to-[#027978] px-5 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:shadow-xl hover:shadow-primary/40 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  Crear cuenta
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </>
+            )}
+          </div>
         </header>
 
         {/* ── Hero body ── */}
