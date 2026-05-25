@@ -175,67 +175,90 @@ export default function ScanPage() {
     scanningRef.current = false;
     setCameraActive(false);
     setCameraError("");
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
-    }
   }, []);
 
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(() => {
     setCameraError("");
     if (!("BarcodeDetector" in window)) {
       setCameraError("Tu navegador no soporta la detección por cámara. Usá la entrada manual.");
       return;
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
-      });
-      if (!videoRef.current) {
+    scanningRef.current = true;
+    lastCodeRef.current = "";
+    setCameraActive(true);
+  }, []);
+
+  // Efecto separado: arranca la cámara cuando el <video> ya está en el DOM
+  useEffect(() => {
+    if (!cameraActive) {
+      scanningRef.current = false;
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach((t) => t.stop());
-        return;
+        videoRef.current.srcObject = null;
       }
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-      scanningRef.current = true;
-      setCameraActive(true);
-      lastCodeRef.current = "";
-      const detector = new BarcodeDetector({
-        formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code", "codabar", "data_matrix", "itf", "pdf417"],
-      });
-      const scan = async () => {
-        if (!videoRef.current || !scanningRef.current) return;
-        try {
-          const barcodes = await detector.detect(videoRef.current);
-          if (barcodes.length > 0) {
-            const code = barcodes[0].rawValue;
-            if (code !== lastCodeRef.current) {
-              lastCodeRef.current = code;
-              setSku(code);
-              stopCamera();
-              handleSkuSubmit(code);
-              return;
-            }
-          }
-        } catch { /* detection frame error, keep going */ }
-        if (scanningRef.current) setTimeout(scan, 400);
-      };
-      scan();
-    } catch {
-      setCameraError("No se pudo acceder a la cámara. Verificá los permisos.");
+      return;
     }
-  }, [handleSkuSubmit, stopCamera]);
+
+    let cancelled = false;
+    const initCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
+        });
+        if (cancelled || !videoRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+
+        if (!scanningRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        const detector = new BarcodeDetector({
+          formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code", "codabar", "data_matrix", "itf", "pdf417"],
+        });
+        const scan = async () => {
+          if (!videoRef.current || !scanningRef.current) return;
+          try {
+            const barcodes = await detector.detect(videoRef.current);
+            if (barcodes.length > 0) {
+              const code = barcodes[0].rawValue;
+              if (code !== lastCodeRef.current) {
+                lastCodeRef.current = code;
+                setSku(code);
+                scanningRef.current = false;
+                setCameraActive(false);
+                handleSkuSubmit(code);
+                if (videoRef.current?.srcObject) {
+                  (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+                  videoRef.current.srcObject = null;
+                }
+                return;
+              }
+            }
+          } catch { /* detection frame error, keep going */ }
+          if (scanningRef.current) setTimeout(scan, 400);
+        };
+        scan();
+      } catch {
+        if (!cancelled) {
+          setCameraError("No se pudo acceder a la cámara. Verificá los permisos o conectá una cámara.");
+          setCameraActive(false);
+        }
+      }
+    };
+    initCamera();
+    return () => { cancelled = true; };
+  }, [cameraActive, handleSkuSubmit]);
 
   useEffect(() => {
     inputRef.current?.focus();
     setHasBarcodeDetector("BarcodeDetector" in window);
   }, []);
-
-  useEffect(() => {
-    if (!cameraActive) stopCamera();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraActive]);
 
   const resetSearch = () => {
     setSku("");
@@ -251,7 +274,7 @@ export default function ScanPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Escáner de códigos de barras</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Escaneá con la cámara o ingresá manualmente el código de barras para buscar un producto y registrar una venta al instante.
+          Escaneá con la cámara (Chrome/Edge Android), con un escáner USB en PC o ingresá el código manualmente para buscar un producto y venderlo al instante.
         </p>
       </div>
 
@@ -290,11 +313,17 @@ export default function ScanPage() {
                   ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
                   : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"
               } disabled:opacity-40 disabled:cursor-not-allowed`}
-              title="Escaneá con la cámara"
+              title={hasBarcodeDetector ? "Escanear con cámara" : "No disponible en este navegador (usá Chrome o Edge)"}
             >
               <Camera className="h-5 w-5" />
             </button>
           </form>
+          {!hasBarcodeDetector && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Camera className="h-3 w-3" />
+              Escaneo por cámara requiere Chrome o Edge. En PC conectá un escáner USB y enfocá el input.
+            </p>
+          )}
 
           {/* Camera preview */}
           {cameraActive && (
