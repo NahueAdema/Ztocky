@@ -13,6 +13,7 @@ import {
   Gauge,
   LogOut,
   Menu,
+  ScanLine,
   Search,
   Settings,
   ShoppingCart,
@@ -26,6 +27,7 @@ const navigation = [
   { href: "/dashboard/alerts", label: "Alertas", icon: Siren },
   { href: "/dashboard/products", label: "Productos", icon: Boxes },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+  { href: "/dashboard/scan", label: "Escanear", icon: ScanLine },
   { href: "/dashboard/suppliers", label: "Proveedores", icon: Factory },
   { href: "/dashboard/purchase-orders", label: "Ordenes", icon: ClipboardList },
   {

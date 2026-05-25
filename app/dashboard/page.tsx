@@ -3,6 +3,7 @@ import { ArrowUpRight, Boxes, ClipboardList, Siren, TrendingUp } from "lucide-re
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  getPotentialSavings,
   getProductsForDashboard,
   getPurchaseOrdersForDashboard,
   getReorderRisksForDashboard,
@@ -13,10 +14,11 @@ import { moneyFormatter } from "@/lib/mock-data";
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   const workspaceId = user?.workspaceId ?? null;
-  const [products, purchaseOrders, reorderRisks] = await Promise.all([
+  const [products, purchaseOrders, reorderRisks, potentialSavings] = await Promise.all([
     getProductsForDashboard(workspaceId),
     getPurchaseOrdersForDashboard(workspaceId),
     getReorderRisksForDashboard(workspaceId),
+    getPotentialSavings(workspaceId),
   ]);
   const stagnantSince = new Date("2026-04-20");
   const stagnantProducts = products.filter(
@@ -59,7 +61,7 @@ export default async function DashboardPage() {
     },
     {
       title: "Ahorro potencial",
-      value: moneyFormatter.format(126000),
+      value: moneyFormatter.format(potentialSavings),
       subtitle: "seleccion de proveedor",
       icon: TrendingUp,
       iconColor: "text-success",

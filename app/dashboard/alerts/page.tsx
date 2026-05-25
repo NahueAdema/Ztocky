@@ -57,9 +57,13 @@ export default function AlertsPage() {
       const res = await fetch("/api/dashboard/alerts", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setGenerateResult(data.message);
+        let msg = data.message;
+        if (data.generatedOrders > 0 && data.orders) {
+          msg = `${data.generatedOrders} orden${data.generatedOrders > 1 ? "es" : ""} de compra generada${data.generatedOrders > 1 ? "s" : ""} para: ${data.orders.join(", ")}`;
+        }
+        setGenerateResult(msg);
         fetchAlerts();
-        setTimeout(() => setGenerateResult(null), 4000);
+        setTimeout(() => setGenerateResult(null), 6000);
       }
     } catch {
       // silently fail

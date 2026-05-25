@@ -57,7 +57,9 @@ export async function POST(request: NextRequest) {
   });
 
   let created = 0;
+  let generatedOrders = 0;
   const newAlerts: string[] = [];
+  const newOrders: string[] = [];
 
   for (const product of products) {
     const sold = product.sales.reduce((sum, sale) => sum + sale.quantity, 0);
@@ -109,6 +111,46 @@ export async function POST(request: NextRequest) {
         });
         created++;
         newAlerts.push(product.name);
+
+        if (alertType === "CRITICAL_STOCK" && product.catalogItems.length > 0) {
+          const pendingPO = await prisma.purchaseOrder.findFirst({
+            where: {
+              workspaceId: user.workspaceId,
+              status: { in: ["DRAFT", "SENT", "CONFIRMED", "SHIPPED"] },
+              items: { some: { productId: product.id } },
+            },
+          });
+
+          if (!pendingPO) {
+            const bestCatalog = product.catalogItems[0];
+            const suggestedQty = Math.max(
+              product.minStock * 2,
+              Math.ceil(burnRate * leadTime * 1.5),
+            );
+            const totalPrice = suggestedQty * Number(bestCatalog.unitPrice);
+
+            await prisma.purchaseOrder.create({
+              data: {
+                workspaceId: user.workspaceId,
+                supplierId: bestCatalog.supplierId,
+                status: "DRAFT",
+                totalAmount: totalPrice,
+                notes: `Generada automaticamente por alerta critica de ${product.name}. Stock actual: ${product.currentStock}, burn rate: ${burnRate.toFixed(1)}/dia`,
+                generatedByAI: true,
+                items: {
+                  create: {
+                    productId: product.id,
+                    quantity: suggestedQty,
+                    unitPrice: bestCatalog.unitPrice,
+                    totalPrice,
+                  },
+                },
+              },
+            });
+            generatedOrders++;
+            newOrders.push(product.name);
+          }
+        }
       }
     }
   }
@@ -152,10 +194,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  let message = created > 0 ? `${created} nueva${created > 1 ? "s" : ""} alerta${created > 1 ? "s" : ""} generada${created > 1 ? "s" : ""}` : "Sin nuevas alertas";
+  if (generatedOrders > 0) {
+    message += ` y ${generatedOrders} orden${generatedOrders > 1 ? "es" : ""} de compra generada${generatedOrders > 1 ? "s" : ""} automaticamente`;
+  }
+
   return NextResponse.json({
     generated: created,
     alerts: newAlerts,
-    message: created > 0 ? `${created} nueva${created > 1 ? "s" : ""} alerta${created > 1 ? "s" : ""} generada${created > 1 ? "s" : ""}` : "Sin nuevas alertas",
+    generatedOrders,
+    orders: newOrders,
+    message,
   });
 }
 
