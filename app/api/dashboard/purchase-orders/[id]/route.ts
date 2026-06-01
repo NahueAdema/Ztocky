@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { sendOrderNotification } from "@/lib/mail";
 
 const validStatuses = ["DRAFT", "SENT", "CONFIRMED", "SHIPPED", "RECEIVED", "CANCELLED"];
 
@@ -90,6 +91,33 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
+    if (body.items && Array.isArray(body.items) && body.items.length > 0) {
+      if (order.status !== "DRAFT") {
+        return NextResponse.json({ error: "Solo se pueden editar items en ordenes borrador." }, { status: 400 });
+      }
+
+      await prisma.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
+
+      const itemsTotal = body.items.reduce((sum: number, item: { quantity: number; unitPrice: number }) => {
+        return sum + Number(item.quantity) * Number(item.unitPrice);
+      }, 0);
+
+      await prisma.purchaseOrderItem.createMany({
+        data: body.items.map((item: { productId: string; quantity: number; unitPrice: number }) => ({
+          purchaseOrderId: id,
+          productId: item.productId,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          totalPrice: Number(item.quantity) * Number(item.unitPrice),
+        })),
+      });
+
+      await prisma.purchaseOrder.update({
+        where: { id },
+        data: { totalAmount: itemsTotal },
+      });
+    }
+
     const response: Record<string, unknown> = {
       id: updated.id,
       status: updated.status,
@@ -102,6 +130,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         product: i.product.name,
         quantity: i.quantity,
       }));
+    }
+
+    // Notificar por email si el estado cambio a SENT, RECEIVED o CANCELLED
+    const notifyStatuses = ["SENT", "RECEIVED", "CANCELLED"];
+    if (body.status && notifyStatuses.includes(body.status) && user.workspaceId) {
+      try {
+        const members = await prisma.workspaceMember.findMany({
+          where: { workspaceId: user.workspaceId },
+          include: { user: { select: { email: true, name: true, emailVerified: true } } },
+        });
+        const total = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(updated.totalAmount));
+        for (const member of members) {
+          if (member.user.emailVerified) {
+            sendOrderNotification(member.user.email, member.user.name, {
+              id: updated.id,
+              status: updated.status,
+              supplierName: order.supplier.name,
+              totalAmount: total,
+            }).catch(() => {});
+          }
+        }
+      } catch { /* email errors silent */ }
     }
 
     return NextResponse.json(response);

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Mail, AlertTriangle } from "lucide-react";
 
 export default function CheckEmailPage() {
   return (
@@ -12,9 +12,15 @@ export default function CheckEmailPage() {
         <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
           Te enviamos un link de verificación. Hacé clic en el link para activar tu cuenta y poder ingresar.
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Si no lo ves, revisá la carpeta de spam.
-        </p>
+
+        <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-warning/20 bg-warning-light/50 p-3 text-left text-xs text-warning">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <strong>Importante:</strong> Si no lo ves en la bandeja de entrada, revisá la carpeta de
+            <strong> Spam / Correo no deseado</strong>. A veces los correos de verificación llegan allí.
+          </span>
+        </div>
+
         <div className="mt-8 space-y-3">
           <Link
             href="/login"

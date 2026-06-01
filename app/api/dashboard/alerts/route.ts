@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { sendAlertNotification } from "@/lib/mail";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -197,6 +198,30 @@ export async function POST(request: NextRequest) {
   let message = created > 0 ? `${created} nueva${created > 1 ? "s" : ""} alerta${created > 1 ? "s" : ""} generada${created > 1 ? "s" : ""}` : "Sin nuevas alertas";
   if (generatedOrders > 0) {
     message += ` y ${generatedOrders} orden${generatedOrders > 1 ? "es" : ""} de compra generada${generatedOrders > 1 ? "s" : ""} automaticamente`;
+  }
+
+  // Enviar notificaciones email a usuarios verificados del workspace
+  if (created > 0 && user.workspaceId) {
+    try {
+      const members = await prisma.workspaceMember.findMany({
+        where: { workspaceId: user.workspaceId },
+        include: { user: { select: { email: true, name: true, emailVerified: true } } },
+      });
+      for (const member of members) {
+        if (member.user.emailVerified) {
+          for (const alert of newAlerts) {
+            const product = products.find((p) => p.name === alert);
+            if (product) {
+              sendAlertNotification(member.user.email, member.user.name, {
+                type: "CRITICAL_STOCK",
+                message: `Alerta generada para ${product.name}. Stock actual: ${product.currentStock}.`,
+                productName: product.name,
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+    } catch { /* email errors silent */ }
   }
 
   return NextResponse.json({
