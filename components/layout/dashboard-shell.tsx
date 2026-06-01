@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Command, LogOut, Search, Settings, User, ChevronDown } from "lucide-react";
+import { Bell, Command, LogOut, Search, Settings, User, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2 } from "lucide-react";
 
 import { Sidebar } from "@/components/layout/sidebar";
 
@@ -12,6 +12,16 @@ type DashboardUser = {
   name: string;
   email: string;
   workspaceName: string;
+};
+
+type AlertItem = {
+  id: string;
+  type: string;
+  message: string;
+  productName: string;
+  isRead: boolean;
+  isResolved: boolean;
+  createdAt: string;
 };
 
 export function DashboardShell({
@@ -25,6 +35,8 @@ export function DashboardShell({
   const [searchInput, setSearchInput] = useState("");
   const [showNotif, setShowNotif] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +47,24 @@ export function DashboardShell({
     .slice(0, 2)
     .toUpperCase();
 
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/dashboard/alerts");
+      if (res.ok) {
+        const data = await res.json();
+        setAlerts(data.alerts ?? []);
+      }
+    } catch { /* fail silently */ }
+    finally { setLoadingAlerts(false); }
+  }, []);
+
+  useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
+
+  // Re-fetch when dropdown opens
+  useEffect(() => {
+    if (showNotif) fetchAlerts();
+  }, [showNotif, fetchAlerts]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false);
@@ -43,6 +73,18 @@ export function DashboardShell({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const unread = alerts.filter((a) => !a.isResolved);
+  const recentAlerts = alerts.slice(0, 5);
+
+  const alertIcon = (type: string) => {
+    switch (type) {
+      case "CRITICAL_STOCK": return { icon: AlertTriangle, color: "bg-danger-light text-danger" };
+      case "LOW_STOCK": return { icon: Clock, color: "bg-warning-light text-warning" };
+      case "STAGNANT_STOCK": return { icon: Package, color: "bg-accent-soft text-accent-foreground" };
+      default: return { icon: Bell, color: "bg-muted text-muted-foreground" };
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,38 +125,60 @@ export function DashboardShell({
                 aria-label="Ver notificaciones"
               >
                 <Bell className="h-4 w-4" />
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white">
-                  3
-                </span>
+                {unread.length > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white px-1">
+                    {unread.length > 9 ? "9+" : unread.length}
+                  </span>
+                )}
               </button>
               {showNotif && (
                 <div className="absolute right-0 top-12 w-80 rounded-xl border border-border bg-card shadow-xl animate-slide-down">
-                  <div className="p-4 border-b border-border">
+                  <div className="p-4 border-b border-border flex items-center justify-between">
                     <p className="text-sm font-semibold">Notificaciones</p>
+                    {unread.length > 0 && (
+                      <span className="text-xs text-muted-foreground">{unread.length} sin resolver</span>
+                    )}
                   </div>
-                  <div className="p-4 space-y-3">
-                    <Link href="/dashboard/alerts" className="flex items-start gap-3 rounded-lg p-2 hover:bg-muted/50 transition block" onClick={() => setShowNotif(false)}>
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-danger-light">
-                        <Bell className="h-3.5 w-3.5 text-danger" />
+                  <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
+                    {loadingAlerts ? (
+                      <div className="flex items-center justify-center py-6">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">Stock bajo en 3 productos</p>
-                        <p className="text-xs text-muted-foreground">Revisar alertas de reposicion</p>
+                    ) : recentAlerts.length === 0 ? (
+                      <div className="text-center py-6">
+                        <CheckCircle2 className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Sin notificaciones</p>
+                        <p className="text-xs text-muted-foreground/60">Todo en orden por ahora</p>
                       </div>
-                    </Link>
-                    <Link href="/dashboard/alerts" className="flex items-start gap-3 rounded-lg p-2 hover:bg-muted/50 transition block" onClick={() => setShowNotif(false)}>
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning-light">
-                        <Bell className="h-3.5 w-3.5 text-warning" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Orden PO-1024 pendiente</p>
-                        <p className="text-xs text-muted-foreground">Borrador sin enviar</p>
-                      </div>
-                    </Link>
+                    ) : (
+                      recentAlerts.map((alert) => {
+                        const { icon: Icon, color } = alertIcon(alert.type);
+                        return (
+                          <Link
+                            key={alert.id}
+                            href="/dashboard/alerts"
+                            className={`flex items-start gap-3 rounded-lg p-2 transition ${alert.isResolved ? "opacity-50" : "hover:bg-muted/50"}`}
+                            onClick={() => setShowNotif(false)}
+                          >
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${color}`}>
+                              <Icon className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{alert.productName}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-2">{alert.message}</p>
+                            </div>
+                          </Link>
+                        );
+                      })
+                    )}
                   </div>
                   <div className="p-3 border-t border-border">
-                    <Link href="/dashboard/alerts" className="text-xs font-medium text-primary hover:underline block text-center" onClick={() => setShowNotif(false)}>
-                      Ver todas las alertas
+                    <Link
+                      href="/dashboard/alerts"
+                      className="text-xs font-medium text-primary hover:underline block text-center"
+                      onClick={() => setShowNotif(false)}
+                    >
+                      {alerts.length > 0 ? `Ver todas (${alerts.length})` : "Ir a alertas"}
                     </Link>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { sendOrderNotification } from "@/lib/mail";
 
 const validStatuses = ["DRAFT", "SENT", "CONFIRMED", "SHIPPED", "RECEIVED", "CANCELLED"];
 
@@ -129,6 +130,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         product: i.product.name,
         quantity: i.quantity,
       }));
+    }
+
+    // Notificar por email si el estado cambio a SENT, RECEIVED o CANCELLED
+    const notifyStatuses = ["SENT", "RECEIVED", "CANCELLED"];
+    if (body.status && notifyStatuses.includes(body.status) && user.workspaceId) {
+      try {
+        const members = await prisma.workspaceMember.findMany({
+          where: { workspaceId: user.workspaceId },
+          include: { user: { select: { email: true, name: true, emailVerified: true } } },
+        });
+        const total = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(updated.totalAmount));
+        for (const member of members) {
+          if (member.user.emailVerified) {
+            sendOrderNotification(member.user.email, member.user.name, {
+              id: updated.id,
+              status: updated.status,
+              supplierName: order.supplier.name,
+              totalAmount: total,
+            }).catch(() => {});
+          }
+        }
+      } catch { /* email errors silent */ }
     }
 
     return NextResponse.json(response);

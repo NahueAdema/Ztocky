@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Boxes, Download, FileUp, Plus, Search, Trash2, Pencil } from "lucide-react";
+import { Boxes, Download, FileUp, Plus, Search, Trash2, Pencil, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 type Product = {
   id: string;
@@ -61,6 +61,8 @@ export default function ProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
   const [importResult, setImportResult] = useState<{ created: number; total: number; errors?: string[] } | null>(null);
+  const [importStatus, setImportStatus] = useState<"idle" | "importing" | "done">("idle");
+  const [importProgress, setImportProgress] = useState(0);
   const [search, setSearch] = useState("");
 
   const fetchProducts = useCallback(async () => {
@@ -128,12 +130,37 @@ export default function ProductsPage() {
       header.forEach((h, i) => { record[h] = values[i] ?? ""; });
       return record;
     });
-    try {
-      const res = await fetch("/api/dashboard/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "products", records }) });
-      const data = await res.json();
-      setImportResult(data);
-      if (data.created > 0) fetchProducts();
-    } catch { setImportResult({ created: 0, total: records.length, errors: ["Error de conexion"] }); }
+
+    setImportStatus("importing");
+    setImportProgress(0);
+    let totalCreated = 0;
+    let allErrors: string[] = [];
+    const batchSize = 50;
+
+    const batches: Record<string, string>[][] = [];
+    for (let i = 0; i < records.length; i += batchSize) {
+      batches.push(records.slice(i, i + batchSize));
+    }
+
+    for (let i = 0; i < batches.length; i++) {
+      try {
+        const res = await fetch("/api/dashboard/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "products", records: batches[i] }),
+        });
+        const data = await res.json();
+        totalCreated += data.created ?? 0;
+        if (data.errors) allErrors = allErrors.concat(data.errors);
+      } catch {
+        allErrors.push(`Error en lote ${i + 1}`);
+      }
+      setImportProgress(Math.round(((i + 1) / batches.length) * 100));
+    }
+
+    setImportStatus("done");
+    setImportResult({ created: totalCreated, total: records.length, errors: allErrors.length > 0 ? allErrors : undefined });
+    if (totalCreated > 0) fetchProducts();
   };
 
   const filtered = products.filter((p) =>
@@ -315,15 +342,35 @@ export default function ProductsPage() {
             <h2 className="text-lg font-bold mb-2">Importar productos desde CSV</h2>
             <p className="text-sm text-muted-foreground mb-4">Columnas: nombre, sku, categoria, currentStock, minStock, costPrice, sellingPrice, isActive</p>
             <textarea className="w-full h-36 rounded-xl border border-border bg-card p-3 text-sm font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={`nombre,sku,categoria,currentStock,minStock,costPrice,sellingPrice,isActive\nCafe Brasil 1kg,CAF-001,Almacen,100,20,7400,11800,true`} />
+
+            {importStatus === "importing" && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Importando en lotes...
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${importProgress}%` }} />
+                </div>
+                <p className="text-xs text-muted-foreground text-right">{importProgress}%</p>
+              </div>
+            )}
+
             {importResult && (
-              <div className="mt-3 rounded-lg bg-muted p-3 text-sm">
-                <p>Importados: <span className="font-bold">{importResult.created}</span> / {importResult.total}</p>
-                {importResult.errors?.map((e, i) => <p key={i} className="text-danger mt-1">{e}</p>)}
+              <div className="mt-3 rounded-lg bg-muted p-3 text-sm space-y-1">
+                <div className="flex items-center gap-2">
+                  {importResult.created === importResult.total ? (
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                  )}
+                  <p>Importados: <span className="font-bold">{importResult.created}</span> / {importResult.total}</p>
+                </div>
+                {importResult.errors?.map((e, i) => <p key={i} className="text-danger text-xs ml-6">{e}</p>)}
               </div>
             )}
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="ghost" onClick={() => setShowImportModal(false)}>Cerrar</Button>
-              <Button onClick={handleImport} disabled={!importText.trim()}>Importar</Button>
+              <Button variant="ghost" onClick={() => { setShowImportModal(false); setImportStatus("idle"); }}>Cerrar</Button>
+              <Button onClick={handleImport} disabled={!importText.trim() || importStatus === "importing"}>{importStatus === "importing" ? "Importando..." : "Importar"}</Button>
             </div>
           </div>
         </div>
