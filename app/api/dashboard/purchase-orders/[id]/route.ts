@@ -90,6 +90,33 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
+    if (body.items && Array.isArray(body.items) && body.items.length > 0) {
+      if (order.status !== "DRAFT") {
+        return NextResponse.json({ error: "Solo se pueden editar items en ordenes borrador." }, { status: 400 });
+      }
+
+      await prisma.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
+
+      const itemsTotal = body.items.reduce((sum: number, item: { quantity: number; unitPrice: number }) => {
+        return sum + Number(item.quantity) * Number(item.unitPrice);
+      }, 0);
+
+      await prisma.purchaseOrderItem.createMany({
+        data: body.items.map((item: { productId: string; quantity: number; unitPrice: number }) => ({
+          purchaseOrderId: id,
+          productId: item.productId,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          totalPrice: Number(item.quantity) * Number(item.unitPrice),
+        })),
+      });
+
+      await prisma.purchaseOrder.update({
+        where: { id },
+        data: { totalAmount: itemsTotal },
+      });
+    }
+
     const response: Record<string, unknown> = {
       id: updated.id,
       status: updated.status,

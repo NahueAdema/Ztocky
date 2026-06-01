@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Mail, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 export default function ReenviarVerificacionPage() {
@@ -40,6 +40,14 @@ export default function ReenviarVerificacionPage() {
         <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
           Ingresá el correo con el que te registraste y te mandamos un nuevo link de verificación.
         </p>
+
+        <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-warning/20 bg-warning-light/50 p-3 text-left text-xs text-warning">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <strong>Tip:</strong> Revisá también la carpeta de <strong>Spam / Correo no deseado</strong>.
+            Si usás Gmail, a veces los mails de verificación quedan allí.
+          </span>
+        </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <input
