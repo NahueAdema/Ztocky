@@ -190,7 +190,15 @@ export async function authenticateUser(emailInput: string, password: string) {
     where: { email: normalizeEmail(emailInput) },
   });
 
-  if (!user || user.status !== "ACTIVE" || !verifyPassword(password, user.passwordHash)) {
+  if (!user || user.status !== "ACTIVE") {
+    return null;
+  }
+
+  if (!user.passwordHash) {
+    return null;
+  }
+
+  if (!verifyPassword(password, user.passwordHash)) {
     return null;
   }
 

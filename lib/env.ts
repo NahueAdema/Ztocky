@@ -2,12 +2,28 @@ const requiredEnvs = [
   'DATABASE_URL',
   'GROQ_API_KEY',
 ] as const
+
+const auth0Envs = [
+  'AUTH0_DOMAIN',
+  'AUTH0_CLIENT_ID',
+  'AUTH0_CLIENT_SECRET',
+] as const
+
 export function validateEnv(): boolean {
   const missing = requiredEnvs.filter(env => !process.env[env])
 
   if (missing.length > 0) {
     console.error(`❌ Faltan variables de entorno: ${missing.join(', ')}`)
     return false
+  }
+
+  const auth0Missing = auth0Envs.filter(env => !process.env[env])
+  if (auth0Missing.length > 0 && auth0Missing.length < auth0Envs.length) {
+    console.warn(`⚠️ Auth0 configurado parcialmente: faltan ${auth0Missing.join(', ')}`)
+  }
+
+  if (auth0Missing.length === 0) {
+    console.log('✅ Auth0 configurado')
   }
 
   console.log('✅ Todas las variables de entorno configuradas')
