@@ -18,6 +18,29 @@ function sendMail(to: string, subject: string, html: string) {
   return transporter.sendMail({ from: `Ztocky <${env.GMAIL_USER}>`, to, subject, html });
 }
 
+export async function sendPasswordResetEmail(
+  email: string,
+  token: string,
+  name: string,
+  baseUrl?: string,
+) {
+  const resetUrl = `${baseUrl || env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+
+  const html = `<!DOCTYPE html>
+<html><body style="font-family:sans-serif;background:#f5f5f5;padding:40px 20px">
+<table align="center" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
+<tr><td style="padding:32px 32px 0;text-align:center">
+<p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${name},</strong></p>
+<p style="font-size:14px;color:#666;line-height:1.5">Recibimos una solicitud para restablecer tu contraseña. Hacé clic en el botón para crear una nueva.</p>
+<a href="${resetUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:#038786;color:#fff;border-radius:12px;text-decoration:none;font-size:15px;font-weight:600">Restablecer contraseña</a>
+<p style="margin-top:24px;font-size:12px;color:#999">O copiá este link en tu navegador:<br><span style="color:#038786">${resetUrl}</span></p>
+<p style="margin-top:20px;font-size:12px;color:#999">Si no solicitaste esto, ignorá este correo. El link expira en 1 hora.</p>
+</td></tr></table></body></html>`;
+
+  await sendMail(email, "Restablecé tu contraseña — Ztocky", html);
+}
+
 export async function sendVerificationEmail(email: string, token: string, name: string, baseUrl?: string) {
   const verifyUrl = `${baseUrl || env.NEXT_PUBLIC_APP_URL}/api/auth/verify-email?token=${token}`;
 

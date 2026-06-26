@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { authenticateUser, createSession } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const rl = rateLimit(`login:${ip}`, 10, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Esperá un minuto." },
+      { status: 429 },
+    );
+  }
+
   const body = await request.json();
   const email = String(body.email ?? "").trim();
   const password = String(body.password ?? "");

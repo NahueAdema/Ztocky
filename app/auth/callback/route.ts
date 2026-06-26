@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   let tokenResponse;
   try {
-    tokenResponse = await exchangeCode(code);
+    tokenResponse = await exchangeCode(code, req);
   } catch {
     return NextResponse.json(
       { error: "Failed to exchange authorization code" },

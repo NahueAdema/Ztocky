@@ -186,6 +186,17 @@ export function AuthCard() {
           <Button className="h-11 w-full" disabled={isLoading}>
             {isLoading ? "Procesando..." : mode === "register" ? "Crear cuenta" : "Ingresar"}
           </Button>
+
+          {mode === "login" && (
+            <div className="text-center">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Olvidaste tu contraseña?
+              </Link>
+            </div>
+          )}
         </form>
 
         <div className="relative my-6">

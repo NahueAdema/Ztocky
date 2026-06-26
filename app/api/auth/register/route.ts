@@ -4,8 +4,18 @@ import { randomBytes } from "node:crypto";
 import { registerUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/mail";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const rl = rateLimit(`register:${ip}`, 5, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Demasiados registros. Esperá un minuto." },
+      { status: 429 },
+    );
+  }
+
   try {
     const body = await request.json();
     const name = String(body.name ?? "").trim();

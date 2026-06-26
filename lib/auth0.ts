@@ -10,13 +10,24 @@ export const auth0Config = {
   authorizationUrl: `https://${DOMAIN}/authorize`,
   tokenUrl: `https://${DOMAIN}/oauth/token`,
   logoutUrl: `https://${DOMAIN}/v2/logout`,
-  callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
 };
 
-export function getLoginUrl(state: string) {
+function getBaseUrl(request?: Request) {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  if (request) {
+    const url = new URL(request.url);
+    return `${url.protocol}//${url.host}`;
+  }
+  return "http://localhost:3000";
+}
+
+export function getLoginUrl(state: string, request?: Request) {
+  const baseUrl = getBaseUrl(request);
   const params = new URLSearchParams({
     client_id: auth0Config.clientId,
-    redirect_uri: auth0Config.callbackUrl,
+    redirect_uri: `${baseUrl}/auth/callback`,
     response_type: "code",
     scope: "openid profile email",
     state,
@@ -25,16 +36,18 @@ export function getLoginUrl(state: string) {
   return `${auth0Config.authorizationUrl}?${params}`;
 }
 
-export function getLogoutUrl() {
+export function getLogoutUrl(request?: Request) {
+  const baseUrl = getBaseUrl(request);
   const params = new URLSearchParams({
     client_id: auth0Config.clientId,
-    returnTo: process.env.NEXT_PUBLIC_APP_URL!,
+    returnTo: baseUrl,
   });
 
   return `${auth0Config.logoutUrl}?${params}`;
 }
 
-export async function exchangeCode(code: string) {
+export async function exchangeCode(code: string, request?: Request) {
+  const baseUrl = getBaseUrl(request);
   const res = await fetch(auth0Config.tokenUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -43,7 +56,7 @@ export async function exchangeCode(code: string) {
       client_id: auth0Config.clientId,
       client_secret: auth0Config.clientSecret,
       code,
-      redirect_uri: auth0Config.callbackUrl,
+      redirect_uri: `${baseUrl}/auth/callback`,
     }),
   });
 
