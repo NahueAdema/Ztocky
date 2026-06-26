@@ -10,6 +10,7 @@
     "seed": "prisma db seed"
   },
   "dependencies": {
+    "@auth0/nextjs-auth0": "^4.23.0",
     "@faker-js/faker": "^10.4.0",
     "@prisma/adapter-neon": "^7.8.0",
     "@prisma/client": "^7.8.0",
@@ -28,13 +29,13 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^6.4.17",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
-    "@types/nodemailer": "^6.4.17",
     "tsx": "^4.22.0",
     "typescript": "^5"
   },
