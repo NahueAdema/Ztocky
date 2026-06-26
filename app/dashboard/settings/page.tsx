@@ -23,6 +23,13 @@ export default function SettingsPage() {
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
 
+  const [showPwForm, setShowPwForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [changingPw, setChangingPw] = useState(false);
+  const [pwMsg, setPwMsg] = useState<string | null>(null);
+
   const fetchUser = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/me");
@@ -207,11 +214,96 @@ export default function SettingsPage() {
             Estas acciones no se pueden deshacer. Contacta a soporte si necesitas ayuda.
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" className="text-danger border-danger/20 hover:bg-danger-light">
+            <Button
+              variant="secondary"
+              className="text-danger border-danger/20 hover:bg-danger-light"
+              onClick={() => { setPwMsg(null); setShowPwForm(!showPwForm); }}
+            >
               <Key className="h-4 w-4" />
               Cambiar contrasena
             </Button>
           </div>
+
+          {showPwForm && (
+            <div className="mt-4 space-y-3 rounded-lg border border-border p-4">
+              <input
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
+                placeholder="Contraseña actual"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+              <input
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
+                placeholder="Nueva contraseña"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <input
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
+                placeholder="Repetir nueva contraseña"
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+              />
+              {pwMsg && (
+                <p className="text-xs text-muted-foreground">{pwMsg}</p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  disabled={changingPw}
+                  onClick={async () => {
+                    if (newPassword.length < 8) {
+                      setPwMsg("La contraseña debe tener al menos 8 caracteres.");
+                      return;
+                    }
+                    if (newPassword !== confirmNewPassword) {
+                      setPwMsg("Las contraseñas no coinciden.");
+                      return;
+                    }
+                    setChangingPw(true);
+                    setPwMsg(null);
+                    try {
+                      const res = await fetch("/api/auth/password", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ currentPassword, newPassword }),
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        setPwMsg("Contraseña actualizada.");
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmNewPassword("");
+                      } else {
+                        setPwMsg(data.error ?? "Error al cambiar la contraseña.");
+                      }
+                    } catch {
+                      setPwMsg("Error de conexión.");
+                    } finally {
+                      setChangingPw(false);
+                    }
+                  }}
+                >
+                  {changingPw ? "Guardando..." : "Guardar"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowPwForm(false);
+                    setPwMsg(null);
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmNewPassword("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
