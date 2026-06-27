@@ -76,6 +76,16 @@ export default function SuppliersPage() {
   const [newCatalogPrice, setNewCatalogPrice] = useState("");
   const [newCatalogMinQty, setNewCatalogMinQty] = useState("1");
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [showImportPrices, setShowImportPrices] = useState(false);
+  const [importPricesText, setImportPricesText] = useState("");
+  const [importPricesPreview, setImportPricesPreview] = useState<{
+    summary: { total: number; matchedNew: number; matchedUpdate: number; unmatched: number };
+    matchedNew: { sku: string; productName: string; unitPrice: number; minOrderQty: number }[];
+    matchedUpdate: { sku: string; productName: string; unitPrice: number; minOrderQty: number; previousUnitPrice: number }[];
+    unmatched: { sku: string; unitPrice: number }[];
+  } | null>(null);
+  const [importingPrices, setImportingPrices] = useState(false);
+  const [importPricesError, setImportPricesError] = useState<string | null>(null);
   const [form, setForm] = useState<SupplierForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -291,6 +301,64 @@ export default function SuppliersPage() {
     }
   };
 
+  const handlePreviewPrices = async () => {
+    if (!selectedSupplier) return;
+    setImportPricesError(null);
+    setImportPricesPreview(null);
+    const lines = importPricesText.trim().split("\n").filter(Boolean);
+    if (lines.length < 2) { setImportPricesError("Pegar al menos 2 lineas (encabezado + datos)"); return; }
+    const header = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/"/g, ""));
+    const hasSku = header.includes("sku");
+    const hasPrecio = header.includes("precio") || header.includes("unitprice") || header.includes("unit_price");
+    if (!hasSku || !hasPrecio) { setImportPricesError("Columnas requeridas: sku, precio. Opcional: minimo"); return; }
+    const rows = lines.slice(1).map((line) => {
+      const values = line.split(",").map((v) => v.trim().replace(/"/g, ""));
+      const record: Record<string, string> = {};
+      header.forEach((h, i) => { record[h] = values[i] ?? ""; });
+      return record;
+    }).filter((r) => r.sku);
+    setImportingPrices(true);
+    try {
+      const res = await fetch("/api/dashboard/catalog/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplierId: selectedSupplier.id, rows, apply: false }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setImportPricesError(data.error ?? "Error"); return; }
+      setImportPricesPreview(data);
+    } catch { setImportPricesError("Error de conexion"); }
+    finally { setImportingPrices(false); }
+  };
+
+  const handleApplyPrices = async () => {
+    if (!selectedSupplier || !importPricesPreview) return;
+    setImportingPrices(true);
+    setImportPricesError(null);
+    const lines = importPricesText.trim().split("\n").filter(Boolean);
+    const header = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/"/g, ""));
+    const rows = lines.slice(1).map((line) => {
+      const values = line.split(",").map((v) => v.trim().replace(/"/g, ""));
+      const record: Record<string, string> = {};
+      header.forEach((h, i) => { record[h] = values[i] ?? ""; });
+      return record;
+    }).filter((r) => r.sku);
+    try {
+      const res = await fetch("/api/dashboard/catalog/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplierId: selectedSupplier.id, rows, apply: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setImportPricesError(data.error ?? "Error"); return; }
+      setShowImportPrices(false);
+      setImportPricesText("");
+      setImportPricesPreview(null);
+      if (selectedSupplier) openCatalog(selectedSupplier);
+    } catch { setImportPricesError("Error de conexion"); }
+    finally { setImportingPrices(false); }
+  };
+
   const filtered = suppliers.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -305,7 +373,7 @@ export default function SuppliersPage() {
             Proveedores
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Base para comparar precio, lead time y confiabilidad.
+            Compará precios, tiempos de entrega y confiabilidad.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -375,7 +443,7 @@ export default function SuppliersPage() {
                     <tr>
                       <th className="text-left">Nombre</th>
                       <th className="text-left">Contacto</th>
-                      <th className="text-left">Lead time</th>
+                      <th className="text-left">Tiempo de entrega</th>
                       <th className="text-left">Envio</th>
                       <th className="text-left">Confiabilidad</th>
                       <th className="text-left">Productos</th>
@@ -483,7 +551,7 @@ export default function SuppliersPage() {
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       <div className="rounded-lg bg-muted/60 p-2">
                         <p className="text-[10px] text-muted-foreground mb-0.5">
-                          Lead time
+                          Tiempo de entrega
                         </p>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3 text-muted-foreground" />
@@ -587,7 +655,7 @@ export default function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Lead time (dias)</label>
+                <label className="text-sm font-medium">Tiempo de entrega (dias)</label>
                 <Input
                   type="number"
                   value={form.leadTime}
@@ -688,13 +756,80 @@ export default function SuppliersPage() {
               </Button>
             </div>
 
-            {catalogItems.length === 0 ? (
+            <div className="mb-4">
+              <button onClick={() => { setShowImportPrices(!showImportPrices); setImportPricesPreview(null); setImportPricesText(""); setImportPricesError(null); }}
+                className="text-sm text-primary hover:underline flex items-center gap-1">
+                <FileUp className="h-3.5 w-3.5" /> {showImportPrices ? "Cerrar importacion" : "Importar precios desde CSV"}
+              </button>
+
+              {showImportPrices && (
+                <div className="mt-3 space-y-3 rounded-lg border border-border p-3 bg-muted/20">
+                  <p className="text-xs text-muted-foreground">Columnas: <strong>sku, precio</strong>. Opcional: <strong>minimo</strong></p>
+                  <textarea className="w-full h-24 rounded-lg border border-border bg-card p-2 text-sm font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    value={importPricesText} onChange={(e) => setImportPricesText(e.target.value)}
+                    placeholder={`sku,precio,minimo\nCAF-001,8500,5\nCAF-002,9200,3`} />
+                  {importPricesError && <p className="text-xs text-danger">{importPricesError}</p>}
+
+                  {!importPricesPreview ? (
+                    <Button onClick={handlePreviewPrices} disabled={!importPricesText.trim() || importingPrices}>
+                      {importingPrices ? "Procesando..." : "Previsualizar"}
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex gap-2 text-xs">
+                        <span className="rounded bg-success-light text-success px-2 py-0.5 font-medium font-mono">{importPricesPreview.summary.matchedNew} nuevas</span>
+                        <span className="rounded bg-primary-light text-primary px-2 py-0.5 font-medium font-mono">{importPricesPreview.summary.matchedUpdate} actualizadas</span>
+                        <span className="rounded bg-danger-light text-danger px-2 py-0.5 font-medium font-mono">{importPricesPreview.summary.unmatched} sin match</span>
+                      </div>
+                      {importPricesPreview.matchedNew.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-success mb-1">Nuevos en catalogo:</p>
+                          {importPricesPreview.matchedNew.map((item) => (
+                            <div key={item.sku} className="flex justify-between text-xs py-0.5">
+                              <span>{item.productName} ({item.sku})</span>
+                              <span className="font-mono">{moneyFormatter.format(item.unitPrice)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {importPricesPreview.matchedUpdate.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-primary mb-1">Precios actualizados:</p>
+                          {importPricesPreview.matchedUpdate.map((item) => (
+                            <div key={item.sku} className="flex justify-between text-xs py-0.5">
+                              <span>{item.productName} ({item.sku})</span>
+                              <span className="font-mono">{moneyFormatter.format(item.previousUnitPrice)} → {moneyFormatter.format(item.unitPrice)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {importPricesPreview.unmatched.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-danger mb-1">Sin match (SKU no encontrado):</p>
+                          {importPricesPreview.unmatched.map((item) => (
+                            <div key={item.sku} className="text-xs text-muted-foreground py-0.5">{item.sku}</div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        <Button variant="secondary" onClick={() => { setImportPricesPreview(null); setImportPricesText(""); }}>Cancelar</Button>
+                        <Button onClick={handleApplyPrices} disabled={importingPrices}>
+                          {importingPrices ? "Aplicando..." : "Aplicar cambios"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {catalogItems.length === 0 && !showImportPrices ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Package className="h-8 w-8 text-muted-foreground mb-2" />
                 <p className="text-sm font-medium">Sin productos asignados</p>
-                <p className="text-xs text-muted-foreground mt-1">Agrega productos al catalogo de este proveedor.</p>
+                <p className="text-xs text-muted-foreground mt-1">Agrega productos al catalogo o importa precios desde CSV.</p>
               </div>
-            ) : (
+            ) : catalogItems.length > 0 ? (
               <div className="space-y-2">
                 {catalogItems.map((item) => (
                   <div key={item.id} className="flex items-center justify-between rounded-lg border border-border p-3">
@@ -709,7 +844,7 @@ export default function SuppliersPage() {
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}

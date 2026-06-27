@@ -89,7 +89,7 @@ export default function SimulatorPage() {
           <div className="flex items-center gap-3 rounded-xl border border-border bg-gradient-to-r from-primary-light to-accent-soft p-4">
             <Zap className="h-5 w-5 shrink-0 text-primary" />
             <p className="text-sm text-muted-foreground">
-              Con {demandIncrease > 0 ? "+" : ""}{demandIncrease}% de ventas, el burn rate proyectado reduce los dias restantes por producto.
+              Con {demandIncrease > 0 ? "+" : ""}{demandIncrease}% de ventas, el stock se agota mas rapido y se reducen los dias restantes por producto.
             </p>
           </div>
         </CardContent>
