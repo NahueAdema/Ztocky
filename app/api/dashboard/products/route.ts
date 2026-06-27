@@ -11,6 +11,11 @@ export async function GET(request: NextRequest) {
     where: {
       workspaceId: user.workspaceId,
     },
+    include: {
+      catalogItems: {
+        include: { supplier: { select: { name: true } } },
+      },
+    },
     orderBy: { name: "asc" },
   });
 
@@ -28,6 +33,12 @@ export async function GET(request: NextRequest) {
       isActive: p.isActive,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
+      suppliers: p.catalogItems.map((ci) => ({
+        supplierId: ci.supplierId,
+        supplierName: ci.supplier.name,
+        unitPrice: Number(ci.unitPrice),
+        minOrderQty: ci.minOrderQty,
+      })),
     })),
   });
 }
@@ -37,7 +48,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { name, sku, description, currentStock, minStock, costPrice, sellingPrice, category, isActive } = body;
+  const { name, sku, description, currentStock, minStock, costPrice, sellingPrice, category, isActive, supplierId, catalogUnitPrice, catalogMinQty } = body;
 
   if (!name || !sku) {
     return NextResponse.json({ error: "Nombre y SKU son obligatorios" }, { status: 400 });
@@ -60,6 +71,22 @@ export async function POST(request: NextRequest) {
         workspaceId: user.workspaceId,
       },
     });
+
+    if (supplierId && catalogUnitPrice) {
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: supplierId, workspaceId: user.workspaceId },
+      });
+      if (supplier) {
+        await prisma.catalogItems.create({
+          data: {
+            supplierId,
+            productId: product.id,
+            unitPrice: Number(catalogUnitPrice),
+            minOrderQty: Number(catalogMinQty) || 1,
+          },
+        }).catch(() => {});
+      }
+    }
 
     return NextResponse.json({
       id: product.id,

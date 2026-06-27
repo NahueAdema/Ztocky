@@ -70,7 +70,7 @@ export default function SuppliersPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [catalogItems, setCatalogItems] = useState<{ catalogId: string; productId: string; productName: string; productSku: string; unitPrice: number; minOrderQty: number }[]>([]);
+  const [catalogItems, setCatalogItems] = useState<{ id: string; productId: string; productName: string; productSku: string; unitPrice: number; minOrderQty: number }[]>([]);
   const [allProducts, setAllProducts] = useState<{ id: string; name: string; sku: string }[]>([]);
   const [newCatalogProduct, setNewCatalogProduct] = useState("");
   const [newCatalogPrice, setNewCatalogPrice] = useState("");
@@ -474,12 +474,13 @@ export default function SuppliersPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => openCatalog(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver catalogo"><Package className="h-4 w-4" /></button>
                         <button onClick={() => openEdit(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
                         <button onClick={() => handleDelete(supplier.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
                     {/* Info chips */}
-                    <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="grid grid-cols-3 gap-2 mb-3">
                       <div className="rounded-lg bg-muted/60 p-2">
                         <p className="text-[10px] text-muted-foreground mb-0.5">
                           Lead time
@@ -500,6 +501,13 @@ export default function SuppliersPage() {
                           <span className="text-xs font-semibold">
                             {moneyFormatter.format(supplier.shippingCost)}
                           </span>
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-muted/60 p-2">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Productos</p>
+                        <div className="flex items-center gap-1">
+                          <Package className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs font-semibold">{supplier.products.length}</span>
                         </div>
                       </div>
                     </div>
@@ -650,9 +658,9 @@ export default function SuppliersPage() {
               <button onClick={() => setShowCatalogModal(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted"><X className="h-4 w-4" /></button>
             </div>
 
-            <div className="flex gap-2 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_6rem_5rem_auto] gap-2 mb-4">
               <select
-                className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 value={newCatalogProduct}
                 onChange={(e) => setNewCatalogProduct(e.target.value)}
               >
@@ -665,14 +673,12 @@ export default function SuppliersPage() {
               </select>
               <Input
                 type="number"
-                className="w-24"
                 placeholder="Precio"
                 value={newCatalogPrice}
                 onChange={(e) => setNewCatalogPrice(e.target.value)}
               />
               <Input
                 type="number"
-                className="w-20"
                 placeholder="Min"
                 value={newCatalogMinQty}
                 onChange={(e) => setNewCatalogMinQty(e.target.value)}
@@ -691,14 +697,14 @@ export default function SuppliersPage() {
             ) : (
               <div className="space-y-2">
                 {catalogItems.map((item) => (
-                  <div key={item.catalogId} className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div key={item.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                     <div>
                       <p className="text-sm font-semibold">{item.productName}</p>
                       <p className="text-xs text-muted-foreground font-mono">{item.productSku} · Min: {item.minOrderQty} uds</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold">{moneyFormatter.format(item.unitPrice)}</span>
-                      <button onClick={() => removeCatalogItem(item.catalogId)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => removeCatalogItem(item.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </div>
                 ))}

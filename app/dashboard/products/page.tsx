@@ -18,7 +18,11 @@ type Product = {
   sellingPrice: number;
   category: string | null;
   isActive: boolean;
+  suppliers: ProductSupplier[];
 };
+
+type SupplierOption = { id: string; name: string };
+type ProductSupplier = { supplierId: string; supplierName: string; unitPrice: number; minOrderQty: number };
 
 type ProductForm = {
   name: string;
@@ -30,6 +34,9 @@ type ProductForm = {
   sellingPrice: string;
   category: string;
   isActive: boolean;
+  supplierId: string;
+  catalogUnitPrice: string;
+  catalogMinQty: string;
 };
 
 const emptyForm: ProductForm = {
@@ -42,6 +49,9 @@ const emptyForm: ProductForm = {
   sellingPrice: "0",
   category: "",
   isActive: true,
+  supplierId: "",
+  catalogUnitPrice: "",
+  catalogMinQty: "1",
 };
 
 const moneyFormatter = new Intl.NumberFormat("es-AR", {
@@ -52,11 +62,14 @@ const moneyFormatter = new Intl.NumberFormat("es-AR", {
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
+  const [productSuppliers, setProductSuppliers] = useState<Map<string, ProductSupplier[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [linkToSupplier, setLinkToSupplier] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
@@ -65,18 +78,32 @@ export default function ProductsPage() {
   const [importProgress, setImportProgress] = useState(0);
   const [search, setSearch] = useState("");
 
-  const fetchProducts = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard/products");
-      if (res.ok) setProducts((await res.json()).products);
+      const [prodRes, supRes] = await Promise.all([
+        fetch("/api/dashboard/products"),
+        fetch("/api/dashboard/suppliers"),
+      ]);
+      if (prodRes.ok) {
+        const data = await prodRes.json();
+        setProducts(data.products);
+        const map = new Map<string, ProductSupplier[]>();
+        for (const p of data.products) {
+          if (p.suppliers && p.suppliers.length > 0) {
+            map.set(p.id, p.suppliers);
+          }
+        }
+        setProductSuppliers(map);
+      }
+      if (supRes.ok) setSuppliers((await supRes.json()).suppliers);
     } catch {}
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const openCreate = () => { setEditingProduct(null); setForm(emptyForm); setError(null); setShowModal(true); };
+  const openCreate = () => { setEditingProduct(null); setForm(emptyForm); setLinkToSupplier(false); setError(null); setShowModal(true); };
   const openEdit = (p: Product) => {
     setEditingProduct(p);
     setForm({
@@ -84,29 +111,41 @@ export default function ProductsPage() {
       currentStock: String(p.currentStock), minStock: String(p.minStock),
       costPrice: String(p.costPrice), sellingPrice: String(p.sellingPrice),
       category: p.category ?? "", isActive: p.isActive,
+      supplierId: "", catalogUnitPrice: "", catalogMinQty: "1",
     });
-    setError(null); setShowModal(true);
+    setLinkToSupplier(false); setError(null); setShowModal(true);
   };
 
   const handleSave = async () => {
     setSaving(true); setError(null);
     try {
+      const payload: Record<string, unknown> = {
+        name: form.name, sku: form.sku, description: form.description,
+        currentStock: Number(form.currentStock), minStock: Number(form.minStock),
+        costPrice: Number(form.costPrice), sellingPrice: Number(form.sellingPrice),
+        category: form.category, isActive: form.isActive,
+      };
+      if (!editingProduct && linkToSupplier && form.supplierId && form.catalogUnitPrice) {
+        payload.supplierId = form.supplierId;
+        payload.catalogUnitPrice = Number(form.catalogUnitPrice);
+        payload.catalogMinQty = Number(form.catalogMinQty) || 1;
+      }
       const url = editingProduct ? `/api/dashboard/products/${editingProduct.id}` : "/api/dashboard/products";
       const res = await fetch(url, {
         method: editingProduct ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, currentStock: Number(form.currentStock), minStock: Number(form.minStock), costPrice: Number(form.costPrice), sellingPrice: Number(form.sellingPrice) }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Error al guardar"); return; }
-      setShowModal(false); fetchProducts();
+      setShowModal(false); fetchData();
     } catch { setError("Error de conexion"); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar este producto?")) return;
-    try { const res = await fetch(`/api/dashboard/products/${id}`, { method: "DELETE" }); if (res.ok) fetchProducts(); } catch {}
+    try { const res = await fetch(`/api/dashboard/products/${id}`, { method: "DELETE" }); if (res.ok) fetchData(); } catch {}
   };
 
   const handleExport = () => {
@@ -160,7 +199,7 @@ export default function ProductsPage() {
 
     setImportStatus("done");
     setImportResult({ created: totalCreated, total: records.length, errors: allErrors.length > 0 ? allErrors : undefined });
-    if (totalCreated > 0) fetchProducts();
+    if (totalCreated > 0) fetchData();
   };
 
   const filtered = products.filter((p) =>
@@ -232,6 +271,7 @@ export default function ProductsPage() {
                       <th className="text-left">Venta</th>
                       <th className="text-left">Margen</th>
                       <th className="text-left">Estado</th>
+                      <th className="text-left">Proveedores</th>
                       <th className="text-left">Acciones</th>
                     </tr>
                   </thead>
@@ -239,6 +279,7 @@ export default function ProductsPage() {
                     {filtered.map((product) => {
                       const margin = product.sellingPrice > 0 ? Math.round(((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100) : 0;
                       const isLow = product.currentStock <= product.minStock;
+                      const pSuppliers = productSuppliers.get(product.id) ?? [];
                       return (
                         <tr key={product.id}>
                           <td><p className="font-semibold">{product.name}</p><p className="text-xs text-muted-foreground font-mono">{product.sku}</p></td>
@@ -248,6 +289,15 @@ export default function ProductsPage() {
                           <td className="text-sm font-medium">{moneyFormatter.format(product.sellingPrice)}</td>
                           <td><span className={`inline-flex h-6 items-center justify-center rounded-md px-2 text-xs font-bold ${margin >= 40 ? "bg-success-light text-success" : margin >= 25 ? "bg-warning-light text-warning" : "bg-danger-light text-danger"}`}>{margin}%</span></td>
                           <td><Badge tone={isLow ? "danger" : "success"}>{isLow ? "Bajo" : "OK"}</Badge></td>
+                          <td>
+                            {pSuppliers.length > 0 ? (
+                              <span className="text-xs text-muted-foreground" title={pSuppliers.map(s => s.supplierName).join(", ")}>
+                                {pSuppliers.length} proveedor{pSuppliers.length > 1 ? "es" : ""}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </td>
                           <td>
                             <div className="flex items-center gap-1">
                               <button onClick={() => openEdit(product)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
@@ -327,6 +377,33 @@ export default function ProductsPage() {
                 <label htmlFor="isActive" className="text-sm">Producto activo</label>
               </div>
             </div>
+
+            {!editingProduct && (
+              <>
+                <hr className="my-4 border-border" />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="linkToSupplier" checked={linkToSupplier} onChange={(e) => setLinkToSupplier(e.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                    <label htmlFor="linkToSupplier" className="text-sm font-medium">Vincular a un proveedor</label>
+                  </div>
+                  {linkToSupplier && (
+                    <div className="grid grid-cols-2 gap-3 pl-6 border-l-2 border-primary/20">
+                      <div className="col-span-2">
+                        <label className="text-sm font-medium">Proveedor</label>
+                        <select className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
+                          <option value="">Seleccionar proveedor...</option>
+                          {suppliers.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                        </select>
+                      </div>
+                      <div><label className="text-sm font-medium">Precio de compra</label><Input type="number" step="0.01" value={form.catalogUnitPrice} onChange={(e) => setForm({ ...form, catalogUnitPrice: e.target.value })} placeholder="$0" /></div>
+                      <div><label className="text-sm font-medium">Cant. minima</label><Input type="number" value={form.catalogMinQty} onChange={(e) => setForm({ ...form, catalogMinQty: e.target.value })} placeholder="1" /></div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             <div className="flex justify-end gap-2 mt-6">
               <Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button>
               <Button onClick={handleSave} disabled={saving || !form.name || !form.sku}>{saving ? "Guardando..." : editingProduct ? "Guardar cambios" : "Crear producto"}</Button>
