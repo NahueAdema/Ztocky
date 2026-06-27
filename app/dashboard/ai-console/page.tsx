@@ -10,7 +10,7 @@ const examples = [
   "Cuales se agotan antes del viernes?",
   "Que proveedor conviene si necesito entrega urgente?",
   "Cual es el producto con mayor margen?",
-  "Cual proveedor tiene mejor relacion precio/lead time?",
+  "Qué proveedor me conviene mas hoy?",
   "Cuantas ordenes de compra tenemos?",
 ];
 

@@ -192,7 +192,7 @@ export default function SalesPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Ventas</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Registro historico para burn rate y proyecciones.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Registro historico para calcular velocidad de venta y proyecciones.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={handleExport}><Download className="h-4 w-4" /> Exportar</Button>

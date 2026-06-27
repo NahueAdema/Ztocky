@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     "control de inventario",
     "compras inteligentes",
     "reabastecimiento automático",
-    "burn rate",
+    "velocidad de venta",
     "proveedores",
     "dashboard inventario",
   ],

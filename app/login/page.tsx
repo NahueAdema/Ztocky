@@ -43,7 +43,7 @@ export default async function LoginPage() {
           </p>
         </div>
         <div className="relative z-10 grid grid-cols-3 gap-3">
-          {["Burn rate", "Proveedores", "Ordenes"].map((item) => (
+          {["Alertas de stock", "Proveedores", "Ordenes"].map((item) => (
             <div className="rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm" key={item}>
               <p className="text-sm font-medium text-white">{item}</p>
             </div>

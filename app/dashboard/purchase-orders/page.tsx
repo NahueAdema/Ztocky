@@ -437,8 +437,8 @@ ${order.notes ? `<p class="notes"><strong>Notas:</strong> ${order.notes}</p>` : 
       </Card>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-2xl rounded-2xl bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl bg-card p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold mb-4">{editingOrder ? "Editar orden" : "Nueva orden de compra"}</h2>
             {error && <div className="mb-4 rounded-lg bg-danger-light p-3 text-sm text-danger">{error}</div>}
             <div className="space-y-4">
@@ -456,35 +456,103 @@ ${order.notes ? `<p class="notes"><strong>Notas:</strong> ${order.notes}</p>` : 
               </div>
               <div>
                 <label className="text-sm font-medium">Productos</label>
-                <div className="mt-2 grid grid-cols-[1fr_5rem_7rem_2rem] gap-2 text-xs font-medium text-muted-foreground px-1">
+                {/* Desktop header */}
+                <div className="hidden sm:grid grid-cols-[1fr_5rem_7rem_6rem_2rem] gap-2 mt-2 text-xs font-medium text-muted-foreground px-1">
                   <span>Producto</span>
                   <span className="text-center">Cantidad</span>
                   <span className="text-center">Precio unit.</span>
+                  <span className="text-center">Subtotal</span>
                   <span />
                 </div>
-                {orderItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-[1fr_5rem_7rem_2rem] gap-2 mt-1.5 items-center">
-                    <select className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      value={item.productId} onChange={(e) => handleItemProductChange(index, e.target.value)}>
-                      <option value="">Seleccionar...</option>
-                      {products
-                        .filter((p) => !selectedSupplier || catalogMap.size === 0 || catalogMap.has(p.id))
-                        .sort((a, b) => {
-                          const aCat = catalogMap.get(a.id);
-                          const bCat = catalogMap.get(b.id);
-                          return (bCat ? 1 : 0) - (aCat ? 1 : 0);
-                        })
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({p.sku}){catalogMap.has(p.id) ? ` — $${catalogMap.get(p.id)!.unitPrice}` : ""}
-                          </option>
-                        ))}
-                    </select>
-                    <Input type="number" className="h-10 text-center" value={item.quantity} onChange={(e) => updateItem(index, "quantity", e.target.value)} placeholder="0" min="1" />
-                    <Input type="number" className="h-10 text-center" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(index, "unitPrice", e.target.value)} placeholder="$0" min="0" />
-                    <button onClick={() => removeItem(index)} className="inline-flex h-10 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+                {orderItems.map((item, index) => {
+                  const subtotal = Number(item.quantity) * Number(item.unitPrice);
+                  const catalogEntry = item.productId ? catalogMap.get(item.productId) : undefined;
+                  const fromCatalog = catalogEntry && catalogEntry.unitPrice === Number(item.unitPrice);
+                  return (
+                  <div key={index}>
+                    {/* Desktop row */}
+                    <div className="hidden sm:grid grid-cols-[1fr_5rem_7rem_6rem_2rem] gap-2 mt-2 items-center rounded-lg border border-border p-2 bg-card">
+                      <select className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        value={item.productId} onChange={(e) => handleItemProductChange(index, e.target.value)}>
+                        <option value="">Seleccionar...</option>
+                        {products
+                          .filter((p) => !selectedSupplier || catalogMap.size === 0 || catalogMap.has(p.id))
+                          .sort((a, b) => {
+                            const aCat = catalogMap.get(a.id);
+                            const bCat = catalogMap.get(b.id);
+                            return (bCat ? 1 : 0) - (aCat ? 1 : 0);
+                          })
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.sku})
+                            </option>
+                          ))}
+                      </select>
+                      <Input type="number" className="h-10 text-center" value={item.quantity} onChange={(e) => updateItem(index, "quantity", e.target.value)} placeholder="0" min="1" />
+                      <div>
+                        <Input type="number" className="h-10 text-center" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(index, "unitPrice", e.target.value)} placeholder="$0" min="0" />
+                        {catalogEntry && (
+                          <p className={`text-[10px] text-center mt-0.5 ${fromCatalog ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                            {fromCatalog ? "Precio de catálogo" : `Catálogo: $${catalogEntry.unitPrice}`}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex h-10 items-center justify-end rounded-lg bg-muted/50 px-3 text-sm font-semibold">
+                        {money.format(subtotal)}
+                      </div>
+                      <button onClick={() => removeItem(index)} className="inline-flex h-10 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                    {/* Mobile card */}
+                    <div className="sm:hidden rounded-lg border border-border p-3 mt-2 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <select className="flex-1 h-9 rounded-lg border border-border bg-card px-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          value={item.productId} onChange={(e) => handleItemProductChange(index, e.target.value)}>
+                          <option value="">Seleccionar...</option>
+                          {products
+                            .filter((p) => !selectedSupplier || catalogMap.size === 0 || catalogMap.has(p.id))
+                            .sort((a, b) => {
+                              const aCat = catalogMap.get(a.id);
+                              const bCat = catalogMap.get(b.id);
+                              return (bCat ? 1 : 0) - (aCat ? 1 : 0);
+                            })
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({p.sku})
+                              </option>
+                            ))}
+                        </select>
+                        <button onClick={() => removeItem(index)} className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground mb-0.5 block">Cantidad</label>
+                          <Input type="number" className="h-9 text-center" value={item.quantity} onChange={(e) => updateItem(index, "quantity", e.target.value)} placeholder="0" min="1" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground mb-0.5 block">Precio unit.</label>
+                          <Input type="number" className="h-9 text-center" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(index, "unitPrice", e.target.value)} placeholder="$0" min="0" />
+                          {catalogEntry && (
+                            <p className={`text-[10px] text-center mt-0.5 ${fromCatalog ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                              {fromCatalog ? "Precio de catálogo" : `Catálogo: $${catalogEntry.unitPrice}`}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground mb-0.5 block">Subtotal</label>
+                          <div className="flex h-9 items-center justify-end rounded-lg bg-muted/50 px-2 text-sm font-semibold">{money.format(subtotal)}</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ))}
+                );})}
+                {orderItems.length > 0 && (
+                  <div className="flex items-center justify-between mt-3 rounded-lg bg-muted/50 p-3 text-sm">
+                    <span className="text-muted-foreground">{orderItems.length} producto{orderItems.length > 1 ? "s" : ""}</span>
+                    <span className="font-bold text-primary text-base">
+                      Total: {money.format(orderItems.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unitPrice), 0))}
+                    </span>
+                  </div>
+                )}
                 <Button variant="ghost" className="mt-2 text-sm" onClick={addItem}>
                   <Plus className="h-3.5 w-3.5 mr-1" /> Agregar item
                 </Button>

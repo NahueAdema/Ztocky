@@ -141,7 +141,7 @@ export default async function DashboardPage() {
                     <tr>
                       <th className="text-left">Producto</th>
                       <th className="text-left">Stock</th>
-                      <th className="text-left">Burn rate</th>
+                      <th className="text-left">Venta/día</th>
                       <th className="text-left">Dias</th>
                       <th className="text-left">Proveedor</th>
                       <th className="text-left">Accion</th>
@@ -248,28 +248,38 @@ export default async function DashboardPage() {
                 : [{ text: "Ordenes de compa al dia", done: true }]
               ),
               { text: "Revisar catalogo de proveedores para optimizar costos", done: false },
-              { text: "Exportar inventario como respaldo", done: false },
-            ].map((item, i) => (
-              <div
-                className={`flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50 ${
-                  item.done ? "border-success/20 bg-success-light/30" : "border-border"
-                }`}
-                key={i}
-              >
-                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                  item.done ? "bg-success text-white" : "bg-primary-light"
-                }`}>
-                  {item.done ? (
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <span className="text-[10px] font-bold text-primary">{i + 1}</span>
-                  )}
+              { text: "Exportar inventario como respaldo", done: false, href: "/api/dashboard/export/products" },
+            ].map((item, i) => {
+              const content = (
+                <div
+                  className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                    item.href ? "cursor-pointer hover:border-primary/40 hover:bg-primary-light/20" : ""
+                  } ${
+                    item.done ? "border-success/20 bg-success-light/30" : "border-border"
+                  }`}
+                >
+                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                    item.done ? "bg-success text-white" : "bg-primary-light"
+                  }`}>
+                    {item.done ? (
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <span className="text-[10px] font-bold text-primary">{i + 1}</span>
+                    )}
+                  </div>
+                  <p className={`text-sm ${item.done ? "text-success line-through" : ""}`}>{item.text}</p>
                 </div>
-                <p className={`text-sm ${item.done ? "text-success line-through" : ""}`}>{item.text}</p>
-              </div>
-            ))}
+              );
+              return item.href ? (
+                <a href={item.href} key={i} className="block">
+                  {content}
+                </a>
+              ) : (
+                <div key={i}>{content}</div>
+              );
+            })}
           </CardContent>
         </Card>
       </div>

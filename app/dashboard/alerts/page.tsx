@@ -181,7 +181,7 @@ export default function AlertsPage() {
                           <p className="text-sm text-muted-foreground mt-1">{alert.message}</p>
                           {alert.metadata && (
                             <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
-                              {alert.metadata.burnRate !== undefined && <span>Burn rate: {String(alert.metadata.burnRate)}/dia</span>}
+                              {alert.metadata.burnRate !== undefined && <span>Venta: {String(alert.metadata.burnRate)}/dia</span>}
                               {alert.metadata.daysRemaining !== undefined && <span>Dias restantes: {String(alert.metadata.daysRemaining)}</span>}
                               {alert.metadata.daysSinceLastSale !== undefined && <span>Sin ventas: {String(alert.metadata.daysSinceLastSale)} dias</span>}
                             </div>
