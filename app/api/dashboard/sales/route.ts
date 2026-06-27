@@ -11,6 +11,9 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 500);
 
   const sales = await prisma.sale.findMany({
+    where: {
+      product: { workspaceId: user.workspaceId },
+    },
     include: { product: true },
     orderBy: { saleDate: "desc" },
     take: limit,
