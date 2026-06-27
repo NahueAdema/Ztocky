@@ -7,7 +7,7 @@ async function getSupplierAndVerify(id: string, workspaceId: string | null) {
   return prisma.supplier.findFirst({
     where: {
       id,
-      OR: [{ workspaceId }, { workspaceId: null }],
+      workspaceId,
     },
   });
 }

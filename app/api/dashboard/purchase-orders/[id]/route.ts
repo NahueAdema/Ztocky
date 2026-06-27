@@ -12,7 +12,7 @@ async function getOrderAndVerify(id: string, workspaceId: string | null) {
   return prisma.purchaseOrder.findFirst({
     where: {
       id,
-      OR: [{ workspaceId }, { workspaceId: null }],
+      workspaceId,
     },
     include: {
       supplier: true,

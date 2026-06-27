@@ -12,7 +12,7 @@ function asNumber(value: unknown) {
 
 function scopedWhere(workspaceId?: string | null) {
   return workspaceId
-    ? { OR: [{ workspaceId }, { workspaceId: null }] }
+    ? { workspaceId }
     : {};
 }
 

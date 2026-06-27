@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
   const suppliers = await prisma.supplier.findMany({
     where: {
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
     include: {
       catalog: {
@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
   const prisma = getPrisma();
 
   const supplier = await prisma.supplier.findFirst({
-    where: { id: supplierId, OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }] },
+    where: { id: supplierId, workspaceId: user.workspaceId },
   });
   if (!supplier) return NextResponse.json({ error: "Proveedor no encontrado" }, { status: 404 });
 
   const product = await prisma.product.findFirst({
-    where: { id: productId, OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }] },
+    where: { id: productId, workspaceId: user.workspaceId },
   });
   if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
 

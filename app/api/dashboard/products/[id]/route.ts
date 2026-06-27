@@ -7,7 +7,7 @@ async function getProductAndVerify(id: string, workspaceId: string | null) {
   return prisma.product.findFirst({
     where: {
       id,
-      OR: [{ workspaceId }, { workspaceId: null }],
+      workspaceId,
     },
   });
 }

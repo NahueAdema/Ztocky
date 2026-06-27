@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const product = await prisma.product.findFirst({
     where: {
       sku,
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
     select: {
       id: true,

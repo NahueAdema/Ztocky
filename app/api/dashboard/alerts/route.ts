@@ -10,7 +10,7 @@ export async function GET() {
   const prisma = getPrisma();
   const alerts = await prisma.alert.findMany({
     where: {
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
     include: { product: true },
     orderBy: { createdAt: "desc" },
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   const products = await prisma.product.findMany({
     where: {
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
     include: {
       catalogItems: {
@@ -248,7 +248,7 @@ export async function PATCH(request: NextRequest) {
   const alert = await prisma.alert.findFirst({
     where: {
       id: alertId,
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
   });
 

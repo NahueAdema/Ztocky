@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   }
 
   const prisma = getPrisma();
-  const where = { OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }] };
+  const where = { workspaceId: user.workspaceId };
 
   const [products, suppliers, alerts, orderCount] = await Promise.all([
     prisma.product.findMany({
