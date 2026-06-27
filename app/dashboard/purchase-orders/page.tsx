@@ -120,6 +120,9 @@ export default function PurchaseOrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [catalogMap, setCatalogMap] = useState<Map<string, { unitPrice: number; minOrderQty: number }>>(new Map());
+  const [emailSending, setEmailSending] = useState<string | null>(null);
+  const [pdfId, setPdfId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -196,6 +199,38 @@ export default function PurchaseOrdersPage() {
       const res = await fetch(`/api/dashboard/purchase-orders/${id}`, { method: "DELETE" });
       if (res.ok) fetchData();
     } catch { /* fail silently */ }
+  };
+
+  const loadCatalog = async (supplierId: string) => {
+    if (!supplierId) { setCatalogMap(new Map()); return; }
+    try {
+      const res = await fetch(`/api/dashboard/catalog?supplierId=${supplierId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const map = new Map<string, { unitPrice: number; minOrderQty: number }>();
+        data.items.forEach((item: { productId: string; unitPrice: number; minOrderQty: number }) => {
+          map.set(item.productId, { unitPrice: item.unitPrice, minOrderQty: item.minOrderQty });
+        });
+        setCatalogMap(map);
+      }
+    } catch { /* fail silently */ }
+  };
+
+  const handleSupplierChange = (supplierId: string) => {
+    setSelectedSupplier(supplierId);
+    setOrderItems([{ productId: "", quantity: "1", unitPrice: "0" }]);
+    loadCatalog(supplierId);
+  };
+
+  const handleItemProductChange = (index: number, productId: string) => {
+    const updated = [...orderItems];
+    const catalog = catalogMap.get(productId);
+    updated[index] = {
+      productId,
+      quantity: updated[index].quantity,
+      unitPrice: catalog ? String(catalog.unitPrice) : "0",
+    };
+    setOrderItems(updated);
   };
 
   const addItem = () => setOrderItems([...orderItems, { productId: "", quantity: "1", unitPrice: "0" }]);
@@ -316,6 +351,27 @@ export default function PurchaseOrdersPage() {
                             </Button>
                           ))}
                           <button
+                            onClick={() => {
+                              const w = window.open("", "_blank");
+                              if (!w) return;
+                              w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Orden #${order.id.slice(0, 8).toUpperCase()}</title><style>body{font-family:sans-serif;padding:40px;color:#1a1a1a}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #ddd}th{background:#f5f5f5}td:last-child,th:last-child{text-align:right}h1{font-size:20px;color:#038786}.total{font-size:18px;font-weight:bold;color:#038786;text-align:right;margin-top:16px}.notes{margin-top:16px;color:#666;font-size:13px}</style></head><body>
+<h1>Ztocky — Orden de compra</h1>
+<p style="color:#666">#${order.id.slice(0, 8).toUpperCase()} · ${order.supplierName} · ${new Date(order.createdAt).toLocaleDateString("es-AR")}</p>
+<table><thead><tr><th>Producto</th><th>Cant.</th><th>P. Unit.</th><th>Subtotal</th></tr></thead><tbody>
+${order.items.map((i) => `<tr><td>${i.productName}</td><td>${i.quantity}</td><td>${money.format(i.unitPrice)}</td><td>${money.format(i.totalPrice)}</td></tr>`).join("")}
+</tbody></table>
+<p class="total">Total: ${money.format(order.totalAmount)}</p>
+${order.notes ? `<p class="notes"><strong>Notas:</strong> ${order.notes}</p>` : ""}
+<p style="margin-top:32px;font-size:12px;color:#999;text-align:center">Generado por Ztocky</p>
+<script>window.print()</script></body></html>`);
+                              w.document.close();
+                            }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted"
+                            title="Descargar PDF"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4a1 1 0 001 1h4" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12v6m-3-3l3 3 3-3" /></svg>
+                          </button>
+                          <button
                             onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted"
                           >
@@ -389,7 +445,7 @@ export default function PurchaseOrdersPage() {
               <div>
                 <label className="text-sm font-medium">Proveedor *</label>
                 <select className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)}>
+                  value={selectedSupplier} onChange={(e) => handleSupplierChange(e.target.value)}>
                   <option value="">Seleccionar proveedor...</option>
                   {suppliers.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
                 </select>
@@ -409,9 +465,20 @@ export default function PurchaseOrdersPage() {
                 {orderItems.map((item, index) => (
                   <div key={index} className="grid grid-cols-[1fr_5rem_7rem_2rem] gap-2 mt-1.5 items-center">
                     <select className="h-10 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      value={item.productId} onChange={(e) => updateItem(index, "productId", e.target.value)}>
+                      value={item.productId} onChange={(e) => handleItemProductChange(index, e.target.value)}>
                       <option value="">Seleccionar...</option>
-                      {products.map((p) => (<option key={p.id} value={p.id}>{p.name} ({p.sku})</option>))}
+                      {products
+                        .filter((p) => !selectedSupplier || catalogMap.size === 0 || catalogMap.has(p.id))
+                        .sort((a, b) => {
+                          const aCat = catalogMap.get(a.id);
+                          const bCat = catalogMap.get(b.id);
+                          return (bCat ? 1 : 0) - (aCat ? 1 : 0);
+                        })
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.sku}){catalogMap.has(p.id) ? ` — $${catalogMap.get(p.id)!.unitPrice}` : ""}
+                          </option>
+                        ))}
                     </select>
                     <Input type="number" className="h-10 text-center" value={item.quantity} onChange={(e) => updateItem(index, "quantity", e.target.value)} placeholder="0" min="1" />
                     <Input type="number" className="h-10 text-center" step="0.01" value={item.unitPrice} onChange={(e) => updateItem(index, "unitPrice", e.target.value)} placeholder="$0" min="0" />
