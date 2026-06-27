@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
-import { sendOrderNotification } from "@/lib/mail";
+import { sendOrderNotification, sendOrderToSupplier } from "@/lib/mail";
+
+const money = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
 const validStatuses = ["DRAFT", "SENT", "CONFIRMED", "SHIPPED", "RECEIVED", "CANCELLED"];
 
@@ -151,6 +153,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             }).catch(() => {});
           }
         }
+      } catch { /* email errors silent */ }
+    }
+
+    // Enviar la orden al proveedor por email si se marco como SENT
+    if (body.status === "SENT" && order.supplier.contactEmail) {
+      try {
+        const orderItems = order.items.map((i) => ({
+          productName: i.product.name,
+          quantity: i.quantity,
+          unitPrice: money.format(Number(i.unitPrice)),
+          totalPrice: money.format(Number(i.totalPrice)),
+        }));
+        const total = money.format(Number(updated.totalAmount));
+
+        sendOrderToSupplier(order.supplier.contactEmail, {
+          id: updated.id,
+          supplierName: order.supplier.name,
+          totalAmount: total,
+          notes: updated.notes,
+          items: orderItems,
+        }).catch(() => {});
       } catch { /* email errors silent */ }
     }
 

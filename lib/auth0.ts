@@ -31,6 +31,7 @@ export function getLoginUrl(state: string, request?: Request) {
     response_type: "code",
     scope: "openid profile email",
     state,
+    connection: "google-oauth2",
   });
 
   return `${auth0Config.authorizationUrl}?${params}`;

@@ -111,3 +111,55 @@ export async function sendOrderNotification(
 
   await sendMail(email, `📦 Orden ${label} — Ztocky`, html);
 }
+
+export async function sendOrderToSupplier(
+  supplierEmail: string,
+  order: {
+    id: string;
+    supplierName: string;
+    totalAmount: string;
+    notes: string | null;
+    items: { productName: string; quantity: number; unitPrice: string; totalPrice: string }[];
+  },
+) {
+  const itemsHtml = order.items
+    .map(
+      (i) => `<tr>
+        <td style="padding:8px 16px;border-bottom:1px solid #eee">${i.productName}</td>
+        <td style="padding:8px 16px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td>
+        <td style="padding:8px 16px;border-bottom:1px solid #eee;text-align:right">${i.unitPrice}</td>
+        <td style="padding:8px 16px;border-bottom:1px solid #eee;text-align:right">${i.totalPrice}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html><body style="font-family:sans-serif;background:#f5f5f5;padding:40px 20px">
+<table align="center" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
+<tr><td style="padding:32px 32px 0;text-align:center">
+<p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Nueva orden de compra</strong></p>
+<p style="font-size:14px;color:#666;line-height:1.5">Orden <strong>#${order.id.slice(0, 8).toUpperCase()}</strong> — ${order.supplierName}</p>
+</td></tr>
+<tr><td style="padding:16px 32px">
+<table style="width:100%;border-collapse:collapse">
+<thead><tr style="background:#f5f5f5">
+<th style="padding:8px 16px;text-align:left;font-size:13px">Producto</th>
+<th style="padding:8px 16px;text-align:center;font-size:13px">Cantidad</th>
+<th style="padding:8px 16px;text-align:right;font-size:13px">P. Unit.</th>
+<th style="padding:8px 16px;text-align:right;font-size:13px">Subtotal</th>
+</tr></thead>
+<tbody>${itemsHtml}</tbody>
+</table>
+</td></tr>
+<tr><td style="padding:16px 32px;text-align:right;border-top:2px solid #038786">
+<p style="font-size:18px;font-weight:bold;color:#038786">Total: ${order.totalAmount}</p>
+</td></tr>
+${order.notes ? `<tr><td style="padding:0 32px 16px;font-size:13px;color:#666"><strong>Notas:</strong> ${order.notes}</td></tr>` : ""}
+<tr><td style="padding:16px 32px 32px;text-align:center;font-size:12px;color:#999">
+<p>Este es un pedido generado automáticamente desde Ztocky.</p>
+</td></tr>
+</table></body></html>`;
+
+  await sendMail(supplierEmail, `🧾 Nueva orden #${order.id.slice(0, 8).toUpperCase()} — Ztocky`, html);
+}
