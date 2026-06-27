@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const prisma = getPrisma();
   const products = await prisma.product.findMany({
     where: {
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
     orderBy: { name: "asc" },
   });

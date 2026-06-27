@@ -9,7 +9,7 @@ export async function GET() {
   const prisma = getPrisma();
   const orders = await prisma.purchaseOrder.findMany({
     where: {
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
     include: {
       supplier: true,
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   const supplier = await prisma.supplier.findFirst({
     where: {
       id: supplierId,
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
   });
 

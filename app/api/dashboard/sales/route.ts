@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   const product = await prisma.product.findFirst({
     where: {
       id: productId,
-      OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }],
+      workspaceId: user.workspaceId,
     },
   });
 

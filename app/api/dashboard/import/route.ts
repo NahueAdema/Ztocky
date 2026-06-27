@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
           where: {
             AND: [
               { OR: [{ sku: record.sku }, { id: record.productId }] },
-              { OR: [{ workspaceId: user.workspaceId }, { workspaceId: null }] },
+              { workspaceId: user.workspaceId },
             ],
           },
         });
