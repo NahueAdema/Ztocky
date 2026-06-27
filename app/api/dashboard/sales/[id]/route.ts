@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 
-async function getSaleAndVerify(id: string) {
+async function getSaleAndVerify(id: string, workspaceId: string | null | undefined) {
   const prisma = getPrisma();
-  return prisma.sale.findUnique({
-    where: { id },
+  return prisma.sale.findFirst({
+    where: {
+      id,
+      product: { workspaceId },
+    },
     include: { product: true },
   });
 }
@@ -15,7 +18,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const sale = await getSaleAndVerify(id);
+  const sale = await getSaleAndVerify(id, user.workspaceId);
   if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
 
   return NextResponse.json({
@@ -34,7 +37,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const sale = await getSaleAndVerify(id);
+  const sale = await getSaleAndVerify(id, user.workspaceId);
   if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
 
   const body = await request.json();
@@ -88,7 +91,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const sale = await getSaleAndVerify(id);
+  const sale = await getSaleAndVerify(id, user.workspaceId);
   if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
 
   const prisma = getPrisma();
