@@ -71,9 +71,10 @@ const BENEFITS = [
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} className="text-sm font-medium text-[#4B4B4C] transition-colors duration-150 hover:text-primary">
+    <Link href={href} className="text-sm font-medium text-[#4B4B4C] transition-colors duration-150 hover:text-primary"
+      {...(href.startsWith("#") ? { scroll: false } : {})}>
       {children}
-    </a>
+    </Link>
   );
 }
 
@@ -179,7 +180,7 @@ export default async function Home() {
           <nav aria-label="Navegación principal" className="hidden items-center gap-8 md:flex">
             <NavLink href="#inicio">Inicio</NavLink>
             <NavLink href="#funcionalidades">Funcionalidades</NavLink>
-            <NavLink href="/nosotros">Nosotros</NavLink>
+            <NavLink href="/#nosotros">Nosotros</NavLink>
             <NavLink href="#contacto">Contacto</NavLink>
           </nav>
           <div className="flex items-center gap-3">
