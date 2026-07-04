@@ -62,6 +62,24 @@
 - [ ] **Vista "explicación simplificada"** en el simulador y en las alertas (ocultar números complejos, mostrar emojis/colores y texto claro)
 - [ ] **Modo "no técnico"** toggle en la Consola IA que da respuestas más coloquiales y menos tabulares
 
+### POS — Sistema de ventas en linea
+
+> Convertir Ztocky en el sistema de caja (Point of Sale) del comercio, no solo en el gestor de stock. Esto elimina la carga manual de ventas y da datos en tiempo real.
+
+- [ ] **Interfaz tipo caja registradora** en `/dashboard/pos` con layout tactile para pantalla táctil
+- [ ] **Carrito de compras** con agregar/scanner de productos, modificar cantidades y eliminar items
+- [ ] **Cobro múltiple**: efectivo, tarjeta, transferencia, cuenta corriente (registra el método de pago)
+- [ ] **Ticket / comprobante** — vista previa del ticket antes de finalizar e impresión (PDF térmico 80mm)
+- [ ] **Apertura y cierre de caja** — control de efectivo inicial/final, diferencia del día
+- [ ] **Cliente frecuente** vinculado a la venta (sin obligación de registrar cliente)
+- [ ] **Descuentos por item y por total** con porcentaje o monto fijo
+- [ ] **Devolución** — seleccionar una venta y devolver items (restaura stock y anula el ingreso)
+- [ ] **Historial de ventas del día** en vivo con total acumulado
+- [ ] **Cobro parcial / seña** — registrar anticipos y saldar después
+- [ ] **Modo offline** — vender sin internet y sincronizar cuando vuelva la conexión (critical para ferias/mercados)
+- [ ] **Base de clientes** con historial de compras, deuda y datos de contacto
+- [ ] **Múltiples puntos de venta** — una misma cuenta puede tener varias cajas abiertas simultáneamente
+
 ### Mejoras de UX/UI generales
 
 - [ ] **Página de ayuda / FAQ** dentro de la app

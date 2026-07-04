@@ -141,6 +141,7 @@ Ver [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) para más detalle.
 | Archivo | Contenido |
 |---|---|
 | [`etapas.md`](./etapas.md) | Plan de desarrollo detallado por fases con checkboxes |
+| [`docs/FAQ.md`](./docs/FAQ.md) | Preguntas frecuentes: arquitectura, escalabilidad, decisiones técnicas |
 | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | Arquitectura, data flow, multi-tenant, lógica del motor |
 | [`docs/API.md`](./docs/API.md) | Referencia completa de la API REST |
 | [`docs/SEED.md`](./docs/SEED.md) | Detalle de los datos de seed |
