@@ -59,7 +59,7 @@ export default function SimulatorPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Simulador de demanda</h1>
+        <h1 className="page-title text-3xl font-bold tracking-tight">Simulador de demanda</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Proyecta como cambia el stock si las ventas aumentan o disminuyen.
         </p>

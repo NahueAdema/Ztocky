@@ -136,7 +136,7 @@ export default function SearchPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Busqueda global</h1>
+        <h1 className="page-title text-3xl font-bold tracking-tight">Busqueda global</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Buscar en productos, proveedores, ordenes y mas.
         </p>

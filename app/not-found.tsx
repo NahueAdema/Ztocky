@@ -13,10 +13,10 @@ export default function NotFound() {
           />
         </div>
 
-        <h1 className="text-5xl font-extrabold tracking-tight text-[#2e2e2f]">
+        <h1 className="text-5xl font-extrabold tracking-tight text-foreground">
           404
         </h1>
-        <p className="mt-2 text-lg font-semibold text-[#2e2e2f]">
+        <p className="mt-2 text-lg font-semibold text-foreground">
           Upa, Ztocky se perdió
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -27,14 +27,14 @@ export default function NotFound() {
         <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Link
             href="/"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:bg-[#027978] active:scale-[0.97]"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:bg-primary-dark active:scale-[0.97]"
           >
             <Home className="h-4 w-4" />
             Volver al inicio
           </Link>
           <Link
             href="/login"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-[#4B4B4C] transition-all duration-200 hover:bg-muted active:scale-[0.97]"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-muted active:scale-[0.97]"
           >
             <ArrowLeft className="h-4 w-4" />
             Ir al login

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import {
   Download,
   FileUp,
@@ -96,6 +97,7 @@ export default function SuppliersPage() {
     errors?: string[];
   } | null>(null);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const fetchSuppliers = useCallback(async () => {
     setLoading(true);
@@ -365,11 +367,19 @@ export default function SuppliersPage() {
       (s.contactEmail ?? "").toLowerCase().includes(search.toLowerCase()),
   );
 
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedSuppliers = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          <h1 className="page-title text-2xl sm:text-3xl font-bold tracking-tight">
             Proveedores
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -407,7 +417,7 @@ export default function SuppliersPage() {
             <Input
               placeholder="Buscar por nombre o email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
             />
           </div>
@@ -421,17 +431,17 @@ export default function SuppliersPage() {
               </p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-                <Factory className="h-7 w-7 text-muted-foreground" />
+            <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                <Factory className="h-8 w-8 text-primary" />
               </div>
-              <p className="text-sm font-semibold">
+              <p className="text-sm font-semibold text-foreground">
                 {search ? "Sin resultados." : "No hay proveedores"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
                 {search
-                  ? "Intenta con otros terminos."
-                  : "Crear uno nuevo o importar desde CSV."}
+                  ? "Intenta con otros terminos de busqueda."
+                  : "Crea uno nuevo o importa desde un archivo CSV."}
               </p>
             </div>
           ) : (
@@ -451,7 +461,7 @@ export default function SuppliersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((supplier) => (
+                    {paginatedSuppliers.map((supplier) => (
                       <tr key={supplier.id}>
                         <td>
                           <p className="font-semibold">{supplier.name}</p>
@@ -527,7 +537,7 @@ export default function SuppliersPage() {
 
               {/* Cards mobile */}
               <div className="flex flex-col gap-3 sm:hidden">
-                {filtered.map((supplier) => (
+                {paginatedSuppliers.map((supplier) => (
                   <div
                     key={supplier.id}
                     className="rounded-xl border border-border bg-card p-4"
@@ -609,6 +619,12 @@ export default function SuppliersPage() {
                 ))}
               </div>
             </>
+          )}
+
+          {filtered.length > 0 && (
+            <div className="mt-4 flex justify-center">
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
           )}
         </CardContent>
       </Card>

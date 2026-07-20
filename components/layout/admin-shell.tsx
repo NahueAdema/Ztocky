@@ -8,6 +8,8 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Moon,
+  Sun,
   Users,
   Building2,
   KeyRound,
@@ -15,7 +17,7 @@ import {
   X,
   Shield,
 } from "lucide-react";
-
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
 const adminNav = [
@@ -31,6 +33,7 @@ function AdminSidebarContent({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="flex h-full flex-col">
@@ -38,7 +41,7 @@ function AdminSidebarContent({
       <Link
         href="/admin"
         onClick={onNavigate}
-        className="flex h-13 items-center gap-2 px-6 py-2 pt-5 transition-colors hover:bg-[#f0f9f8]"
+        className="flex h-13 items-center gap-2 px-6 py-2 pt-5 transition-colors hover:bg-primary-light/20"
       >
         <Image
           src="/logo.png"
@@ -48,7 +51,7 @@ function AdminSidebarContent({
           className="object-contain"
           priority
         />
-        <span className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+        <span className="inline-flex items-center rounded-md bg-success-light px-1.5 py-0.5 text-[10px] font-semibold text-success border border-success-border">
           Admin
         </span>
       </Link>
@@ -73,14 +76,14 @@ function AdminSidebarContent({
                 className={cn(
                   "flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-all",
                   isActive
-                    ? "bg-[#038786] text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-200 hover:text-slate-900",
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon
                   className={cn(
                     "h-4 w-4 shrink-0",
-                    isActive ? "text-white" : "text-slate-400",
+                    isActive ? "text-white" : "text-muted-foreground/60",
                   )}
                 />
                 {item.label}
@@ -95,10 +98,18 @@ function AdminSidebarContent({
 
       {/* Footer */}
       <div className="border-t border-border/60 p-2 space-y-1">
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Sun className="h-4 w-4 shrink-0 hidden dark:block" />
+          <Moon className="h-4 w-4 shrink-0 block dark:hidden" />
+          {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+        </button>
         <Link
           href="/dashboard"
           onClick={onNavigate}
-          className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium text-slate-500 transition-colors hover:bg-[#f0f9f8] hover:text-[#038786]"
+          className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-primary-light/20 hover:text-primary"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" />
           Ir a mi dashboard
@@ -106,7 +117,7 @@ function AdminSidebarContent({
         <form action="/api/auth/logout" method="post">
           <button
             type="submit"
-            className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
+            className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-danger-light hover:text-danger"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             Cerrar sesion
@@ -163,13 +174,13 @@ export function AdminShell({
             className="object-contain"
             priority
           />
-          <span className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center rounded-md bg-success-light px-1.5 py-0.5 text-[10px] font-semibold text-success border border-success-border">
             Admin
           </span>
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
           aria-label="Abrir menu"
         >
           <Menu className="h-5 w-5" />
@@ -193,7 +204,7 @@ export function AdminShell({
       >
         <button
           onClick={() => setOpen(false)}
-          className="absolute top-3.5 right-3.5 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+          className="absolute top-3.5 right-3.5 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
           aria-label="Cerrar menu"
         >
           <X className="h-4 w-4" />

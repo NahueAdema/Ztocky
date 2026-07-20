@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { Download, Plus, Search, ClipboardList, Trash2, FileText, Package, Calendar, Send, Truck, CheckCircle, XCircle, ArrowRight, Pencil } from "lucide-react";
 
 type OrderItem = {
@@ -119,6 +120,7 @@ export default function PurchaseOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [catalogMap, setCatalogMap] = useState<Map<string, { unitPrice: number; minOrderQty: number }>>(new Map());
   const [emailSending, setEmailSending] = useState<string | null>(null);
@@ -263,11 +265,19 @@ export default function PurchaseOrdersPage() {
           o.id.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedOrders = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ordenes de compra</h1>
+          <h1 className="page-title text-3xl font-bold tracking-tight">Ordenes de compra</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Ciclo completo: seguimiento desde el borrador hasta la recepción.
           </p>
@@ -287,7 +297,7 @@ export default function PurchaseOrdersPage() {
           <CardTitle>Ordenes</CardTitle>
           <div className="relative max-w-sm mt-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar por proveedor, estado o ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Buscar por proveedor, estado o ID..." value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
           </div>
         </CardHeader>
         <CardContent>
@@ -297,16 +307,16 @@ export default function PurchaseOrdersPage() {
               <p className="mt-3 text-sm text-muted-foreground">Cargando ordenes...</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-                <ClipboardList className="h-7 w-7 text-muted-foreground" />
+            <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                <ClipboardList className="h-8 w-8 text-primary" />
               </div>
-              <p className="text-sm font-semibold">{search ? "Sin resultados." : "No hay ordenes"}</p>
-              <p className="text-xs text-muted-foreground mt-1">{search ? "Intenta con otros terminos." : "Crear una nueva orden."}</p>
+              <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay ordenes de compra"}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros terminos de busqueda." : "Crea una nueva orden para empezar."}</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {filtered.map((order) => {
+              {paginatedOrders.map((order) => {
                 const transitions = NEXT_TRANSITIONS[order.status] ?? [];
                 return (
                   <div key={order.id} className="rounded-xl border border-border bg-card overflow-hidden">
@@ -431,6 +441,12 @@ ${order.notes ? `<p class="notes"><strong>Notas:</strong> ${order.notes}</p>` : 
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {filtered.length > 0 && (
+            <div className="mt-4 flex justify-center">
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
           )}
         </CardContent>

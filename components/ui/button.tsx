@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 type ButtonVariant = "primary" | "secondary" | "ghost";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-primary-foreground shadow-sm hover:bg-[#026a69] active:scale-[0.98]",
-  secondary: "border border-border bg-card text-foreground hover:bg-muted active:scale-[0.98]",
-  ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+  primary: "bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary-dark hover:shadow-md hover:shadow-primary/25 active:scale-[0.98]",
+  secondary: "border border-border/60 bg-card text-foreground hover:bg-muted/60 active:scale-[0.98]",
+  ghost: "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
 };
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {

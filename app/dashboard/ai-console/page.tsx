@@ -83,7 +83,7 @@ export default function AiConsolePage() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 shadow-lg shadow-teal/20 mb-3">
           <Bot className="h-7 w-7 text-white" />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+        <h1 className="page-title text-2xl sm:text-3xl font-bold tracking-tight">
           Consola IA
         </h1>
         <p className="mt-1 text-sm text-muted-foreground max-w-lg mx-auto">
