@@ -17,6 +17,7 @@ import {
   ShoppingCart,
   Siren,
   X,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ const navigation = [
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
   { href: "/dashboard/scan", label: "Escanear", icon: ScanLine },
   { href: "/dashboard/suppliers", label: "Proveedores", icon: Factory },
+  { href: "/dashboard/supplier-notifications", label: "Notif. Proveedores", icon: Bell },
   { href: "/dashboard/purchase-orders", label: "Ordenes", icon: ClipboardList },
   {
     href: "/dashboard/simulator",

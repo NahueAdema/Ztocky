@@ -32,10 +32,10 @@
 - [x] Escáner de código de barras (cámara + manual)
 - [x] Panel de administración (usuarios, sesiones, workspaces)
 - [x] Importación CSV de ventas y proveedores
-- [ ] **Diff visual en importación de catálogo** — mostrar claramente qué precios cambiaron, qué productos son nuevos y qué quedó sin cambios (actualmente solo muestra preview plana)
-- [ ] **Importación desde Excel (.xlsx)** — hoy solo soporta CSV
-- [ ] **Notificaciones al proveedor** cuando el store rechaza o acepta sus precios
-- [ ] **Historial de cambios** de precios en el catálogo (traceability)
+- [x] **Diff visual en importación de catálogo** — mostrar claramente qué precios cambiaron, qué productos son nuevos y qué quedó sin cambios (actualmente solo muestra preview plana)
+- [x] **Importación desde Excel (.xlsx)** — hoy solo soporta CSV
+- [x] **Notificaciones al proveedor** cuando el store rechaza o acepta sus precios
+- [x] **Historial de cambios** de precios en el catálogo (traceability)
 
 ---
 

@@ -156,6 +156,7 @@ model Supplier {
   workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   catalog         CatalogItems[]
   purchaseOrders  PurchaseOrder[]
+  notifications   SupplierNotification[]
   
   @@index([workspaceId])
   @@map("suppliers")
@@ -172,9 +173,55 @@ model CatalogItems {
   // Relaciones
   supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  priceHistory PriceHistory[]
   
   @@unique([supplierId, productId])
   @@map("catalog_items")
+}
+
+// ========== HISTORIAL DE CAMBIOS DE PRECIO ==========
+model PriceHistory {
+  id              String   @id @default(cuid())
+  catalogItemId   String   @map("catalog_item_id")
+  supplierId      String   @map("supplier_id")
+  productId       String   @map("product_id")
+  previousPrice   Decimal? @map("previous_price")
+  newPrice        Decimal  @map("new_price")
+  previousMinQty  Int?     @map("previous_min_qty")
+  newMinQty       Int?     @map("new_min_qty")
+  changeType      String   // CREATED, UPDATED, DELETED, IMPORTED
+  changedByUserId String?  @map("changed_by_user_id")
+  notes           String?
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  catalogItem     CatalogItems? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  
+  @@index([supplierId, createdAt])
+  @@index([productId, createdAt])
+  @@index([createdAt])
+  @@map("price_history")
+}
+
+// ========== NOTIFICACIONES A PROVEEDORES ==========
+model SupplierNotification {
+  id              String   @id @default(cuid())
+  supplierId      String   @map("supplier_id")
+  workspaceId     String?  @map("workspace_id")
+  type            String   // PRICE_CHANGE, PRICE_ACCEPTED, PRICE_REJECTED
+  subject         String
+  message         String
+  changesSummary  Json?    @map("changes_summary")
+  emailSentAt     DateTime? @map("email_sent_at")
+  emailTo         String?  @map("email_to")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  
+  @@index([supplierId, createdAt])
+  @@index([workspaceId])
+  @@map("supplier_notifications")
 }
 
 // ========== ÓRDENES DE COMPRA ==========

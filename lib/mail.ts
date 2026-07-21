@@ -163,3 +163,66 @@ ${order.notes ? `<tr><td style="padding:0 32px 16px;font-size:13px;color:#666"><
 
   await sendMail(supplierEmail, `🧾 Nueva orden #${order.id.slice(0, 8).toUpperCase()} — Ztocky`, html);
 }
+
+export async function sendPriceChangesToSupplier(
+  supplierEmail: string,
+  supplierName: string,
+  storeName: string,
+  changes: {
+    productName: string;
+    productSku: string;
+    previousPrice: number | null;
+    newPrice: number;
+    changeType: string;
+  }[],
+) {
+  const money = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+
+  const rowsHtml = changes
+    .map((c) => {
+      const badge =
+        c.changeType === "CREATED"
+          ? `<span style="background:#16a34a20;color:#16a34a;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">NUEVO</span>`
+          : c.changeType === "DELETED"
+            ? `<span style="background:#dc262620;color:#dc2626;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">ELIMINADO</span>`
+            : `<span style="background:#03878620;color:#038786;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">ACTUALIZADO</span>`;
+      const priceInfo =
+        c.previousPrice !== null && c.changeType !== "CREATED"
+          ? `${money.format(c.previousPrice)} → ${money.format(c.newPrice)}`
+          : money.format(c.newPrice);
+      return `<tr>
+        <td style="padding:10px 16px;border-bottom:1px solid #eee">
+          <p style="margin:0;font-size:13px;font-weight:600;color:#1a1a1a">${c.productName}</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#999;font-family:monospace">${c.productSku}</p>
+        </td>
+        <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:center">${badge}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;color:#1a1a1a">${priceInfo}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html><body style="font-family:sans-serif;background:#f5f5f5;padding:40px 20px">
+<table align="center" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
+<tr><td style="padding:32px 32px 0;text-align:center">
+<p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Actualización de precios</strong></p>
+<p style="font-size:14px;color:#666;line-height:1.5"><strong>${storeName}</strong> actualizó los precios de <strong>${changes.length}</strong> producto${changes.length > 1 ? "s" : ""} en tu catálogo.</p>
+</td></tr>
+<tr><td style="padding:16px 32px">
+<table style="width:100%;border-collapse:collapse">
+<thead><tr style="background:#f5f5f5">
+<th style="padding:8px 16px;text-align:left;font-size:12px;color:#666">Producto</th>
+<th style="padding:8px 16px;text-align:center;font-size:12px;color:#666">Tipo</th>
+<th style="padding:8px 16px;text-align:right;font-size:12px;color:#666">Precio</th>
+</tr></thead>
+<tbody>${rowsHtml}</tbody>
+</table>
+</td></tr>
+<tr><td style="padding:16px 32px 32px;text-align:center;font-size:12px;color:#999">
+<p>Estos cambios ya están aplicados en tu catálogo dentro de Ztocky.</p>
+</td></tr>
+</table></body></html>`;
+
+  await sendMail(supplierEmail, `💰 ${storeName} actualizó precios — Ztocky`, html);
+}

@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
-import { Boxes, Download, FileUp, Plus, Search, Trash2, Pencil, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Boxes, Download, FileUp, Plus, Search, Trash2, Pencil, Loader2, CheckCircle2, AlertTriangle, FileSpreadsheet, FileText } from "lucide-react";
+import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 type Product = {
   id: string;
@@ -150,9 +151,19 @@ export default function ProductsPage() {
     try { const res = await fetch(`/api/dashboard/products/${id}`, { method: "DELETE" }); if (res.ok) fetchData(); } catch {}
   };
 
-  const handleExport = () => {
+  const handleExport = async (format: "csv" | "excel") => {
     const headers = ["Nombre", "SKU", "Categoria", "Stock", "Stock Minimo", "Costo", "Venta", "Activo"];
     const rows = products.map((p) => [p.name, p.sku, p.category ?? "", p.currentStock, p.minStock, p.costPrice, p.sellingPrice, p.isActive ? "Si" : "No"]);
+
+    if (format === "excel") {
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Productos");
+      XLSX.writeFile(wb, `productos_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      return;
+    }
+
     const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -204,6 +215,63 @@ export default function ProductsPage() {
     if (totalCreated > 0) fetchData();
   };
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportResult(null);
+    setImportStatus("importing");
+    setImportProgress(0);
+    try {
+      const XLSX = await import("xlsx");
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+      if (rows.length === 0) {
+        setImportResult({ created: 0, total: 0, errors: ["El archivo esta vacio."] });
+        setImportStatus("done");
+        return;
+      }
+      const records = rows.map((row) => {
+        const record: Record<string, string> = {};
+        Object.keys(row).forEach((key) => {
+          record[key.toLowerCase().trim()] = String(row[key] ?? "").trim();
+        });
+        return record;
+      });
+
+      let totalCreated = 0;
+      let allErrors: string[] = [];
+      const batchSize = 50;
+      const batches: Record<string, string>[][] = [];
+      for (let i = 0; i < records.length; i += batchSize) {
+        batches.push(records.slice(i, i + batchSize));
+      }
+      for (let i = 0; i < batches.length; i++) {
+        try {
+          const res = await fetch("/api/dashboard/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "products", records: batches[i] }),
+          });
+          const result = await res.json();
+          totalCreated += result.created ?? 0;
+          if (result.errors) allErrors = allErrors.concat(result.errors);
+        } catch {
+          allErrors.push(`Error en lote ${i + 1}`);
+        }
+        setImportProgress(Math.round(((i + 1) / batches.length) * 100));
+      }
+      setImportStatus("done");
+      setImportResult({ created: totalCreated, total: records.length, errors: allErrors.length > 0 ? allErrors : undefined });
+      if (totalCreated > 0) fetchData();
+    } catch {
+      setImportResult({ created: 0, total: 0, errors: ["Error al leer el archivo Excel."] });
+      setImportStatus("done");
+    }
+    e.target.value = "";
+  };
+
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.sku.toLowerCase().includes(search.toLowerCase()) ||
@@ -228,8 +296,55 @@ export default function ProductsPage() {
           <p className="mt-1 text-sm text-muted-foreground">Inventario base para stock, margen y rotacion.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={handleExport}><Download className="h-4 w-4" />Exportar</Button>
-          <Button variant="secondary" onClick={() => { setImportText(""); setImportResult(null); setShowImportModal(true); }}><FileUp className="h-4 w-4" />Importar</Button>
+          <DropdownMenu
+            trigger={
+              <Button variant="secondary">
+                <Download className="h-4 w-4" />
+                Exportar
+              </Button>
+            }
+          >
+            <DropdownMenuItem
+              icon={<FileText className="h-4 w-4" />}
+              onClick={() => handleExport("csv")}
+            >
+              CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileSpreadsheet className="h-4 w-4" />}
+              onClick={() => handleExport("excel")}
+            >
+              Excel (.xlsx)
+            </DropdownMenuItem>
+          </DropdownMenu>
+          <DropdownMenu
+            trigger={
+              <Button variant="secondary">
+                <FileUp className="h-4 w-4" />
+                Importar
+              </Button>
+            }
+          >
+            <DropdownMenuItem
+              icon={<FileText className="h-4 w-4" />}
+              onClick={() => { setImportText(""); setImportResult(null); setShowImportModal(true); }}
+            >
+              CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileSpreadsheet className="h-4 w-4" />}
+              onClick={() => document.getElementById("import-products-excel")?.click()}
+            >
+              Excel (.xlsx)
+            </DropdownMenuItem>
+          </DropdownMenu>
+          <input
+            id="import-products-excel"
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={handleImportExcel}
+          />
           <Button onClick={openCreate}><Plus className="h-4 w-4" />Nuevo</Button>
         </div>
       </div>
