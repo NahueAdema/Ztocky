@@ -5,11 +5,11 @@ import { cn } from "@/lib/utils";
 type BadgeTone = "default" | "danger" | "warning" | "success" | "muted";
 
 const toneClasses: Record<BadgeTone, string> = {
-  default: "bg-accent-soft text-accent-foreground border border-accent/20",
-  danger: "bg-danger-light text-danger border border-danger/20",
-  warning: "bg-warning-light text-warning border border-warning/20",
-  success: "bg-success-light text-success border border-success/20",
-  muted: "bg-muted text-muted-foreground border border-border",
+  default: "bg-primary/10 text-primary border border-primary/15",
+  danger: "bg-danger/10 text-danger border border-danger/15",
+  warning: "bg-warning/10 text-warning border border-warning/15",
+  success: "bg-success/10 text-success border border-success/15",
+  muted: "bg-muted text-muted-foreground border border-border/50",
 };
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
@@ -20,7 +20,7 @@ export function Badge({ className, tone = "default", ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex min-h-6 items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium",
+        "inline-flex min-h-6 items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
         toneClasses[tone],
         className,
       )}

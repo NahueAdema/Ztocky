@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import {
   Download,
   FileUp,
@@ -71,6 +72,7 @@ export default function SalesPage() {
   const [importStatus, setImportStatus] = useState<ImportStatus>("idle");
   const [importProgress, setImportProgress] = useState(0);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [undoTarget, setUndoTarget] = useState<Sale | null>(null);
   const [undoing, setUndoing] = useState(false);
 
@@ -187,11 +189,19 @@ export default function SalesPage() {
     (s) => s.productName.toLowerCase().includes(search.toLowerCase()) || s.productSku.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedSales = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Ventas</h1>
+          <h1 className="page-title text-2xl sm:text-3xl font-bold tracking-tight">Ventas</h1>
           <p className="mt-1 text-sm text-muted-foreground">Registro historico para calcular velocidad de venta y proyecciones.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -235,7 +245,7 @@ export default function SalesPage() {
           <CardTitle>Historial de ventas</CardTitle>
           <div className="relative max-w-sm mt-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar por producto o SKU..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Buscar por producto o SKU..." value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
           </div>
         </CardHeader>
         <CardContent>
@@ -245,10 +255,10 @@ export default function SalesPage() {
               <p className="mt-3 text-sm text-muted-foreground">Cargando ventas...</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted"><ShoppingCart className="h-7 w-7 text-muted-foreground" /></div>
-              <p className="text-sm font-semibold">{search ? "Sin resultados." : "No hay ventas registradas"}</p>
-              <p className="text-xs text-muted-foreground mt-1">{search ? "Intenta con otros terminos." : "Crear una nueva o importar desde CSV."}</p>
+            <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10"><ShoppingCart className="h-8 w-8 text-primary" /></div>
+              <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay ventas registradas"}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros terminos de busqueda." : "Registra una nueva venta o importa desde un archivo CSV."}</p>
             </div>
           ) : (
             <>
@@ -265,7 +275,7 @@ export default function SalesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((sale) => (
+                    {paginatedSales.map((sale) => (
                       <tr key={sale.id}>
                         <td><p className="font-semibold">{sale.productName}</p><p className="text-xs text-muted-foreground font-mono">{sale.productSku}</p></td>
                         <td><span className="inline-flex h-7 items-center justify-center rounded-md bg-accent-soft px-2.5 text-xs font-bold text-accent-foreground">{sale.quantity} uds</span></td>
@@ -273,9 +283,9 @@ export default function SalesPage() {
                         <td className="text-sm">{money.format(sale.unitPrice)}</td>
                         <td className="text-sm font-bold">{money.format(sale.totalAmount)}</td>
                         <td>
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => openEdit(sale)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
-                            <button onClick={() => setUndoTarget(sale)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-warning-light hover:text-warning"><RotateCcw className="h-4 w-4" /></button>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => openEdit(sale)} title="Editar venta" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>
+                            <button onClick={() => setUndoTarget(sale)} title="Revertir venta" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-warning/10 hover:text-warning"><RotateCcw className="h-4 w-4" /></button>
                           </div>
                         </td>
                       </tr>
@@ -285,16 +295,16 @@ export default function SalesPage() {
               </div>
 
               <div className="flex flex-col gap-3 sm:hidden">
-                {filtered.map((sale) => (
+                {paginatedSales.map((sale) => (
                   <div key={sale.id} className="rounded-xl border border-border bg-card p-4">
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div>
                         <p className="font-semibold text-sm">{sale.productName}</p>
                         <p className="text-xs text-muted-foreground font-mono">{sale.productSku} · {sale.saleDate}</p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => openEdit(sale)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
-                        <button onClick={() => setUndoTarget(sale)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-warning-light hover:text-warning"><RotateCcw className="h-4 w-4" /></button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button onClick={() => openEdit(sale)} title="Editar venta" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>
+                        <button onClick={() => setUndoTarget(sale)} title="Revertir venta" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-warning/10 hover:text-warning"><RotateCcw className="h-4 w-4" /></button>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
@@ -306,6 +316,12 @@ export default function SalesPage() {
                 ))}
               </div>
             </>
+          )}
+
+          {filtered.length > 0 && (
+            <div className="mt-4 flex justify-center">
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
           )}
         </CardContent>
       </Card>

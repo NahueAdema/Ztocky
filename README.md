@@ -1,6 +1,6 @@
-# Ztocky — Gestión inteligente de stock y compras
+# Ztocky — El control de stock que las grandes tienen, para tu PyME
 
-**Ztocky** analiza ventas, proyecta agotamientos y decide cuándo, cuánto y a quién comprar. Conecta ventas históricas, stock actual y proveedores para automatizar el reabastecimiento antes de que el usuario tenga que reaccionar.
+**Ztocky** analiza ventas, proyecta agotamientos y decide cuándo, cuánto y a quién comprar. Conecta ventas históricas, stock actual y proveedores para automatizar el reabastecimiento antes de que el usuario tenga que reaccionar. Sin planes caros, sin implementaciones de meses, sin vueltas.
 
 ```
 Stock actual: 12 unidades

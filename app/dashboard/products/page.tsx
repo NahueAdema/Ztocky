@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { Boxes, Download, FileUp, Plus, Search, Trash2, Pencil, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 type Product = {
@@ -77,6 +78,7 @@ export default function ProductsPage() {
   const [importStatus, setImportStatus] = useState<"idle" | "importing" | "done">("idle");
   const [importProgress, setImportProgress] = useState(0);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -209,12 +211,20 @@ export default function ProductsPage() {
   );
   const lowStockCount = products.filter((p) => p.currentStock <= p.minStock).length;
 
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedProducts = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Productos</h1>
+            <h1 className="page-title text-2xl sm:text-3xl font-bold tracking-tight">Productos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Inventario base para stock, margen y rotacion.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -242,7 +252,7 @@ export default function ProductsPage() {
           <CardTitle>Catalogo operativo</CardTitle>
           <div className="relative max-w-sm mt-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar por nombre, SKU o categoria..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Buscar por nombre, SKU o categoria..." value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
           </div>
         </CardHeader>
         <CardContent>
@@ -252,10 +262,10 @@ export default function ProductsPage() {
               <p className="mt-3 text-sm text-muted-foreground">Cargando productos...</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted"><Boxes className="h-7 w-7 text-muted-foreground" /></div>
-              <p className="text-sm font-semibold">{search ? "Sin resultados." : "No hay productos"}</p>
-              <p className="text-xs text-muted-foreground mt-1">{search ? "Intenta con otros terminos." : "Crear uno nuevo o importar desde CSV."}</p>
+            <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10"><Boxes className="h-8 w-8 text-primary" /></div>
+              <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay productos"}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros terminos de busqueda." : "Crea uno nuevo o importa desde un archivo CSV."}</p>
             </div>
           ) : (
             <>
@@ -276,14 +286,14 @@ export default function ProductsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((product) => {
+                    {paginatedProducts.map((product) => {
                       const margin = product.sellingPrice > 0 ? Math.round(((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100) : 0;
                       const isLow = product.currentStock <= product.minStock;
                       const pSuppliers = productSuppliers.get(product.id) ?? [];
                       return (
                         <tr key={product.id}>
                           <td><p className="font-semibold">{product.name}</p><p className="text-xs text-muted-foreground font-mono">{product.sku}</p></td>
-                          <td><span className="inline-flex h-6 items-center justify-center rounded-md bg-accent-soft px-2 text-xs font-medium text-accent-foreground">{product.category ?? "-"}</span></td>
+                           <td><span className="inline-flex h-6 items-center justify-center rounded-md bg-accent-light px-2 text-xs font-medium text-accent-foreground">{product.category ?? "-"}</span></td>
                           <td><span className={`inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-bold ${isLow ? "bg-danger-light text-danger" : "bg-success-light text-success"}`}>{product.currentStock}</span></td>
                           <td className="text-sm text-muted-foreground">{moneyFormatter.format(product.costPrice)}</td>
                           <td className="text-sm font-medium">{moneyFormatter.format(product.sellingPrice)}</td>
@@ -298,10 +308,10 @@ export default function ProductsPage() {
                               <span className="text-xs text-muted-foreground">-</span>
                             )}
                           </td>
-                          <td>
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => openEdit(product)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
-                              <button onClick={() => handleDelete(product.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+                           <td>
+                            <div className="flex items-center gap-1.5">
+                              <button onClick={() => openEdit(product)} title="Editar producto" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>
+                              <button onClick={() => handleDelete(product.id)} title="Eliminar producto" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>
                             </div>
                           </td>
                         </tr>
@@ -313,7 +323,7 @@ export default function ProductsPage() {
 
               {/* Cards — solo mobile */}
               <div className="flex flex-col gap-3 sm:hidden">
-                {filtered.map((product) => {
+                {paginatedProducts.map((product) => {
                   const margin = product.sellingPrice > 0 ? Math.round(((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100) : 0;
                   const isLow = product.currentStock <= product.minStock;
                   return (
@@ -323,9 +333,9 @@ export default function ProductsPage() {
                           <p className="font-semibold text-sm">{product.name}</p>
                           <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => openEdit(product)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
-                          <button onClick={() => handleDelete(product.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button onClick={() => openEdit(product)} title="Editar producto" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>
+                          <button onClick={() => handleDelete(product.id)} title="Eliminar producto" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-center">
@@ -344,7 +354,7 @@ export default function ProductsPage() {
                       </div>
                       {product.category && (
                         <div className="mt-2 flex items-center justify-between">
-                          <span className="inline-flex h-6 items-center justify-center rounded-md bg-accent-soft px-2 text-xs font-medium text-accent-foreground">{product.category}</span>
+                          <span className="inline-flex h-6 items-center justify-center rounded-md bg-accent-light px-2 text-xs font-medium text-accent-foreground">{product.category}</span>
                           <Badge tone={isLow ? "danger" : "success"}>{isLow ? "Stock bajo" : "OK"}</Badge>
                         </div>
                       )}
@@ -354,13 +364,19 @@ export default function ProductsPage() {
               </div>
             </>
           )}
+
+          {filtered.length > 0 && (
+            <div className="mt-4 flex justify-center">
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Modal crear/editar */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-card p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-md animate-overlay">
+          <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-card p-5 shadow-2xl max-h-[90vh] overflow-y-auto animate-modal">
             <h2 className="text-lg font-bold mb-4">{editingProduct ? "Editar producto" : "Nuevo producto"}</h2>
             {error && <div className="mb-4 rounded-lg bg-danger-light p-3 text-sm text-danger">{error}</div>}
             <div className="grid grid-cols-2 gap-3">

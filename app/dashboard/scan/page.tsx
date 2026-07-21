@@ -272,7 +272,7 @@ export default function ScanPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Escáner de códigos de barras</h1>
+        <h1 className="page-title text-3xl font-bold tracking-tight">Escáner de códigos de barras</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Escaneá con la cámara (Chrome/Edge Android), con un escáner USB en PC o ingresá el código manualmente para buscar un producto y venderlo al instante.
         </p>

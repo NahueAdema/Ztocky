@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Command, LogOut, Search, Settings, User, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2 } from "lucide-react";
+import { Bell, Command, LogOut, Search, Settings, User, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import { Sidebar } from "@/components/layout/sidebar";
 
@@ -32,6 +33,7 @@ export function DashboardShell({
   user: DashboardUser;
 }) {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [searchInput, setSearchInput] = useState("");
   const [showNotif, setShowNotif] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -102,15 +104,15 @@ export function DashboardShell({
           <div className="flex h-16 items-center gap-3 px-6 flex-1">
             <form onSubmit={handleSearch} className="flex min-w-0 flex-1 items-center gap-2">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
                 <input
                   type="text"
                   placeholder="Buscar productos, proveedores, ordenes..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-card/50 pl-10 pr-16 text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="h-10 w-full rounded-xl border border-border/60 bg-card/50 pl-10 pr-16 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary/40 focus:bg-card focus:ring-2 focus:ring-primary/10"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground pointer-events-none">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground pointer-events-none">
                   <Command className="h-3 w-3" /> K
                 </span>
               </div>
@@ -120,13 +122,13 @@ export function DashboardShell({
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setShowNotif(!showNotif)}
-                className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-card/50 text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
                 type="button"
                 aria-label="Ver notificaciones"
               >
                 <Bell className="h-4 w-4" />
                 {unread.length > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white px-1">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#DC2626] text-[9px] font-bold text-white px-1 shadow-sm">
                     {unread.length > 9 ? "9+" : unread.length}
                   </span>
                 )}
@@ -189,7 +191,7 @@ export function DashboardShell({
             <div className="relative" ref={userRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 rounded-xl border border-border bg-card/50 px-3 py-1.5 transition hover:bg-muted"
+                className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/50 px-3 py-1.5 transition-all hover:bg-muted/60"
                 type="button"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-dark text-xs font-bold text-white">
@@ -216,6 +218,14 @@ export function DashboardShell({
                       <Search className="h-4 w-4 text-muted-foreground" />
                       Busqueda global
                     </Link>
+                    <button
+                      onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); setShowUserMenu(false); }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted"
+                    >
+                      <Sun className="h-4 w-4 text-muted-foreground hidden dark:block" />
+                      <Moon className="h-4 w-4 text-muted-foreground block dark:hidden" />
+                      {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+                    </button>
                   </div>
                   <div className="p-2 border-t border-border">
                     <form action="/api/auth/logout" method="post">

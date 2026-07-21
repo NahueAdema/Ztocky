@@ -78,7 +78,7 @@ export default async function DashboardPage() {
           <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
           <Badge className="w-fit" tone="success">Motor de reabastecimiento activo</Badge>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Panel de control</h1>
+        <h1 className="page-title text-3xl font-bold tracking-tight">Panel de control</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Vista central para priorizar agotamientos, ordenes de compra y productos que necesitan decision.
         </p>
