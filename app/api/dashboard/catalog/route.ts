@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { recordPriceChange } from "@/lib/price-history";
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
@@ -104,6 +105,18 @@ export async function POST(request: NextRequest) {
         supplier: true,
         product: true,
       },
+    });
+
+    await recordPriceChange({
+      catalogItemId: item.id,
+      supplierId,
+      productId,
+      previousPrice: null,
+      newPrice: Number(unitPrice),
+      previousMinQty: null,
+      newMinQty: Number(minOrderQty) ?? 1,
+      changeType: "CREATED",
+      changedByUserId: user.id,
     });
 
     return NextResponse.json({

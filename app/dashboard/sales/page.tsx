@@ -20,7 +20,10 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle2,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 type Sale = {
   id: string;
@@ -133,9 +136,19 @@ export default function SalesPage() {
     } catch {} finally { setUndoing(false); }
   };
 
-  const handleExport = () => {
+  const handleExport = async (format: "csv" | "excel") => {
     const headers = ["Producto", "SKU", "Cantidad", "Fecha", "Precio Unitario", "Total"];
     const rows = sales.map((s) => [s.productName, s.productSku, s.quantity, s.saleDate, s.unitPrice, s.totalAmount]);
+
+    if (format === "excel") {
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+      XLSX.writeFile(wb, `ventas_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      return;
+    }
+
     const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -183,6 +196,57 @@ export default function SalesPage() {
     if (totalCreated > 0) fetchData();
   };
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportResult(null);
+    setImportStatus("importing");
+    setImportProgress(0);
+    try {
+      const XLSX = await import("xlsx");
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+      if (rows.length === 0) {
+        setImportResult({ created: 0, total: 0, errors: ["El archivo esta vacio."] });
+        setImportStatus("done");
+        return;
+      }
+      const records = rows.map((row) => {
+        const record: Record<string, string> = {};
+        Object.keys(row).forEach((key) => {
+          record[key.toLowerCase().trim()] = String(row[key] ?? "").trim();
+        });
+        return record;
+      });
+
+      let totalCreated = 0;
+      let allErrors: string[] = [];
+      const batches: Record<string, string>[][] = [];
+      for (let i = 0; i < records.length; i += BATCH_SIZE) {
+        batches.push(records.slice(i, i + BATCH_SIZE));
+      }
+      for (let i = 0; i < batches.length; i++) {
+        try {
+          const result = await importBatch("/api/dashboard/import", batches[i], "sales");
+          totalCreated += result.created;
+          allErrors = allErrors.concat(result.errors);
+        } catch {
+          allErrors.push(`Error en lote ${i + 1}`);
+        }
+        setImportProgress(Math.round(((i + 1) / batches.length) * 100));
+      }
+      setImportStatus("done");
+      setImportResult({ created: totalCreated, total: records.length, errors: allErrors.length > 0 ? allErrors : undefined });
+      if (totalCreated > 0) fetchData();
+    } catch {
+      setImportResult({ created: 0, total: 0, errors: ["Error al leer el archivo Excel."] });
+      setImportStatus("done");
+    }
+    e.target.value = "";
+  };
+
   const totalRevenue = sales.reduce((sum, s) => sum + s.totalAmount, 0);
   const totalUnits = sales.reduce((sum, s) => sum + s.quantity, 0);
   const filtered = sales.filter(
@@ -205,10 +269,55 @@ export default function SalesPage() {
           <p className="mt-1 text-sm text-muted-foreground">Registro historico para calcular velocidad de venta y proyecciones.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={handleExport}><Download className="h-4 w-4" /> Exportar</Button>
-          <Button variant="secondary" onClick={() => { setImportText(""); setImportResult(null); setImportStatus("idle"); setShowImportModal(true); }}>
-            <FileUp className="h-4 w-4" /> Importar
-          </Button>
+          <DropdownMenu
+            trigger={
+              <Button variant="secondary">
+                <Download className="h-4 w-4" />
+                Exportar
+              </Button>
+            }
+          >
+            <DropdownMenuItem
+              icon={<FileText className="h-4 w-4" />}
+              onClick={() => handleExport("csv")}
+            >
+              CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileSpreadsheet className="h-4 w-4" />}
+              onClick={() => handleExport("excel")}
+            >
+              Excel (.xlsx)
+            </DropdownMenuItem>
+          </DropdownMenu>
+          <DropdownMenu
+            trigger={
+              <Button variant="secondary">
+                <FileUp className="h-4 w-4" />
+                Importar
+              </Button>
+            }
+          >
+            <DropdownMenuItem
+              icon={<FileText className="h-4 w-4" />}
+              onClick={() => { setImportText(""); setImportResult(null); setImportStatus("idle"); setShowImportModal(true); }}
+            >
+              CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileSpreadsheet className="h-4 w-4" />}
+              onClick={() => document.getElementById("import-sales-excel")?.click()}
+            >
+              Excel (.xlsx)
+            </DropdownMenuItem>
+          </DropdownMenu>
+          <input
+            id="import-sales-excel"
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={handleImportExcel}
+          />
           <Button onClick={openCreate}><Plus className="h-4 w-4" /> Nueva venta</Button>
         </div>
       </div>

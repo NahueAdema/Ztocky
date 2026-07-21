@@ -21,7 +21,10 @@ import {
   Star,
   Package,
   X,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 type Supplier = {
   id: string;
@@ -87,6 +90,24 @@ export default function SuppliersPage() {
   } | null>(null);
   const [importingPrices, setImportingPrices] = useState(false);
   const [importPricesError, setImportPricesError] = useState<string | null>(null);
+  const [showPriceHistory, setShowPriceHistory] = useState(false);
+  const [priceHistoryItems, setPriceHistoryItems] = useState<{
+    id: string;
+    supplierName: string;
+    productName: string;
+    productSku: string;
+    previousPrice: number | null;
+    newPrice: number;
+    previousMinQty: number | null;
+    newMinQty: number | null;
+    changeType: string;
+    notes: string | null;
+    createdAt: string;
+  }[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [editingCatalogItem, setEditingCatalogItem] = useState<string | null>(null);
+  const [editCatalogPrice, setEditCatalogPrice] = useState("");
+  const [editCatalogMinQty, setEditCatalogMinQty] = useState("");
   const [form, setForm] = useState<SupplierForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +117,7 @@ export default function SuppliersPage() {
     total: number;
     errors?: string[];
   } | null>(null);
+  const [importType, setImportType] = useState<"csv" | "excel">("csv");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -107,6 +129,20 @@ export default function SuppliersPage() {
     } catch {
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchPriceHistory = useCallback(async (supplierId: string) => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/dashboard/catalog/history?supplierId=${supplierId}&limit=50`);
+      if (res.ok) {
+        const data = await res.json();
+        setPriceHistoryItems(data.items);
+      }
+    } catch {
+    } finally {
+      setLoadingHistory(false);
     }
   }, []);
 
@@ -176,7 +212,7 @@ export default function SuppliersPage() {
     } catch {}
   };
 
-  const handleExport = () => {
+  const handleExport = async (format: "csv" | "excel") => {
     const headers = [
       "Nombre",
       "Email",
@@ -195,13 +231,21 @@ export default function SuppliersPage() {
       s.reliability,
       s.notes ?? "",
     ]);
+
+    if (format === "excel") {
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Proveedores");
+      XLSX.writeFile(wb, `proveedores_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      return;
+    }
+
     const csv = [
       headers.join(","),
       ...rows.map((r) => r.map((v) => `"${v}"`).join(",")),
     ].join("\n");
-    const blob = new Blob(["\ufeff" + csv], {
-      type: "text/csv;charset=utf-8;",
-    });
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -246,11 +290,48 @@ export default function SuppliersPage() {
     }
   };
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportResult(null);
+    try {
+      const XLSX = await import("xlsx");
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+      if (rows.length === 0) {
+        setImportResult({ created: 0, total: 0, errors: ["El archivo esta vacio."] });
+        return;
+      }
+      const records = rows.map((row) => {
+        const record: Record<string, string> = {};
+        Object.keys(row).forEach((key) => {
+          record[key.toLowerCase().trim()] = String(row[key] ?? "").trim();
+        });
+        return record;
+      });
+      const res = await fetch("/api/dashboard/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "suppliers", records }),
+      });
+      const result = await res.json();
+      setImportResult(result);
+      if (result.created > 0) fetchSuppliers();
+    } catch {
+      setImportResult({ created: 0, total: 0, errors: ["Error al leer el archivo Excel."] });
+    }
+    e.target.value = "";
+  };
+
   const openCatalog = async (supplier: Supplier) => {
     setSelectedSupplier(supplier);
     setNewCatalogProduct("");
     setNewCatalogPrice("");
     setNewCatalogMinQty("1");
+    setShowPriceHistory(false);
     try {
       const [catalogRes, productsRes] = await Promise.all([
         fetch(`/api/dashboard/catalog?supplierId=${supplier.id}`),
@@ -264,6 +345,7 @@ export default function SuppliersPage() {
         const data = await productsRes.json();
         setAllProducts(data.products);
       }
+      fetchPriceHistory(supplier.id);
     } catch {
       // silently fail
     }
@@ -301,6 +383,30 @@ export default function SuppliersPage() {
     } catch {
       // silently fail
     }
+  };
+
+  const startEditCatalogItem = (item: { id: string; unitPrice: number; minOrderQty: number }) => {
+    setEditingCatalogItem(item.id);
+    setEditCatalogPrice(String(item.unitPrice));
+    setEditCatalogMinQty(String(item.minOrderQty));
+  };
+
+  const saveCatalogItem = async (catalogId: string) => {
+    if (!selectedSupplier) return;
+    try {
+      const res = await fetch(`/api/dashboard/catalog/${catalogId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          unitPrice: Number(editCatalogPrice),
+          minOrderQty: Number(editCatalogMinQty),
+        }),
+      });
+      if (res.ok) {
+        setEditingCatalogItem(null);
+        openCatalog(selectedSupplier);
+      }
+    } catch {}
   };
 
   const handlePreviewPrices = async () => {
@@ -387,21 +493,63 @@ export default function SuppliersPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={handleExport}>
-            <Download className="h-4 w-4" />
-            Exportar
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setImportText("");
-              setImportResult(null);
-              setShowImportModal(true);
-            }}
+          <DropdownMenu
+            trigger={
+              <Button variant="secondary">
+                <Download className="h-4 w-4" />
+                Exportar
+              </Button>
+            }
           >
-            <FileUp className="h-4 w-4" />
-            Importar
-          </Button>
+            <DropdownMenuItem
+              icon={<FileText className="h-4 w-4" />}
+              onClick={() => handleExport("csv")}
+            >
+              CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileSpreadsheet className="h-4 w-4" />}
+              onClick={() => handleExport("excel")}
+            >
+              Excel (.xlsx)
+            </DropdownMenuItem>
+          </DropdownMenu>
+          <DropdownMenu
+            trigger={
+              <Button variant="secondary">
+                <FileUp className="h-4 w-4" />
+                Importar
+              </Button>
+            }
+          >
+            <DropdownMenuItem
+              icon={<FileText className="h-4 w-4" />}
+              onClick={() => {
+                setImportType("csv");
+                setImportText("");
+                setImportResult(null);
+                setShowImportModal(true);
+              }}
+            >
+              CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileSpreadsheet className="h-4 w-4" />}
+              onClick={() => {
+                setImportType("excel");
+                document.getElementById("import-excel-input")?.click();
+              }}
+            >
+              Excel (.xlsx)
+            </DropdownMenuItem>
+          </DropdownMenu>
+          <input
+            id="import-excel-input"
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={handleImportExcel}
+          />
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
             Nuevo
@@ -739,7 +887,20 @@ export default function SuppliersPage() {
                 <h2 className="text-lg font-bold">Catalogo de {selectedSupplier.name}</h2>
                 <p className="text-sm text-muted-foreground">Productos que provee este supplier</p>
               </div>
-              <button onClick={() => setShowCatalogModal(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted"><X className="h-4 w-4" /></button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowPriceHistory(!showPriceHistory)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                    showPriceHistory
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  Historial
+                </button>
+                <button onClick={() => setShowCatalogModal(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted"><X className="h-4 w-4" /></button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_6rem_5rem_auto] gap-2 mb-4">
@@ -791,46 +952,95 @@ export default function SuppliersPage() {
                       {importingPrices ? "Procesando..." : "Previsualizar"}
                     </Button>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex gap-2 text-xs">
-                        <span className="rounded bg-success-light text-success px-2 py-0.5 font-medium font-mono">{importPricesPreview.summary.matchedNew} nuevas</span>
-                        <span className="rounded bg-primary-light text-primary px-2 py-0.5 font-medium font-mono">{importPricesPreview.summary.matchedUpdate} actualizadas</span>
-                        <span className="rounded bg-danger-light text-danger px-2 py-0.5 font-medium font-mono">{importPricesPreview.summary.unmatched} sin match</span>
+                        <span className="rounded bg-success-light text-success px-2.5 py-1 font-medium font-mono flex items-center gap-1">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-success"></span>
+                          {importPricesPreview.summary.matchedNew} nuevas
+                        </span>
+                        <span className="rounded bg-primary-light text-primary px-2.5 py-1 font-medium font-mono flex items-center gap-1">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
+                          {importPricesPreview.summary.matchedUpdate} actualizadas
+                        </span>
+                        <span className="rounded bg-danger-light text-danger px-2.5 py-1 font-medium font-mono flex items-center gap-1">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-danger"></span>
+                          {importPricesPreview.summary.unmatched} sin match
+                        </span>
                       </div>
-                      {importPricesPreview.matchedNew.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-success mb-1">Nuevos en catalogo:</p>
-                          {importPricesPreview.matchedNew.map((item) => (
-                            <div key={item.sku} className="flex justify-between text-xs py-0.5">
-                              <span>{item.productName} ({item.sku})</span>
-                              <span className="font-mono">{moneyFormatter.format(item.unitPrice)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+
                       {importPricesPreview.matchedUpdate.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-primary mb-1">Precios actualizados:</p>
-                          {importPricesPreview.matchedUpdate.map((item) => (
-                            <div key={item.sku} className="flex justify-between text-xs py-0.5">
-                              <span>{item.productName} ({item.sku})</span>
-                              <span className="font-mono">{moneyFormatter.format(item.previousUnitPrice)} → {moneyFormatter.format(item.unitPrice)}</span>
-                            </div>
-                          ))}
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                          <p className="text-xs font-semibold text-primary mb-2 flex items-center gap-1.5">
+                            <Pencil className="h-3 w-3" /> Precios actualizados
+                          </p>
+                          <div className="space-y-2">
+                            {importPricesPreview.matchedUpdate.map((item) => {
+                              const diff = item.unitPrice - item.previousUnitPrice;
+                              const pct = item.previousUnitPrice > 0 ? ((diff / item.previousUnitPrice) * 100) : 0;
+                              const isUp = diff > 0;
+                              const isDown = diff < 0;
+                              return (
+                                <div key={item.sku} className="flex items-center justify-between text-xs bg-card rounded-lg p-2 border border-border/50">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium truncate">{item.productName}</p>
+                                    <p className="text-muted-foreground font-mono text-[10px]">{item.sku}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-muted-foreground line-through font-mono">{moneyFormatter.format(item.previousUnitPrice)}</span>
+                                    <span className={`flex items-center gap-0.5 font-bold font-mono ${isUp ? "text-danger" : isDown ? "text-success" : "text-muted-foreground"}`}>
+                                      {isUp ? "↑" : isDown ? "↓" : "→"}
+                                      {moneyFormatter.format(item.unitPrice)}
+                                    </span>
+                                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isUp ? "bg-danger/10 text-danger" : isDown ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+                                      {isUp ? "+" : ""}{pct.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
+
+                      {importPricesPreview.matchedNew.length > 0 && (
+                        <div className="rounded-lg border border-success/20 bg-success/5 p-3">
+                          <p className="text-xs font-semibold text-success mb-2 flex items-center gap-1.5">
+                            <Plus className="h-3 w-3" /> Nuevos en catálogo
+                          </p>
+                          <div className="space-y-1">
+                            {importPricesPreview.matchedNew.map((item) => (
+                              <div key={item.sku} className="flex items-center justify-between text-xs bg-card rounded-lg p-2 border border-border/50">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{item.productName}</p>
+                                  <p className="text-muted-foreground font-mono text-[10px]">{item.sku}</p>
+                                </div>
+                                <span className="font-bold font-mono text-success shrink-0">{moneyFormatter.format(item.unitPrice)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {importPricesPreview.unmatched.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-danger mb-1">Sin match (SKU no encontrado):</p>
-                          {importPricesPreview.unmatched.map((item) => (
-                            <div key={item.sku} className="text-xs text-muted-foreground py-0.5">{item.sku}</div>
-                          ))}
+                        <div className="rounded-lg border border-danger/20 bg-danger/5 p-3">
+                          <p className="text-xs font-semibold text-danger mb-2 flex items-center gap-1.5">
+                            <X className="h-3 w-3" /> Sin match (SKU no encontrado)
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {importPricesPreview.unmatched.map((item) => (
+                              <span key={item.sku} className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2 py-1 text-[11px] font-mono text-muted-foreground">
+                                {item.sku}
+                                <span className="text-danger font-medium">{moneyFormatter.format(item.unitPrice)}</span>
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       )}
+
                       <div className="flex gap-2 pt-1">
                         <Button variant="secondary" onClick={() => { setImportPricesPreview(null); setImportPricesText(""); }}>Cancelar</Button>
                         <Button onClick={handleApplyPrices} disabled={importingPrices}>
-                          {importingPrices ? "Aplicando..." : "Aplicar cambios"}
+                          {importingPrices ? "Aplicando..." : `Aplicar ${importPricesPreview.summary.matchedNew + importPricesPreview.summary.matchedUpdate} cambios`}
                         </Button>
                       </div>
                     </div>
@@ -839,24 +1049,104 @@ export default function SuppliersPage() {
               )}
             </div>
 
-            {catalogItems.length === 0 && !showImportPrices ? (
+            {catalogItems.length === 0 && !showImportPrices && !showPriceHistory ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Package className="h-8 w-8 text-muted-foreground mb-2" />
                 <p className="text-sm font-medium">Sin productos asignados</p>
                 <p className="text-xs text-muted-foreground mt-1">Agrega productos al catalogo o importa precios desde CSV.</p>
               </div>
+            ) : showPriceHistory ? (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Historial de cambios de precios
+                </h3>
+                {loadingHistory ? (
+                  <div className="flex justify-center py-6">
+                    <p className="text-sm text-muted-foreground">Cargando historial...</p>
+                  </div>
+                ) : priceHistoryItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <Clock className="h-8 text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium">Sin cambios registrados</p>
+                    <p className="text-xs text-muted-foreground mt-1">Los cambios de precios aparecerán aquí.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {priceHistoryItems.map((item) => (
+                      <div key={item.id} className="rounded-lg border border-border p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate">{item.productName}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{item.productSku}</p>
+                          </div>
+                          <Badge tone={
+                            item.changeType === "CREATED" ? "success" :
+                            item.changeType === "UPDATED" ? "default" :
+                            item.changeType === "DELETED" ? "danger" :
+                            "default"
+                          }>
+                            {item.changeType === "CREATED" ? "Nuevo" :
+                             item.changeType === "UPDATED" ? "Actualizado" :
+                             item.changeType === "DELETED" ? "Eliminado" :
+                             item.changeType === "IMPORTED" ? "Importado" :
+                             item.changeType}
+                          </Badge>
+                        </div>
+                        <div className="mt-2 flex items-center gap-2 text-xs">
+                          {item.previousPrice !== null && item.changeType !== "CREATED" && (
+                            <>
+                              <span className="text-muted-foreground line-through">{moneyFormatter.format(item.previousPrice)}</span>
+                              <span className="text-muted-foreground">→</span>
+                            </>
+                          )}
+                          <span className="font-semibold">{moneyFormatter.format(item.newPrice)}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(item.createdAt).toLocaleString("es-AR")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : catalogItems.length > 0 ? (
               <div className="space-y-2">
                 {catalogItems.map((item) => (
                   <div key={item.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                    <div>
-                      <p className="text-sm font-semibold">{item.productName}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{item.productSku} · Min: {item.minOrderQty} uds</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{item.productName}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{item.productSku}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold">{moneyFormatter.format(item.unitPrice)}</span>
-                      <button onClick={() => removeCatalogItem(item.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </div>
+                    {editingCatalogItem === item.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Precio"
+                          value={editCatalogPrice}
+                          onChange={(e) => setEditCatalogPrice(e.target.value)}
+                          className="h-8 w-24 text-xs"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={editCatalogMinQty}
+                          onChange={(e) => setEditCatalogMinQty(e.target.value)}
+                          className="h-8 w-16 text-xs"
+                        />
+                        <button onClick={() => saveCatalogItem(item.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-success transition hover:bg-success-light"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => setEditingCatalogItem(null)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted"><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <span className="text-sm font-bold block">{moneyFormatter.format(item.unitPrice)}</span>
+                          <span className="text-[10px] text-muted-foreground">Min: {item.minOrderQty} uds</span>
+                        </div>
+                        <button onClick={() => startEditCatalogItem(item)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => removeCatalogItem(item.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
