@@ -24,11 +24,6 @@ interface Feature {
   accent: string;
 }
 
-interface Stat {
-  icon: LucideIcon;
-  text: string;
-}
-
 const FEATURES: Feature[] = [
   {
     icon: Store,
@@ -56,12 +51,6 @@ const FEATURES: Feature[] = [
   },
 ];
 
-const STATS = [
-  { icon: CheckCircle2, text: "Alertas antes de que un producto se quede sin stock" },
-  { icon: CheckCircle2, text: "Compras respaldadas por la información de tu negocio" },
-  { icon: CheckCircle2, text: "Toda la información de proveedores y compras organizada en un solo lugar" },
-];
-
 const BENEFITS = [
   "Alertas cuando un producto necesita reposición.",
   "Recomendaciones basadas en el historial de tu negocio.",
@@ -75,15 +64,6 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
       {...(href.startsWith("#") ? { scroll: false } : {})}>
       {children}
     </Link>
-  );
-}
-
-function StatCard({ icon: Icon, text }: Stat) {
-  return (
-    <div className="flex items-center gap-3 px-6 py-4">
-      <Icon className="h-5 w-5 shrink-0 text-primary" />
-      <span className="text-sm font-medium text-foreground">{text}</span>
-    </div>
   );
 }
 
@@ -243,17 +223,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      {/* ── STATS ─────────────────────────────────────────────────────────── */}
-      {!user && (
-        <div className="border-y border-border bg-card-white">
-          <div className="mx-auto flex max-w-3xl flex-wrap items-stretch divide-x divide-border">
-            {STATS.map((s) => (
-              <div key={s.text} className="flex-1"><StatCard {...s} /></div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── FEATURES ──────────────────────────────────────────────────────── */}
       <section id="funcionalidades" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
