@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     proveedores: supplierSummary,
     alertasPendientes: alertSummary,
     totalOrdenesCompra: orderCount,
-    periodo: "ultimos 30 dias",
+    periodo: "últimos 30 días",
   };
 
   const systemPrompt = `Sos un asistente de inventario experto en logística y supply chain. Trabajas para Ztocky, un sistema de gestión de stock.

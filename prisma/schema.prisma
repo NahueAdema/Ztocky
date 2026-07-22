@@ -26,6 +26,7 @@ model User {
   sessions           Session[]
   verificationTokens VerificationToken[]
   memberships        WorkspaceMember[]
+  invitationsSent    WorkspaceInvitation[]
 
   @@map("users")
 }
@@ -73,6 +74,7 @@ model Workspace {
   suppliers   Supplier[]
   orders      PurchaseOrder[]
   alerts      Alert[]
+  invitations WorkspaceInvitation[]
 
   @@map("workspaces")
 }
@@ -222,6 +224,28 @@ model SupplierNotification {
   @@index([supplierId, createdAt])
   @@index([workspaceId])
   @@map("supplier_notifications")
+}
+
+// ========== INVITACIONES A WORKSPACE ==========
+model WorkspaceInvitation {
+  id              String   @id @default(cuid())
+  workspaceId     String   @map("workspace_id")
+  email           String
+  role            WorkspaceRole @default(MEMBER)
+  token           String   @unique
+  invitedByUserId String   @map("invited_by_user_id")
+  status          String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  expiresAt       DateTime @map("expires_at")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedByUser   User?     @relation(fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  
+  @@index([workspaceId])
+  @@index([email])
+  @@index([token])
+  @@map("workspace_invitations")
 }
 
 // ========== ÓRDENES DE COMPRA ==========

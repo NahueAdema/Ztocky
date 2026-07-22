@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { Bell, Mail, MailCheck, MailX, Factory } from "lucide-react";
+import { moneyFormatter } from "@/lib/format";
 
 type Notification = {
   id: string;
@@ -25,11 +26,6 @@ type Notification = {
   createdAt: string;
 };
 
-const moneyFormatter = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-  maximumFractionDigits: 0,
-});
 
 export default function SupplierNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);

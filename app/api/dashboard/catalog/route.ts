@@ -126,6 +126,6 @@ export async function POST(request: NextRequest) {
       unitPrice: Number(item.unitPrice),
     }, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Ya existe esta combinacion de proveedor y producto" }, { status: 409 });
+    return NextResponse.json({ error: "Ya existe esta combinación de proveedor y producto" }, { status: 409 });
   }
 }

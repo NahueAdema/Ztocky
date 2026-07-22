@@ -131,7 +131,7 @@ export default function AlertsPage() {
             </div>
             Alertas activas
           </CardTitle>
-          <CardDescription>Productos que necesitan atencion inmediata.</CardDescription>
+          <CardDescription>Productos que necesitan atención inmediata.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -182,8 +182,8 @@ export default function AlertsPage() {
                           {alert.metadata && (
                             <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
                               {alert.metadata.burnRate !== undefined && <span>Venta: {String(alert.metadata.burnRate)}/dia</span>}
-                              {alert.metadata.daysRemaining !== undefined && <span>Dias restantes: {String(alert.metadata.daysRemaining)}</span>}
-                              {alert.metadata.daysSinceLastSale !== undefined && <span>Sin ventas: {String(alert.metadata.daysSinceLastSale)} dias</span>}
+                              {alert.metadata.daysRemaining !== undefined && <span>Días restantes: {String(alert.metadata.daysRemaining)}</span>}
+                              {alert.metadata.daysSinceLastSale !== undefined && <span>Sin ventas: {String(alert.metadata.daysSinceLastSale)} días</span>}
                             </div>
                           )}
                         </div>

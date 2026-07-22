@@ -74,13 +74,13 @@ export async function POST(request: NextRequest) {
 
     if (daysRemaining <= leadTime && burnRate > 0) {
       alertType = "CRITICAL_STOCK";
-      message = `${product.name} se agotara en ${daysRemaining} dias. Lead time del proveedor: ${leadTime} dias. Generar orden de compra urgente.`;
+      message = `${product.name} se agotará en ${daysRemaining} días. Lead time del proveedor: ${leadTime} días. Generar orden de compra urgente.`;
     } else if (product.currentStock <= product.minStock) {
       alertType = "LOW_STOCK";
       message = `${product.name} tiene ${product.currentStock} unidades (minimo: ${product.minStock}).`;
     } else if (daysRemaining <= leadTime + 7 && burnRate > 0) {
       alertType = "LOW_STOCK";
-      message = `${product.name} se agotara en ${daysRemaining} dias. Considerar reabastecer pronto.`;
+      message = `${product.name} se agotará en ${daysRemaining} días. Considerar reabastecer pronto.`;
     }
 
     if (alertType) {
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
                 supplierId: bestCatalog.supplierId,
                 status: "DRAFT",
                 totalAmount: totalPrice,
-                notes: `Generada automaticamente por alerta critica de ${product.name}. Stock actual: ${product.currentStock}, burn rate: ${burnRate.toFixed(1)}/dia`,
+                notes: `Generada automáticamente por alerta crítica de ${product.name}. Stock actual: ${product.currentStock}, burn rate: ${burnRate.toFixed(1)}/dia`,
                 generatedByAI: true,
                 items: {
                   create: {
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
             workspaceId: user.workspaceId,
             productId: product.id,
             type: "STAGNANT_STOCK",
-            message: `${product.name} sin ventas hace ${daysSinceLastSale} dias. ${product.currentStock} unidades en stock.`,
+            message: `${product.name} sin ventas hace ${daysSinceLastSale} días. ${product.currentStock} unidades en stock.`,
             metadata: {
               daysSinceLastSale,
               currentStock: product.currentStock,
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
 
   let message = created > 0 ? `${created} nueva${created > 1 ? "s" : ""} alerta${created > 1 ? "s" : ""} generada${created > 1 ? "s" : ""}` : "Sin nuevas alertas";
   if (generatedOrders > 0) {
-    message += ` y ${generatedOrders} orden${generatedOrders > 1 ? "es" : ""} de compra generada${generatedOrders > 1 ? "s" : ""} automaticamente`;
+    message += ` y ${generatedOrders} orden${generatedOrders > 1 ? "es" : ""} de compra generada${generatedOrders > 1 ? "s" : ""} automáticamente`;
   }
 
   // Enviar notificaciones email a usuarios verificados del workspace

@@ -177,7 +177,7 @@ export async function getReorderRisksForDashboard(workspaceId?: string | null) {
 
         let urgency: string;
         if (isCriticalStock || daysRemaining <= leadTime) {
-          urgency = "Critica";
+          urgency = "Crítica";
         } else if (isLowStock || daysRemaining <= leadTime + 7) {
           urgency = "Alta";
         } else {
@@ -199,7 +199,7 @@ export async function getReorderRisksForDashboard(workspaceId?: string | null) {
       .filter((item) => {
         const product = products.find((p) => p.sku === item.sku);
         const isLowStock = product ? product.currentStock <= product.minStock : false;
-        return item.urgency === "Critica" || item.urgency === "Alta" || isLowStock || item.daysRemaining <= item.leadTime + 14;
+        return item.urgency === "Crítica" || item.urgency === "Alta" || isLowStock || item.daysRemaining <= item.leadTime + 14;
       })
       .slice(0, 10);
   } catch {

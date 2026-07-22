@@ -226,3 +226,27 @@ export async function sendPriceChangesToSupplier(
 
   await sendMail(supplierEmail, `💰 ${storeName} actualizó precios — Ztocky`, html);
 }
+
+export async function sendInvitationEmail(
+  email: string,
+  inviterName: string,
+  workspaceName: string,
+  token: string,
+  baseUrl?: string,
+) {
+  const inviteUrl = `${baseUrl || env.NEXT_PUBLIC_APP_URL}/invitations/${token}`;
+
+  const html = `<!DOCTYPE html>
+<html><body style="font-family:sans-serif;background:#f5f5f5;padding:40px 20px">
+<table align="center" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
+<tr><td style="padding:32px 32px 0;text-align:center">
+<p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Te invitaron a un equipo</strong></p>
+<p style="font-size:14px;color:#666;line-height:1.5"><strong>${inviterName}</strong> te invitó a formar parte de <strong>"${workspaceName}"</strong> en Ztocky.</p>
+<a href="${inviteUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:#038786;color:#fff;border-radius:12px;text-decoration:none;font-size:15px;font-weight:600">Aceptar invitación</a>
+<p style="margin-top:24px;font-size:12px;color:#999">O copiá este link en tu navegador:<br><span style="color:#038786">${inviteUrl}</span></p>
+<p style="margin-top:20px;font-size:12px;color:#999">Si no conoces a esta persona, ignorá este correo.</p>
+</td></tr></table></body></html>`;
+
+  await sendMail(email, `Te invitaron a "${workspaceName}" — Ztocky`, html);
+}

@@ -5,7 +5,7 @@ import { Camera, Check, Loader2, Package, Plus, ScanLine, X } from "lucide-react
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { moneyFormatter } from "@/lib/mock-data";
+import { moneyFormatter } from "@/lib/format";
 
 type ProductResult = {
   id: string;

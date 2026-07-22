@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
+import { useToast } from "@/components/ui/toast";
+import { moneyFormatter } from "@/lib/format";
 import {
   Download,
   FileUp,
@@ -61,13 +63,10 @@ const emptyForm: SupplierForm = {
   reliability: "4.5",
   notes: "",
 };
-const moneyFormatter = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-  maximumFractionDigits: 0,
-});
+
 
 export default function SuppliersPage() {
+  const { toast } = useToast();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -191,12 +190,15 @@ export default function SuppliersPage() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Error al guardar");
+        toast(data.error ?? "Error al guardar", "error");
         return;
       }
       setShowModal(false);
       fetchSuppliers();
+      toast(editingSupplier ? "Proveedor actualizado" : "Proveedor creado", "success");
     } catch {
-      setError("Error de conexion");
+      setError("Error de conexión");
+      toast("Error de conexión", "error");
     } finally {
       setSaving(false);
     }
@@ -208,8 +210,15 @@ export default function SuppliersPage() {
       const res = await fetch(`/api/dashboard/suppliers/${id}`, {
         method: "DELETE",
       });
-      if (res.ok) fetchSuppliers();
-    } catch {}
+      if (res.ok) {
+        fetchSuppliers();
+        toast("Proveedor eliminado", "success");
+      } else {
+        toast("No se pudo eliminar el proveedor", "error");
+      }
+    } catch {
+      toast("Error de conexión", "error");
+    }
   };
 
   const handleExport = async (format: "csv" | "excel") => {
@@ -285,7 +294,7 @@ export default function SuppliersPage() {
       setImportResult({
         created: 0,
         total: records.length,
-        errors: ["Error de conexion"],
+        errors: ["Error de conexión"],
       });
     }
   };
@@ -435,7 +444,7 @@ export default function SuppliersPage() {
       const data = await res.json();
       if (!res.ok) { setImportPricesError(data.error ?? "Error"); return; }
       setImportPricesPreview(data);
-    } catch { setImportPricesError("Error de conexion"); }
+    } catch { setImportPricesError("Error de conexión"); }
     finally { setImportingPrices(false); }
   };
 
@@ -463,7 +472,7 @@ export default function SuppliersPage() {
       setImportPricesText("");
       setImportPricesPreview(null);
       if (selectedSupplier) openCatalog(selectedSupplier);
-    } catch { setImportPricesError("Error de conexion"); }
+    } catch { setImportPricesError("Error de conexión"); }
     finally { setImportingPrices(false); }
   };
 
@@ -588,7 +597,7 @@ export default function SuppliersPage() {
               </p>
               <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
                 {search
-                  ? "Intenta con otros terminos de busqueda."
+                  ? "Intenta con otros términos de búsqueda."
                   : "Crea uno nuevo o importa desde un archivo CSV."}
               </p>
             </div>
@@ -645,7 +654,7 @@ export default function SuppliersPage() {
                           <div className="flex items-center gap-1.5">
                             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="text-sm font-medium">
-                              {supplier.leadTime} dias
+                              {supplier.leadTime} días
                             </span>
                           </div>
                         </td>
@@ -672,7 +681,7 @@ export default function SuppliersPage() {
                         </td>
                         <td>
                           <div className="flex items-center gap-1">
-                            <button onClick={() => openCatalog(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver catalogo"><Package className="h-4 w-4" /></button>
+                            <button onClick={() => openCatalog(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver catálogo"><Package className="h-4 w-4" /></button>
                             <button onClick={() => openEdit(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
                             <button onClick={() => handleDelete(supplier.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
                           </div>
@@ -700,7 +709,7 @@ export default function SuppliersPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => openCatalog(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver catalogo"><Package className="h-4 w-4" /></button>
+                        <button onClick={() => openCatalog(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver catálogo"><Package className="h-4 w-4" /></button>
                         <button onClick={() => openEdit(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
                         <button onClick={() => handleDelete(supplier.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
                       </div>
@@ -714,7 +723,7 @@ export default function SuppliersPage() {
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3 text-muted-foreground" />
                           <span className="text-xs font-semibold">
-                            {supplier.leadTime} dias
+                            {supplier.leadTime} días
                           </span>
                         </div>
                       </div>
@@ -819,7 +828,7 @@ export default function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Tiempo de entrega (dias)</label>
+                <label className="text-sm font-medium">Tiempo de entrega (días)</label>
                 <Input
                   type="number"
                   value={form.leadTime}

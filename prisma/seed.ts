@@ -158,7 +158,7 @@ async function main() {
   }
   console.log(`  ✅ ${catalogMappings.length} items de catalogo`);
 
-  console.log("📊 Generando 90 dias de ventas historicas...");
+  console.log("📊 Generando 90 días de ventas históricas...");
 
   const now = new Date();
   let totalSales = 0;
@@ -197,7 +197,7 @@ async function main() {
     }
   }
 
-  console.log(`  ✅ ${totalSales} ventas generadas (90 dias x ${createdProducts.length} productos)`);
+  console.log(`  ✅ ${totalSales} ventas generadas (90 días x ${createdProducts.length} productos)`);
 
   console.log("🎉 Seed completado!");
   console.log(`   ${createdProducts.length} productos`);

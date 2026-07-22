@@ -38,6 +38,9 @@ export async function GET(req: NextRequest) {
 
   cookieStore.delete("auth0_state");
 
+  const invitationToken = cookieStore.get("pending_invitation")?.value || null;
+  cookieStore.delete("pending_invitation");
+
   let tokenResponse;
   try {
     tokenResponse = await exchangeCode(code, req);
@@ -55,6 +58,8 @@ export async function GET(req: NextRequest) {
     where: { email: profile.email },
   });
 
+  let workspaceToSwitch: string | null = null;
+
   if (user) {
     if (user.status !== "ACTIVE") {
       return NextResponse.json({ error: "Account is suspended" }, { status: 403 });
@@ -66,39 +71,153 @@ export async function GET(req: NextRequest) {
         data: { emailVerified: true },
       });
     }
+
+    if (invitationToken) {
+      const invitation = await prisma.workspaceInvitation.findUnique({
+        where: { token: invitationToken },
+      });
+      if (
+        invitation &&
+        invitation.status === "PENDING" &&
+        new Date() <= invitation.expiresAt &&
+        invitation.email.toLowerCase().trim() === user.email.toLowerCase().trim()
+      ) {
+        const existingMember = await prisma.workspaceMember.findFirst({
+          where: { userId: user.id, workspaceId: invitation.workspaceId },
+        });
+        if (!existingMember) {
+          await prisma.workspaceMember.create({
+            data: {
+              userId: user.id,
+              workspaceId: invitation.workspaceId,
+              role: invitation.role as "ADMIN" | "MEMBER",
+            },
+          });
+        }
+        await prisma.workspaceInvitation.update({
+          where: { id: invitation.id },
+          data: { status: "ACCEPTED" },
+        });
+        workspaceToSwitch = invitation.workspaceId;
+      }
+    }
   } else {
-    const workspaceName =
-      profile.name?.trim() || profile.email.split("@")[0] || "Mi comercio";
-    const slugBase = slugify(workspaceName);
-    const workspaceSlug = `${slugBase}-${randomUUID().slice(0, 8)}`;
+    if (invitationToken) {
+      const invitation = await prisma.workspaceInvitation.findUnique({
+        where: { token: invitationToken },
+      });
+      if (
+        invitation &&
+        invitation.status === "PENDING" &&
+        new Date() <= invitation.expiresAt
+      ) {
+        const superAdminCount = await prisma.user.count({
+          where: { role: "SUPER_ADMIN" },
+        });
 
-    const superAdminCount = await prisma.user.count({
-      where: { role: "SUPER_ADMIN" },
-    });
-
-    user = await prisma.user.create({
-      data: {
-        name: profile.name || profile.email.split("@")[0],
-        email: profile.email,
-        passwordHash: null,
-        emailVerified: true,
-        role: superAdminCount === 0 ? "SUPER_ADMIN" : "USER",
-        memberships: {
-          create: {
-            role: "OWNER",
-            workspace: {
+        user = await prisma.user.create({
+          data: {
+            name: profile.name || profile.email.split("@")[0],
+            email: profile.email,
+            passwordHash: null,
+            emailVerified: true,
+            role: superAdminCount === 0 ? "SUPER_ADMIN" : "USER",
+            memberships: {
               create: {
-                name: workspaceName,
-                slug: workspaceSlug,
+                role: invitation.role as "ADMIN" | "MEMBER",
+                workspaceId: invitation.workspaceId,
+              },
+            },
+          },
+        });
+
+        await prisma.workspaceInvitation.update({
+          where: { id: invitation.id },
+          data: { status: "ACCEPTED" },
+        });
+
+        workspaceToSwitch = invitation.workspaceId;
+      } else {
+        const workspaceName =
+          profile.name?.trim() || profile.email.split("@")[0] || "Mi negocio";
+        const slugBase = slugify(workspaceName);
+        const workspaceSlug = `${slugBase}-${randomUUID().slice(0, 8)}`;
+
+        const superAdminCount = await prisma.user.count({
+          where: { role: "SUPER_ADMIN" },
+        });
+
+        user = await prisma.user.create({
+          data: {
+            name: profile.name || profile.email.split("@")[0],
+            email: profile.email,
+            passwordHash: null,
+            emailVerified: true,
+            role: superAdminCount === 0 ? "SUPER_ADMIN" : "USER",
+            memberships: {
+              create: {
+                role: "OWNER",
+                workspace: {
+                  create: {
+                    name: workspaceName,
+                    slug: workspaceSlug,
+                  },
+                },
+              },
+            },
+          },
+        });
+      }
+    } else {
+      const workspaceName =
+        profile.name?.trim() || profile.email.split("@")[0] || "Mi negocio";
+      const slugBase = slugify(workspaceName);
+      const workspaceSlug = `${slugBase}-${randomUUID().slice(0, 8)}`;
+
+      const superAdminCount = await prisma.user.count({
+        where: { role: "SUPER_ADMIN" },
+      });
+
+      user = await prisma.user.create({
+        data: {
+          name: profile.name || profile.email.split("@")[0],
+          email: profile.email,
+          passwordHash: null,
+          emailVerified: true,
+          role: superAdminCount === 0 ? "SUPER_ADMIN" : "USER",
+          memberships: {
+            create: {
+              role: "OWNER",
+              workspace: {
+                create: {
+                  name: workspaceName,
+                  slug: workspaceSlug,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
+    }
   }
 
   await createSession(user.id);
+
+  if (workspaceToSwitch) {
+    const member = await prisma.workspaceMember.findFirst({
+      where: { userId: user.id, workspaceId: workspaceToSwitch },
+    });
+    if (member) {
+      const wsCookieStore = await cookies();
+      wsCookieStore.set("active_workspace", workspaceToSwitch, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+      });
+    }
+  }
 
   const redirectTo = user.role === "SUPER_ADMIN" ? "/admin" : "/dashboard";
   redirect(redirectTo);

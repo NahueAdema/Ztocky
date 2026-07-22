@@ -95,7 +95,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (body.items && Array.isArray(body.items) && body.items.length > 0) {
       if (order.status !== "DRAFT") {
-        return NextResponse.json({ error: "Solo se pueden editar items en ordenes borrador." }, { status: 400 });
+        return NextResponse.json({ error: "Solo se pueden editar items en órdenes borrador." }, { status: 400 });
       }
 
       await prisma.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });

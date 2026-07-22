@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
+import { useToast } from "@/components/ui/toast";
 import {
   Download,
   FileUp,
   Plus,
   Search,
   ShoppingCart,
-  Trash2,
   Pencil,
   DollarSign,
   Package,
@@ -60,6 +60,7 @@ async function importBatch(url: string, batch: Record<string, string>[], type: s
 }
 
 export default function SalesPage() {
+  const { toast } = useToast();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +79,8 @@ export default function SalesPage() {
   const [page, setPage] = useState(1);
   const [undoTarget, setUndoTarget] = useState<Sale | null>(null);
   const [undoing, setUndoing] = useState(false);
+  const [filterPeriod, setFilterPeriod] = useState("all");
+  const [filterProduct, setFilterProduct] = useState("all");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -112,14 +115,15 @@ export default function SalesPage() {
         body: JSON.stringify({ ...form, quantity: Number(form.quantity), unitPrice: Number(form.unitPrice) }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Error"); return; }
+      if (!res.ok) { setError(data.error ?? "Error"); toast(data.error ?? "Error al guardar", "error"); return; }
       if (!editingSale && data.newStock !== undefined) {
         const product = products.find((p) => p.id === form.productId);
         setSuccessMsg(`Venta registrada. Stock de ${product?.name ?? "producto"}: ${data.newStock} unidades`);
         setTimeout(() => setSuccessMsg(null), 4000);
       }
       setShowModal(false); fetchData();
-    } catch { setError("Error de conexion"); } finally { setSaving(false); }
+      toast(editingSale ? "Venta actualizada" : "Venta registrada", "success");
+    } catch { setError("Error de conexión"); toast("Error de conexión", "error"); } finally { setSaving(false); }
   };
 
   const handleUndo = async () => {
@@ -132,8 +136,11 @@ export default function SalesPage() {
         setSuccessMsg(`Venta revertida. Stock restaurado: ${data.restoredStock} unidades.`);
         setTimeout(() => setSuccessMsg(null), 5000);
         setUndoTarget(null); fetchData();
+        toast("Venta revertida correctamente", "success");
+      } else {
+        toast("No se pudo revertir la venta", "error");
       }
-    } catch {} finally { setUndoing(false); }
+    } catch { toast("Error de conexión", "error"); } finally { setUndoing(false); }
   };
 
   const handleExport = async (format: "csv" | "excel") => {
@@ -249,9 +256,26 @@ export default function SalesPage() {
 
   const totalRevenue = sales.reduce((sum, s) => sum + s.totalAmount, 0);
   const totalUnits = sales.reduce((sum, s) => sum + s.quantity, 0);
-  const filtered = sales.filter(
-    (s) => s.productName.toLowerCase().includes(search.toLowerCase()) || s.productSku.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = sales.filter((s) => {
+    const matchesSearch = s.productName.toLowerCase().includes(search.toLowerCase()) || s.productSku.toLowerCase().includes(search.toLowerCase());
+    const matchesProduct = filterProduct === "all" || s.productId === filterProduct;
+    let matchesPeriod = true;
+    if (filterPeriod !== "all") {
+      const saleDate = new Date(s.saleDate);
+      const now = new Date();
+      if (filterPeriod === "today") {
+        matchesPeriod = saleDate.toDateString() === now.toDateString();
+      } else if (filterPeriod === "week") {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        matchesPeriod = saleDate >= weekAgo;
+      } else if (filterPeriod === "month") {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        matchesPeriod = saleDate >= monthAgo;
+      }
+    }
+    return matchesSearch && matchesProduct && matchesPeriod;
+  });
+  const uniqueProducts = [...new Map(sales.map((s) => [s.productId, s.productName])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginatedSales = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -356,6 +380,48 @@ export default function SalesPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar por producto o SKU..." value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
           </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              {[
+                { value: "all", label: "Período" },
+                { value: "today", label: "Hoy" },
+                { value: "week", label: "7 días" },
+                { value: "month", label: "30 días" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setFilterPeriod(opt.value); setPage(1); }}
+                  className={`px-3 py-1 text-xs font-medium transition ${
+                    filterPeriod === opt.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {uniqueProducts.length > 0 && (
+              <select
+                value={filterProduct}
+                onChange={(e) => { setFilterProduct(e.target.value); setPage(1); }}
+                className="h-8 rounded-lg border border-border bg-card px-2 text-xs font-medium text-foreground outline-none transition hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+              >
+                <option value="all">Todos los productos</option>
+                {uniqueProducts.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            )}
+            {(filterPeriod !== "all" || filterProduct !== "all") && (
+              <button
+                onClick={() => { setFilterPeriod("all"); setFilterProduct("all"); setPage(1); }}
+                className="px-3 py-1 text-xs font-medium text-danger hover:bg-danger/10 rounded-lg transition"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -367,7 +433,7 @@ export default function SalesPage() {
             <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10"><ShoppingCart className="h-8 w-8 text-primary" /></div>
               <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay ventas registradas"}</p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros terminos de busqueda." : "Registra una nueva venta o importa desde un archivo CSV."}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros términos de búsqueda." : "Registra una nueva venta o importa desde un archivo CSV."}</p>
             </div>
           ) : (
             <>
@@ -387,7 +453,7 @@ export default function SalesPage() {
                     {paginatedSales.map((sale) => (
                       <tr key={sale.id}>
                         <td><p className="font-semibold">{sale.productName}</p><p className="text-xs text-muted-foreground font-mono">{sale.productSku}</p></td>
-                        <td><span className="inline-flex h-7 items-center justify-center rounded-md bg-accent-soft px-2.5 text-xs font-bold text-accent-foreground">{sale.quantity} uds</span></td>
+                        <td><span className="inline-flex h-7 items-center justify-center rounded-md bg-accent-light px-2.5 text-xs font-bold text-accent">{sale.quantity} uds</span></td>
                         <td className="text-sm text-muted-foreground">{sale.saleDate}</td>
                         <td className="text-sm">{money.format(sale.unitPrice)}</td>
                         <td className="text-sm font-bold">{money.format(sale.totalAmount)}</td>

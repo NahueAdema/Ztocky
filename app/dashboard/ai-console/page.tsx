@@ -6,12 +6,12 @@ import { Bot, Database, Send, Sparkles, MessageSquare, AlertCircle, Package } fr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const examples = [
-  "Que producto no se vendio en 30 dias?",
+  "¿Qué producto no se vendió en 30 días?",
   "Cuales se agotan antes del viernes?",
-  "Que proveedor conviene si necesito entrega urgente?",
+  "¿Qué proveedor conviene si necesito entrega urgente?",
   "Cual es el producto con mayor margen?",
-  "Qué proveedor me conviene mas hoy?",
-  "Cuantas ordenes de compra tenemos?",
+  "¿Qué proveedor me conviene más hoy?",
+  "¿Cuántas órdenes de compra tenemos?",
 ];
 
 export default function AiConsolePage() {
@@ -38,7 +38,7 @@ export default function AiConsolePage() {
       }
       setResult(data.answer);
     } catch {
-      setError("Error de conexion con el servidor");
+      setError("Error de conexión con el servidor");
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +106,7 @@ export default function AiConsolePage() {
                     handleQuery();
                   }
                 }}
-                placeholder="Ej: que producto me hizo perder mas dinero?"
+                placeholder="Ej: qué producto me hizo perder más dinero?"
                 className="h-11 w-full rounded-xl border border-border bg-background pl-10 pr-4 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>

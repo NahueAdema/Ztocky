@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { Boxes, Download, FileUp, Plus, Search, Trash2, Pencil, Loader2, CheckCircle2, AlertTriangle, FileSpreadsheet, FileText } from "lucide-react";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/toast";
+import { moneyFormatter } from "@/lib/format";
 
 type Product = {
   id: string;
@@ -56,13 +58,8 @@ const emptyForm: ProductForm = {
   catalogMinQty: "1",
 };
 
-const moneyFormatter = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-  maximumFractionDigits: 0,
-});
-
 export default function ProductsPage() {
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [productSuppliers, setProductSuppliers] = useState<Map<string, ProductSupplier[]>>(new Map());
@@ -80,6 +77,9 @@ export default function ProductsPage() {
   const [importProgress, setImportProgress] = useState(0);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterStock, setFilterStock] = useState("all");
+  const [filterMargin, setFilterMargin] = useState("all");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -140,15 +140,26 @@ export default function ProductsPage() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Error al guardar"); return; }
+      if (!res.ok) { setError(data.error ?? "Error al guardar"); toast(data.error ?? "Error al guardar", "error"); return; }
       setShowModal(false); fetchData();
-    } catch { setError("Error de conexion"); }
+      toast(editingProduct ? "Producto actualizado" : "Producto creado", "success");
+    } catch { setError("Error de conexión"); toast("Error de conexión", "error"); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar este producto?")) return;
-    try { const res = await fetch(`/api/dashboard/products/${id}`, { method: "DELETE" }); if (res.ok) fetchData(); } catch {}
+    try {
+      const res = await fetch(`/api/dashboard/products/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchData();
+        toast("Producto eliminado", "success");
+      } else {
+        toast("No se pudo eliminar el producto", "error");
+      }
+    } catch {
+      toast("Error de conexión", "error");
+    }
   };
 
   const handleExport = async (format: "csv" | "excel") => {
@@ -272,12 +283,23 @@ export default function ProductsPage() {
     e.target.value = "";
   };
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase()) ||
-    (p.category ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = products.filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku.toLowerCase().includes(search.toLowerCase()) ||
+      (p.category ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = filterCategory === "all" || (p.category ?? "Sin categoría") === filterCategory;
+    const matchesStock = filterStock === "all" ||
+      (filterStock === "low" && p.currentStock <= p.minStock) ||
+      (filterStock === "ok" && p.currentStock > p.minStock);
+    const margin = p.sellingPrice > 0 ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100) : 0;
+    const matchesMargin = filterMargin === "all" ||
+      (filterMargin === "low" && margin < 25) ||
+      (filterMargin === "medium" && margin >= 25 && margin < 40) ||
+      (filterMargin === "high" && margin >= 40);
+    return matchesSearch && matchesCategory && matchesStock && matchesMargin;
+  });
   const lowStockCount = products.filter((p) => p.currentStock <= p.minStock).length;
+  const categories = [...new Set(products.map((p) => p.category ?? "Sin categoría"))].sort();
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginatedProducts = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -364,10 +386,69 @@ export default function ProductsPage() {
 
       <Card className="card-hover">
         <CardHeader className="pb-4">
-          <CardTitle>Catalogo operativo</CardTitle>
+          <CardTitle>Catálogo operativo</CardTitle>
           <div className="relative max-w-sm mt-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar por nombre, SKU o categoria..." value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
+            <Input placeholder="Buscar por nombre, SKU o categoría..." value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <select
+              value={filterCategory}
+              onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs font-medium text-foreground outline-none transition hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+            >
+              <option value="all">Todas las categorías</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              {[
+                { value: "all", label: "Stock" },
+                { value: "low", label: "Bajo" },
+                { value: "ok", label: "OK" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setFilterStock(opt.value); setPage(1); }}
+                  className={`px-3 py-1 text-xs font-medium transition ${
+                    filterStock === opt.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              {[
+                { value: "all", label: "Margen" },
+                { value: "low", label: "<25%" },
+                { value: "medium", label: "25-40%" },
+                { value: "high", label: ">40%" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setFilterMargin(opt.value); setPage(1); }}
+                  className={`px-3 py-1 text-xs font-medium transition ${
+                    filterMargin === opt.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {(filterCategory !== "all" || filterStock !== "all" || filterMargin !== "all") && (
+              <button
+                onClick={() => { setFilterCategory("all"); setFilterStock("all"); setFilterMargin("all"); setPage(1); }}
+                className="px-3 py-1 text-xs font-medium text-danger hover:bg-danger/10 rounded-lg transition"
+              >
+                Limpiar filtros
+              </button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -380,7 +461,7 @@ export default function ProductsPage() {
             <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10"><Boxes className="h-8 w-8 text-primary" /></div>
               <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay productos"}</p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros terminos de busqueda." : "Crea uno nuevo o importa desde un archivo CSV."}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros términos de búsqueda." : "Crea uno nuevo o importa desde un archivo CSV."}</p>
             </div>
           ) : (
             <>
@@ -408,7 +489,7 @@ export default function ProductsPage() {
                       return (
                         <tr key={product.id}>
                           <td><p className="font-semibold">{product.name}</p><p className="text-xs text-muted-foreground font-mono">{product.sku}</p></td>
-                           <td><span className="inline-flex h-6 items-center justify-center rounded-md bg-accent-light px-2 text-xs font-medium text-accent-foreground">{product.category ?? "-"}</span></td>
+                           <td><span className="inline-flex h-6 items-center justify-center rounded-md bg-accent-light px-2 text-xs font-medium text-accent">{product.category ?? "-"}</span></td>
                           <td><span className={`inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-bold ${isLow ? "bg-danger-light text-danger" : "bg-success-light text-success"}`}>{product.currentStock}</span></td>
                           <td className="text-sm text-muted-foreground">{moneyFormatter.format(product.costPrice)}</td>
                           <td className="text-sm font-medium">{moneyFormatter.format(product.sellingPrice)}</td>
@@ -469,7 +550,7 @@ export default function ProductsPage() {
                       </div>
                       {product.category && (
                         <div className="mt-2 flex items-center justify-between">
-                          <span className="inline-flex h-6 items-center justify-center rounded-md bg-accent-light px-2 text-xs font-medium text-accent-foreground">{product.category}</span>
+                          <span className="inline-flex h-6 items-center justify-center rounded-md bg-accent-light px-2 text-xs font-medium text-accent">{product.category}</span>
                           <Badge tone={isLow ? "danger" : "success"}>{isLow ? "Stock bajo" : "OK"}</Badge>
                         </div>
                       )}

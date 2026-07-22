@@ -89,7 +89,7 @@ export default function SimulatorPage() {
           <div className="flex items-center gap-3 rounded-xl border border-border bg-gradient-to-r from-primary-light to-accent-soft p-4">
             <Zap className="h-5 w-5 shrink-0 text-primary" />
             <p className="text-sm text-muted-foreground">
-              Con {demandIncrease > 0 ? "+" : ""}{demandIncrease}% de ventas, el stock se agota mas rapido y se reducen los dias restantes por producto.
+              Con {demandIncrease > 0 ? "+" : ""}{demandIncrease}% de ventas, el stock se agota más rápido y se reducen los días restantes por producto.
             </p>
           </div>
         </CardContent>
@@ -101,8 +101,8 @@ export default function SimulatorPage() {
             <TrendingDown className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-danger">{collapseCount} producto{collapseCount > 1 ? "s" : ""} colapsarian</p>
-            <p className="text-xs text-danger/80">Con este aumento de demanda, estos productos se agotarian en menos de 7 dias.</p>
+            <p className="text-sm font-semibold text-danger">{collapseCount} producto{collapseCount > 1 ? "s" : ""} colapsarían</p>
+            <p className="text-xs text-danger/80">Con este aumento de demanda, estos productos se agotarían en menos de 7 días.</p>
           </div>
         </div>
       )}
@@ -116,7 +116,7 @@ export default function SimulatorPage() {
             </div>
             <div className="flex gap-2">
               {collapseCount > 0 && <Badge tone="danger">{collapseCount} colapsan</Badge>}
-              {attentionCount > 0 && <Badge tone="warning">{attentionCount} atencion</Badge>}
+              {attentionCount > 0 && <Badge tone="warning">{attentionCount} atención</Badge>}
             </div>
           </div>
         </CardHeader>
@@ -143,8 +143,8 @@ export default function SimulatorPage() {
                     <th className="text-left">Stock</th>
                     <th className="text-left">Burn actual</th>
                     <th className="text-left">Burn proyectado</th>
-                    <th className="text-left">Dias actuales</th>
-                    <th className="text-left">Dias proyectados</th>
+                    <th className="text-left">Días actuales</th>
+                    <th className="text-left">Días proyectados</th>
                     <th className="text-left">Estado</th>
                   </tr>
                 </thead>
@@ -175,7 +175,7 @@ export default function SimulatorPage() {
                             Colapsa
                           </Badge>
                         ) : product.projectedDays <= 14 ? (
-                          <Badge tone="warning">Atencion</Badge>
+                          <Badge tone="warning">Atención</Badge>
                         ) : (
                           <Badge tone="success">
                             <TrendingUp className="mr-1 h-3 w-3" />

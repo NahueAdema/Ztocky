@@ -136,9 +136,9 @@ export default function SearchPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       <div>
-        <h1 className="page-title text-3xl font-bold tracking-tight">Busqueda global</h1>
+        <h1 className="page-title text-3xl font-bold tracking-tight">Búsqueda global</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Buscar en productos, proveedores, ordenes y mas.
+          Buscar en productos, proveedores, órdenes y más.
         </p>
       </div>
 
@@ -166,7 +166,7 @@ export default function SearchPage() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Search className="h-12 w-12 text-muted-foreground/30 mb-3" />
           <p className="text-sm font-semibold">Sin resultados para "{query}"</p>
-          <p className="text-xs text-muted-foreground mt-1">Intenta con otros terminos.</p>
+          <p className="text-xs text-muted-foreground mt-1">Intenta con otros términos.</p>
         </div>
       )}
 
@@ -177,7 +177,7 @@ export default function SearchPage() {
             const labels: Record<string, string> = {
               product: "Productos",
               supplier: "Proveedores",
-              order: "Ordenes",
+              order: "Órdenes",
               sale: "Ventas",
               alert: "Alertas",
             };

@@ -1,27 +1,35 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { User, Shield, Key, Trash2, Save, Mail, CheckCircle2, Clock, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { User, Shield, Key, Trash2, Save, Mail, CheckCircle2, Clock, Send, Building2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MembersPanel } from "@/components/dashboard/members-panel";
+import { useToast } from "@/components/ui/toast";
 
 export default function SettingsPage() {
+  const { toast } = useToast();
   const [user, setUser] = useState<{
     name: string;
     email: string;
     cuitCuil: string | null;
     emailVerified: boolean;
     globalRole: string;
+    workspaceName: string;
+    role: string;
   } | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cuitCuil, setCuitCuil] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const [savingWs, setSavingWs] = useState(false);
+  const [wsMsg, setWsMsg] = useState<string | null>(null);
 
   const [showPwForm, setShowPwForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -30,24 +38,24 @@ export default function SettingsPage() {
   const [changingPw, setChangingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
 
-  const fetchUser = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/me");
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data);
-        setName(data.name);
-        setEmail(data.email);
-        setCuitCuil(data.cuitCuil ?? "");
-      }
-    } catch {
-      // silently fail
-    }
-  }, []);
-
   useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
+    const fetchUserData = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+          setName(data.name);
+          setEmail(data.email);
+          setCuitCuil(data.cuitCuil ?? "");
+          setWorkspaceName(data.workspaceName || "");
+        }
+      } catch {
+        // silently fail
+      }
+    };
+    fetchUserData();
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -61,11 +69,38 @@ export default function SettingsPage() {
       if (res.ok) {
         setMsg("Datos actualizados correctamente");
         setTimeout(() => setMsg(null), 3000);
+        toast("Perfil actualizado", "success");
+      } else {
+        toast("No se pudo guardar el perfil", "error");
       }
     } catch {
-      // silently fail
+      toast("Error de conexión", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveWorkspace = async () => {
+    if (!workspaceName.trim()) return;
+    setSavingWs(true);
+    setWsMsg(null);
+    try {
+      const res = await fetch("/api/dashboard/workspace/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: workspaceName.trim() }),
+      });
+      if (res.ok) {
+        setWsMsg("Nombre del comercio actualizado");
+        setTimeout(() => setWsMsg(null), 3000);
+        toast("Nombre del workspace actualizado", "success");
+      } else {
+        toast("No se pudo guardar el nombre", "error");
+      }
+    } catch {
+      toast("Error de conexión", "error");
+    } finally {
+      setSavingWs(false);
     }
   };
 
@@ -90,7 +125,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       <div>
-        <h1 className="page-title text-3xl font-bold tracking-tight">Configuracion</h1>
+        <h1 className="page-title text-3xl font-bold tracking-tight">Configuración</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Gestioná tu cuenta y preferencias.
         </p>
@@ -110,7 +145,7 @@ export default function SettingsPage() {
             </div>
             Perfil
           </CardTitle>
-          <CardDescription>Informacion personal de tu cuenta.</CardDescription>
+          <CardDescription>Información personal de tu cuenta.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -137,11 +172,11 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft">
-              <Shield className="h-4 w-4 text-accent-foreground" />
+              <Shield className="h-4 w-4 text-accent" />
             </div>
             Cuenta
           </CardTitle>
-          <CardDescription>Informacion de tu cuenta y workspace.</CardDescription>
+          <CardDescription>Información de tu cuenta y workspace.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
@@ -154,11 +189,14 @@ export default function SettingsPage() {
             </Badge>
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Workspace</p>
-              <p className="text-xs text-muted-foreground">Espacio de trabajo actual</p>
+            <div className="flex items-center gap-3">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Comercio</p>
+                <p className="text-xs text-muted-foreground">Tu espacio de trabajo</p>
+              </div>
             </div>
-            <Badge tone="default">Mi comercio</Badge>
+            <Badge tone="default">{user?.role ?? "OWNER"}</Badge>
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div className="flex items-center gap-3">
@@ -198,6 +236,42 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card className="card-hover">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+              <Building2 className="h-4 w-4" />
+            </div>
+            Comercio
+          </CardTitle>
+          <CardDescription>Nombre y configuración de tu espacio de trabajo.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {wsMsg && (
+            <div className="rounded-lg bg-success-light/50 p-3 text-sm text-success">{wsMsg}</div>
+          )}
+          <div>
+            <label className="text-sm font-medium">Nombre del comercio</label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                placeholder="Mi comercio"
+              />
+              <Button onClick={handleSaveWorkspace} disabled={savingWs || !workspaceName.trim()} className="shrink-0">
+                <Save className="h-4 w-4" />
+                {savingWs ? "..." : "Guardar"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Este nombre se muestra en el sidebar y en las invitaciones.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <MembersPanel />
 
       <Card className="card-hover border-danger/20">
         <CardHeader>
