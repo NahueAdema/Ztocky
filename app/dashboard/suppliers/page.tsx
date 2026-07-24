@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { moneyFormatter } from "@/lib/format";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import {
   Download,
   FileUp,
@@ -581,11 +582,8 @@ export default function SuppliersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                Cargando proveedores...
-              </p>
+            <div className="p-6">
+              <TableSkeleton rows={6} cols={4} />
             </div>
           ) : filtered.length === 0 ? (
             <div className="empty-state flex flex-col items-center justify-center py-16 text-center">

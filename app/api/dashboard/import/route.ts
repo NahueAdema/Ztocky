@@ -76,14 +76,32 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const totalAmount = Number(record.quantity) * Number(record.unitPrice);
+        const quantity = Number(record.quantity);
+        const unitPrice = Number(record.unitPrice);
+        const totalAmount = quantity * unitPrice;
+
+        const maxSale = await prisma.sale.findFirst({
+          where: { workspaceId: user.workspaceId },
+          orderBy: { receiptNumber: "desc" },
+        });
+        const receiptNumber = (maxSale?.receiptNumber ?? 0) + 1;
+
         await prisma.sale.create({
           data: {
-            productId: product.id,
-            quantity: Number(record.quantity),
-            saleDate: new Date(record.saleDate),
-            unitPrice: Number(record.unitPrice),
+            workspaceId: user.workspaceId,
+            userId: user.id,
+            receiptNumber,
+            paymentMethod: "CASH",
             totalAmount,
+            saleDate: new Date(record.saleDate),
+            items: {
+              create: {
+                productId: product.id,
+                quantity,
+                unitPrice,
+                totalPrice: totalAmount,
+              },
+            },
           },
         });
         created++;

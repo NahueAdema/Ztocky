@@ -3,8 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon } from "lucide-react";
+import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen } from "lucide-react";
 import { useTheme } from "next-themes";
+
+function getModifierKey() {
+  if (typeof navigator === "undefined") return "Cmd";
+  return navigator.userAgent.includes("Mac") ? "Cmd" : "Ctrl";
+}
 
 import { Sidebar } from "@/components/layout/sidebar";
 
@@ -41,6 +46,7 @@ export function DashboardShell({
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [modifierKey, setModifierKey] = useState("Cmd");
 
   const initials = user.name
     .split(" ")
@@ -48,6 +54,10 @@ export function DashboardShell({
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  useEffect(() => {
+    setModifierKey(getModifierKey());
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -125,7 +135,7 @@ export function DashboardShell({
                   className="h-10 w-full rounded-xl border border-border/60 bg-card/50 pl-10 pr-16 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary/40 focus:bg-card focus:ring-2 focus:ring-primary/10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground pointer-events-none">
-                  <Command className="h-3 w-3" /> K
+                  {modifierKey}+K
                 </span>
               </div>
             </form>
@@ -239,6 +249,10 @@ export function DashboardShell({
                     <Link href="/dashboard/search" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                       <Search className="h-4 w-4 text-muted-foreground" />
                       Búsqueda global
+                    </Link>
+                    <Link href="/dashboard/guide" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      Guía de uso
                     </Link>
                     <button
                       onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); setShowUserMenu(false); }}

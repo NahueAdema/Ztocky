@@ -16,6 +16,7 @@ import {
   ScanLine,
   ShoppingCart,
   Siren,
+  Wallet,
   X,
   Bell,
   Settings,
@@ -25,6 +26,7 @@ import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 
 const navigation = [
   { href: "/dashboard", label: "Resumen", icon: Gauge },
+  { href: "/dashboard/pos", label: "Punto de Venta", icon: Wallet },
   { href: "/dashboard/alerts", label: "Alertas", icon: Siren },
   { href: "/dashboard/products", label: "Productos", icon: Boxes },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },

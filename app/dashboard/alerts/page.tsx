@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CardSkeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, TrendingDown, TrendingUp, Clock, RefreshCw, CheckCircle2, Eye } from "lucide-react";
 
@@ -135,9 +136,10 @@ export default function AlertsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">Cargando alertas...</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
             </div>
           ) : activeAlerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">

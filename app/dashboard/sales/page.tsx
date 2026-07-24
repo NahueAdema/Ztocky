@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import {
   Download,
   FileUp,
@@ -27,6 +29,7 @@ import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 type Sale = {
   id: string;
+  receiptNumber?: number;
   productId: string;
   productName: string;
   productSku: string;
@@ -34,6 +37,9 @@ type Sale = {
   saleDate: string;
   unitPrice: number;
   totalAmount: number;
+  paymentMethod?: string;
+  status?: string;
+  createdAt?: string;
 };
 type ProductOption = { id: string; name: string; sku: string; sellingPrice: number };
 type SaleForm = { productId: string; quantity: string; saleDate: string; unitPrice: string };
@@ -89,7 +95,45 @@ export default function SalesPage() {
         fetch("/api/dashboard/sales"),
         fetch("/api/dashboard/products"),
       ]);
-      if (salesRes.ok) setSales((await salesRes.json()).sales);
+      if (salesRes.ok) {
+        const raw = (await salesRes.json()).sales;
+        const flat: Sale[] = [];
+        for (const s of raw) {
+          for (const item of s.items ?? []) {
+            flat.push({
+              id: s.id,
+              receiptNumber: s.receiptNumber,
+              productId: item.productId,
+              productName: item.productName ?? "—",
+              productSku: item.productSku ?? "—",
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalAmount: item.totalPrice ?? item.unitPrice * item.quantity,
+              saleDate: s.saleDate,
+              paymentMethod: s.paymentMethod,
+              status: s.status,
+              createdAt: s.createdAt,
+            });
+          }
+          if (!s.items || s.items.length === 0) {
+            flat.push({
+              id: s.id,
+              receiptNumber: s.receiptNumber,
+              productId: "",
+              productName: "—",
+              productSku: "—",
+              quantity: 0,
+              unitPrice: 0,
+              totalAmount: Number(s.totalAmount),
+              saleDate: s.saleDate,
+              paymentMethod: s.paymentMethod,
+              status: s.status,
+              createdAt: s.createdAt,
+            });
+          }
+        }
+        setSales(flat);
+      }
       if (productsRes.ok) setProducts((await productsRes.json()).products);
     } catch {
     } finally { setLoading(false); }
@@ -256,6 +300,7 @@ export default function SalesPage() {
 
   const totalRevenue = sales.reduce((sum, s) => sum + s.totalAmount, 0);
   const totalUnits = sales.reduce((sum, s) => sum + s.quantity, 0);
+  const uniqueSaleIds = new Set(sales.map((s) => s.id)).size;
   const filtered = sales.filter((s) => {
     const matchesSearch = s.productName.toLowerCase().includes(search.toLowerCase()) || s.productSku.toLowerCase().includes(search.toLowerCase());
     const matchesProduct = filterProduct === "all" || s.productId === filterProduct;
@@ -357,7 +402,7 @@ export default function SalesPage() {
         {[
           { label: "Total ventas", value: money.format(totalRevenue), icon: DollarSign, color: "from-primary to-primary-dark" },
           { label: "Unidades vendidas", value: totalUnits, icon: Package, color: "from-sky-500 to-blue-600" },
-          { label: "Transacciones", value: sales.length, icon: Hash, color: "from-indigo-500 to-violet-600" },
+          { label: "Transacciones", value: uniqueSaleIds, icon: Hash, color: "from-indigo-500 to-violet-600" },
         ].map((stat) => (
           <Card key={stat.label} className={`card-hover ${stat.label === "Transacciones" ? "col-span-2 sm:col-span-1" : ""}`}>
             <CardContent className="p-4">
@@ -425,9 +470,8 @@ export default function SalesPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">Cargando ventas...</p>
+            <div className="p-6">
+              <TableSkeleton rows={6} cols={5} />
             </div>
           ) : filtered.length === 0 ? (
             <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
@@ -441,22 +485,26 @@ export default function SalesPage() {
                 <table className="table-modern">
                   <thead>
                     <tr>
+                      <th className="text-left">Ticket</th>
                       <th className="text-left">Producto</th>
                       <th className="text-left">Cantidad</th>
                       <th className="text-left">Fecha</th>
                       <th className="text-left">Precio unit.</th>
                       <th className="text-left">Total</th>
+                      <th className="text-left">Pago</th>
                       <th className="text-left">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedSales.map((sale) => (
-                      <tr key={sale.id}>
+                      <tr key={`${sale.id}-${sale.productId}`}>
+                        <td className="text-sm font-mono text-muted-foreground">#{sale.receiptNumber ?? "—"}</td>
                         <td><p className="font-semibold">{sale.productName}</p><p className="text-xs text-muted-foreground font-mono">{sale.productSku}</p></td>
                         <td><span className="inline-flex h-7 items-center justify-center rounded-md bg-accent-light px-2.5 text-xs font-bold text-accent">{sale.quantity} uds</span></td>
                         <td className="text-sm text-muted-foreground">{sale.saleDate}</td>
                         <td className="text-sm">{money.format(sale.unitPrice)}</td>
                         <td className="text-sm font-bold">{money.format(sale.totalAmount)}</td>
+                        <td><Badge tone={sale.paymentMethod === "EFECTIVO" ? "success" : sale.paymentMethod === "CTA_CTE" ? "warning" : "default"}>{sale.paymentMethod ?? "—"}</Badge></td>
                         <td>
                           <div className="flex items-center gap-1.5">
                             <button onClick={() => openEdit(sale)} title="Editar venta" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>
@@ -471,10 +519,13 @@ export default function SalesPage() {
 
               <div className="flex flex-col gap-3 sm:hidden">
                 {paginatedSales.map((sale) => (
-                  <div key={sale.id} className="rounded-xl border border-border bg-card p-4">
+                  <div key={`${sale.id}-${sale.productId}`} className="rounded-xl border border-border bg-card p-4">
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div>
-                        <p className="font-semibold text-sm">{sale.productName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm">{sale.productName}</p>
+                          {sale.receiptNumber && <Badge tone="muted">#{sale.receiptNumber}</Badge>}
+                        </div>
                         <p className="text-xs text-muted-foreground font-mono">{sale.productSku} · {sale.saleDate}</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">

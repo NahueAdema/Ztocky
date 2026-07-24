@@ -19,8 +19,10 @@ export async function POST(request: NextRequest) {
     prisma.product.findMany({
       where,
       include: {
-        sales: {
-          where: { saleDate: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
+        saleItems: {
+          where: {
+            sale: { saleDate: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
+          },
         },
         catalogItems: { include: { supplier: true } },
       },
@@ -36,7 +38,7 @@ export async function POST(request: NextRequest) {
   ]);
 
   const productSummary = products.map((p) => {
-    const sold = p.sales.reduce((s, sale) => s + sale.quantity, 0);
+    const sold = p.saleItems.reduce((s, item) => s + item.quantity, 0);
     const burnRate = sold / 30;
     const cheapest = p.catalogItems.length > 0
       ? Math.min(...p.catalogItems.map((c) => Number(c.unitPrice)))

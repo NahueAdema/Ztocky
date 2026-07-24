@@ -33,7 +33,7 @@ export async function GET() {
   });
 }
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
@@ -50,8 +50,10 @@ export async function POST(request: NextRequest) {
         orderBy: { unitPrice: "asc" },
         take: 1,
       },
-      sales: {
-        where: { saleDate: { gte: since } },
+      saleItems: {
+        where: {
+          sale: { saleDate: { gte: since } },
+        },
       },
     },
     orderBy: { currentStock: "asc" },
@@ -62,8 +64,34 @@ export async function POST(request: NextRequest) {
   const newAlerts: string[] = [];
   const newOrders: string[] = [];
 
+  const productIds = products.map((p) => p.id);
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const [existingAlerts, pendingPOs] = await Promise.all([
+    prisma.alert.findMany({
+      where: {
+        productId: { in: productIds },
+        workspaceId: user.workspaceId,
+        isResolved: false,
+        createdAt: { gte: since24h },
+      },
+      select: { productId: true, type: true },
+    }),
+    prisma.purchaseOrder.findMany({
+      where: {
+        workspaceId: user.workspaceId,
+        status: { in: ["DRAFT", "SENT", "CONFIRMED", "SHIPPED"] },
+        items: { some: { productId: { in: productIds } } },
+      },
+      select: { items: { select: { productId: true } } },
+    }),
+  ]);
+
+  const alertSet = new Set(existingAlerts.map((a) => `${a.productId}:${a.type}`));
+  const poProductIds = new Set(pendingPOs.flatMap((po) => po.items.map((i) => i.productId)));
+
   for (const product of products) {
-    const sold = product.sales.reduce((sum, sale) => sum + sale.quantity, 0);
+    const sold = product.saleItems.reduce((sum, item) => sum + item.quantity, 0);
     const burnRate = sold / 30;
     const daysRemaining = burnRate > 0 ? Math.floor(product.currentStock / burnRate) : 999;
     const catalogItem = product.catalogItems[0];
@@ -84,16 +112,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (alertType) {
-      const existing = await prisma.alert.findFirst({
-        where: {
-          productId: product.id,
-          type: alertType as "LOW_STOCK" | "CRITICAL_STOCK" | "STAGNANT_STOCK",
-          isResolved: false,
-          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        },
-      });
-
-      if (!existing) {
+      const key = `${product.id}:${alertType}`;
+      if (!alertSet.has(key)) {
         await prisma.alert.create({
           data: {
             workspaceId: user.workspaceId,
@@ -110,72 +130,63 @@ export async function POST(request: NextRequest) {
             },
           },
         });
+        alertSet.add(key);
         created++;
         newAlerts.push(product.name);
 
-        if (alertType === "CRITICAL_STOCK" && product.catalogItems.length > 0) {
-          const pendingPO = await prisma.purchaseOrder.findFirst({
-            where: {
+        if (alertType === "CRITICAL_STOCK" && product.catalogItems.length > 0 && !poProductIds.has(product.id)) {
+          const bestCatalog = product.catalogItems[0];
+          const suggestedQty = Math.max(
+            product.minStock * 2,
+            Math.ceil(burnRate * leadTime * 1.5),
+          );
+          const totalPrice = suggestedQty * Number(bestCatalog.unitPrice);
+
+          await prisma.purchaseOrder.create({
+            data: {
               workspaceId: user.workspaceId,
-              status: { in: ["DRAFT", "SENT", "CONFIRMED", "SHIPPED"] },
-              items: { some: { productId: product.id } },
-            },
-          });
-
-          if (!pendingPO) {
-            const bestCatalog = product.catalogItems[0];
-            const suggestedQty = Math.max(
-              product.minStock * 2,
-              Math.ceil(burnRate * leadTime * 1.5),
-            );
-            const totalPrice = suggestedQty * Number(bestCatalog.unitPrice);
-
-            await prisma.purchaseOrder.create({
-              data: {
-                workspaceId: user.workspaceId,
-                supplierId: bestCatalog.supplierId,
-                status: "DRAFT",
-                totalAmount: totalPrice,
-                notes: `Generada automáticamente por alerta crítica de ${product.name}. Stock actual: ${product.currentStock}, burn rate: ${burnRate.toFixed(1)}/dia`,
-                generatedByAI: true,
-                items: {
-                  create: {
-                    productId: product.id,
-                    quantity: suggestedQty,
-                    unitPrice: bestCatalog.unitPrice,
-                    totalPrice,
-                  },
+              supplierId: bestCatalog.supplierId,
+              status: "DRAFT",
+              totalAmount: totalPrice,
+              notes: `Generada automáticamente por alerta crítica de ${product.name}. Stock actual: ${product.currentStock}, burn rate: ${burnRate.toFixed(1)}/dia`,
+              generatedByAI: true,
+              items: {
+                create: {
+                  productId: product.id,
+                  quantity: suggestedQty,
+                  unitPrice: bestCatalog.unitPrice,
+                  totalPrice,
                 },
               },
-            });
-            generatedOrders++;
-            newOrders.push(product.name);
-          }
+            },
+          });
+          generatedOrders++;
+          newOrders.push(product.name);
         }
       }
     }
   }
 
   for (const product of products) {
-    const lastSale = product.sales.length > 0
-      ? product.sales.sort((a, b) => b.saleDate.getTime() - a.saleDate.getTime())[0].saleDate
+    const lastSaleItem = product.saleItems.length > 0
+      ? product.saleItems.sort((a, b) => {
+          const saleA = (a as unknown as { sale?: { saleDate?: Date } }).sale;
+          const saleB = (b as unknown as { sale?: { saleDate?: Date } }).sale;
+          return (saleB?.saleDate?.getTime() ?? 0) - (saleA?.saleDate?.getTime() ?? 0);
+        })[0]
       : null;
 
-    const daysSinceLastSale = lastSale
-      ? Math.floor((Date.now() - lastSale.getTime()) / (24 * 60 * 60 * 1000))
+    const lastSaleDate = lastSaleItem
+      ? (lastSaleItem as unknown as { sale?: { saleDate?: Date } }).sale?.saleDate ?? null
+      : null;
+
+    const daysSinceLastSale = lastSaleDate
+      ? Math.floor((Date.now() - lastSaleDate.getTime()) / (24 * 60 * 60 * 1000))
       : 999;
 
     if (daysSinceLastSale > 30 && product.currentStock > 0) {
-      const existing = await prisma.alert.findFirst({
-        where: {
-          productId: product.id,
-          type: "STAGNANT_STOCK",
-          isResolved: false,
-          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        },
-      });
-
-      if (!existing) {
+      const key = `${product.id}:STAGNANT_STOCK`;
+      if (!alertSet.has(key)) {
         await prisma.alert.create({
           data: {
             workspaceId: user.workspaceId,
@@ -185,10 +196,11 @@ export async function POST(request: NextRequest) {
             metadata: {
               daysSinceLastSale,
               currentStock: product.currentStock,
-              lastSaleDate: lastSale?.toISOString() ?? null,
+              lastSaleDate: lastSaleDate?.toISOString() ?? null,
             },
           },
         });
+        alertSet.add(key);
         created++;
         newAlerts.push(product.name);
       }
@@ -200,7 +212,6 @@ export async function POST(request: NextRequest) {
     message += ` y ${generatedOrders} orden${generatedOrders > 1 ? "es" : ""} de compra generada${generatedOrders > 1 ? "s" : ""} automáticamente`;
   }
 
-  // Enviar notificaciones email a usuarios verificados del workspace
   if (created > 0 && user.workspaceId) {
     try {
       const members = await prisma.workspaceMember.findMany({

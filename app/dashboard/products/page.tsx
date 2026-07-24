@@ -9,6 +9,7 @@ import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { Boxes, Download, FileUp, Plus, Search, Trash2, Pencil, Loader2, CheckCircle2, AlertTriangle, FileSpreadsheet, FileText } from "lucide-react";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/toast";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { moneyFormatter } from "@/lib/format";
 
 type Product = {
@@ -453,9 +454,8 @@ export default function ProductsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">Cargando productos...</p>
+            <div className="p-6">
+              <TableSkeleton rows={6} cols={5} />
             </div>
           ) : filtered.length === 0 ? (
             <div className="empty-state flex flex-col items-center justify-center py-16 text-center">

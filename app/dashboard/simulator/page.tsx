@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Gauge, TrendingDown, TrendingUp, Zap } from "lucide-react";
+import { CardSkeleton } from "@/components/ui/skeleton";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,9 +123,10 @@ export default function SimulatorPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">Cargando productos...</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
             </div>
           ) : simulatedProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
