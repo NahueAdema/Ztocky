@@ -90,7 +90,7 @@ export const reorderRisks = [
     supplier: "Norte Distribuciones",
     leadTime: 3,
     suggestedQty: 180,
-    urgency: "Critica",
+    urgency: "Crítica",
   },
   {
     product: "Aceite oliva extra virgen",

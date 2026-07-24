@@ -2,14 +2,15 @@ import type { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
 
-type BadgeTone = "default" | "danger" | "warning" | "success" | "muted";
+type BadgeTone = "default" | "danger" | "warning" | "success" | "muted" | "accent";
 
 const toneClasses: Record<BadgeTone, string> = {
-  default: "bg-primary/10 text-primary border border-primary/15",
-  danger: "bg-danger/10 text-danger border border-danger/15",
-  warning: "bg-warning/10 text-warning border border-warning/15",
-  success: "bg-success/10 text-success border border-success/15",
+  default: "bg-primary/10 text-primary border border-primary/20",
+  danger: "bg-danger/10 text-danger border border-danger/20",
+  warning: "bg-warning/15 text-warning border border-warning/25",
+  success: "bg-success/10 text-success border border-success/20",
   muted: "bg-muted text-muted-foreground border border-border/50",
+  accent: "bg-accent-light text-accent border border-accent/20",
 };
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {

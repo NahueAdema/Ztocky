@@ -12,6 +12,10 @@ import {
   Store,
   TrendingDown,
   ShoppingCart,
+  Wallet,
+  Camera,
+  CreditCard,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -59,9 +63,15 @@ const BENEFITS = [
 ];
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  if (href.startsWith("#")) {
+    return (
+      <a href={href} className="text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-primary">
+        {children}
+      </a>
+    );
+  }
   return (
-    <Link href={href} className="text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-primary"
-      {...(href.startsWith("#") ? { scroll: false } : {})}>
+    <Link href={href} className="text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-primary">
       {children}
     </Link>
   );
@@ -160,7 +170,8 @@ export default async function Home() {
           <nav aria-label="Navegación principal" className="hidden items-center gap-8 md:flex">
             <NavLink href="#inicio">Inicio</NavLink>
             <NavLink href="#funcionalidades">Funcionalidades</NavLink>
-            <NavLink href="/#nosotros">Nosotros</NavLink>
+            <NavLink href="#punto-de-venta">Punto de Venta</NavLink>
+            <NavLink href="#nosotros">Nosotros</NavLink>
             <NavLink href="#contacto">Contacto</NavLink>
           </nav>
           <div className="flex items-center gap-3">
@@ -240,6 +251,87 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* ── PUNTO DE VENTA ─────────────────────────────────────────────────── */}
+      <section id="punto-de-venta" className="border-y border-border bg-gradient-to-br from-primary/5 via-background to-primary/10">
+        <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-widest text-primary">Punto de venta</p>
+              <h2 className="mt-3 text-3xl font-bold text-foreground sm:text-4xl">
+                Vendé rápido, cobrá fácil, controlá todo.
+              </h2>
+              <p className="mt-4 text-base leading-7 text-muted-foreground">
+                Una caja moderna pensada para comercios. Escaneá productos con la cámara o un lector USB, elegí el método de pago y generá el ticket al instante. Sin complicaciones.
+              </p>
+              <ul className="mt-6 space-y-3">
+                {[
+                  { icon: Camera, text: "Escaneo con cámara o lector de código de barras" },
+                  { icon: CreditCard, text: "4 métodos de pago: efectivo, tarjeta, transferencia y cuenta corriente" },
+                  { icon: Receipt, text: "Tickets en PDF listos para imprimir o descargar" },
+                  { icon: Wallet, text: "Control de caja con apertura, cierre y diferencia de efectivo" },
+                ].map((item) => (
+                  <li key={item.text} className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <item.icon className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  href="/register"
+                  className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:bg-primary/90 active:scale-[0.97]"
+                >
+                  Probá la caja gratis
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+            <div className="relative hidden lg:block">
+              <div className="rounded-2xl border border-border bg-card-white p-6 shadow-xl">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Caja principal</p>
+                    <p className="text-xs text-muted-foreground">Ticket #0042 · 24/07/2026 14:32</p>
+                  </div>
+                  <span className="ml-auto rounded-full bg-success-light px-2.5 py-0.5 text-[10px] font-bold text-success">COBRADO</span>
+                </div>
+                <div className="space-y-2 mb-4">
+                  {[
+                    { name: "Coca-Cola 500ml", qty: 2, price: 1500 },
+                    { name: "Papel higiénico x4", qty: 1, price: 2800 },
+                    { name: "Galletitas Chocolate", qty: 3, price: 900 },
+                  ].map((item) => (
+                    <div key={item.name} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">{item.qty}x</span>
+                        <span className="text-sm text-foreground">{item.name}</span>
+                      </div>
+                      <span className="text-sm font-medium text-muted-foreground">${(item.price * item.qty).toLocaleString("es-AR")}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-border pt-3 space-y-1">
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-medium">$10.100</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Descuento</span><span className="font-medium text-success">-$500</span></div>
+                  <div className="flex justify-between text-base font-bold pt-1"><span>Total</span><span className="text-primary">$9.600</span></div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <span className="flex-1 rounded-lg bg-success-light py-2 text-center text-xs font-bold text-success">Efectivo</span>
+                  <span className="flex-1 rounded-lg bg-muted py-2 text-center text-xs font-medium text-muted-foreground">Tarjeta</span>
+                  <span className="flex-1 rounded-lg bg-muted py-2 text-center text-xs font-medium text-muted-foreground">Transfer.</span>
+                  <span className="flex-1 rounded-lg bg-muted py-2 text-center text-xs font-medium text-muted-foreground">Cta Cte</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── ABOUT ─────────────────────────────────────────────────────────── */}
       <section id="nosotros" className="border-y border-border bg-card-white">
         <div className="mx-auto grid max-w-7xl gap-14 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:items-center">
@@ -305,6 +397,7 @@ export default async function Home() {
           <nav aria-label="Pie de página" className="flex items-center gap-6 text-xs">
             <a href="#inicio" className="transition-colors hover:text-primary">Inicio</a>
             <a href="#funcionalidades" className="transition-colors hover:text-primary">Funcionalidades</a>
+            <a href="#punto-de-venta" className="transition-colors hover:text-primary">Punto de Venta</a>
             <Link href="/nosotros" className="transition-colors hover:text-primary">Nosotros</Link>
           </nav>
         </div>

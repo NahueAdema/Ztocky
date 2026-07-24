@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const cuitCuil = String(body.cuitCuil ?? "").trim();
     const password = String(body.password ?? "");
     const confirmPassword = String(body.confirmPassword ?? "");
+    const invitationToken = String(body.invitationToken ?? "").trim() || null;
 
     if (!name || !email || !password || !confirmPassword) {
       return NextResponse.json(
@@ -47,8 +48,28 @@ export async function POST(request: Request) {
 
     const user = await registerUser({ name, email, cuitCuil, password });
 
-    // Generar token de verificación
     const prisma = getPrisma();
+
+    if (invitationToken) {
+      const invitation = await prisma.workspaceInvitation.findUnique({
+        where: { token: invitationToken },
+      });
+
+      if (invitation && invitation.status === "PENDING" && new Date() <= invitation.expiresAt) {
+        await prisma.workspaceMember.create({
+          data: {
+            userId: user.id,
+            workspaceId: invitation.workspaceId,
+            role: invitation.role as "ADMIN" | "MEMBER",
+          },
+        });
+        await prisma.workspaceInvitation.update({
+          where: { id: invitation.id },
+          data: { status: "ACCEPTED" },
+        });
+      }
+    }
+
     const token = randomBytes(32).toString("hex");
     await prisma.verificationToken.create({
       data: {
@@ -63,7 +84,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      redirectTo: "/check-email",
+      redirectTo: invitationToken ? "/dashboard" : "/check-email",
+      invitationAccepted: !!invitationToken,
     });
   } catch (error) {
     const message =

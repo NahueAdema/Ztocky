@@ -120,7 +120,7 @@ function AdminSidebarContent({
             className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-danger-light hover:text-danger"
           >
             <LogOut className="h-4 w-4 shrink-0" />
-            Cerrar sesion
+            Cerrar sesión
           </button>
         </form>
       </div>

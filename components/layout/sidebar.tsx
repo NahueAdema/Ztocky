@@ -16,20 +16,24 @@ import {
   ScanLine,
   ShoppingCart,
   Siren,
+  Wallet,
   X,
   Bell,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 
 const navigation = [
   { href: "/dashboard", label: "Resumen", icon: Gauge },
+  { href: "/dashboard/pos", label: "Punto de Venta", icon: Wallet },
   { href: "/dashboard/alerts", label: "Alertas", icon: Siren },
   { href: "/dashboard/products", label: "Productos", icon: Boxes },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
   { href: "/dashboard/scan", label: "Escanear", icon: ScanLine },
   { href: "/dashboard/suppliers", label: "Proveedores", icon: Factory },
   { href: "/dashboard/supplier-notifications", label: "Notif. Proveedores", icon: Bell },
-  { href: "/dashboard/purchase-orders", label: "Ordenes", icon: ClipboardList },
+  { href: "/dashboard/purchase-orders", label: "Órdenes", icon: ClipboardList },
   {
     href: "/dashboard/simulator",
     label: "Simulador",
@@ -39,10 +43,8 @@ const navigation = [
 ];
 
 function SidebarContent({
-  workspaceName,
   onNavigate,
 }: {
-  workspaceName: string;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -64,6 +66,11 @@ function SidebarContent({
           priority
         />
       </Link>
+
+      {/* Workspace Switcher */}
+      <div className="px-2 pt-3 pb-1">
+        <WorkspaceSwitcher />
+      </div>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-2 mt-1">
@@ -107,19 +114,26 @@ function SidebarContent({
 
       {/* Footer */}
       <div className="border-t border-border/30 p-2 space-y-1">
-        <div className="rounded-lg bg-muted/50 px-3 py-2">
-          <p className="text-[10px] text-muted-foreground/50">Workspace</p>
-          <p className="truncate text-[12px] font-medium text-foreground">
-            {workspaceName}
-          </p>
-        </div>
+        <Link
+          href="/dashboard/settings"
+          onClick={onNavigate}
+          className={cn(
+            "flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-colors",
+            pathname === "/dashboard/settings"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+          )}
+        >
+          <Settings className="h-4 w-4 shrink-0" />
+          Configuración
+        </Link>
         <form action="/api/auth/logout" method="post">
           <button
             type="submit"
             className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
           >
             <LogOut className="h-4 w-4 shrink-0" />
-            Cerrar sesion
+            Cerrar sesión
           </button>
         </form>
       </div>
@@ -127,7 +141,7 @@ function SidebarContent({
   );
 }
 
-export function Sidebar({ workspaceName }: { workspaceName: string }) {
+export function Sidebar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -149,7 +163,7 @@ export function Sidebar({ workspaceName }: { workspaceName: string }) {
       {/* ── Desktop sidebar ── */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-[230px] flex-col border-r border-border/40 bg-gradient-to-b from-background via-background to-primary/[0.03]">
         <div className="absolute inset-y-0 left-0 w-[2px] bg-gradient-to-b from-primary/60 via-primary to-primary/60" />
-        <SidebarContent workspaceName={workspaceName} />
+        <SidebarContent />
       </aside>
 
       {/* ── Mobile: top bar con hamburguesa ── */}
@@ -198,7 +212,6 @@ export function Sidebar({ workspaceName }: { workspaceName: string }) {
         </button>
 
         <SidebarContent
-          workspaceName={workspaceName}
           onNavigate={() => setOpen(false)}
         />
       </aside>

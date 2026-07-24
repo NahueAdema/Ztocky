@@ -1,18 +1,22 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Command, LogOut, Search, Settings, User, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon } from "lucide-react";
+import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen } from "lucide-react";
 import { useTheme } from "next-themes";
+
+function getModifierKey() {
+  if (typeof navigator === "undefined") return "Cmd";
+  return navigator.userAgent.includes("Mac") ? "Cmd" : "Ctrl";
+}
 
 import { Sidebar } from "@/components/layout/sidebar";
 
 type DashboardUser = {
   name: string;
   email: string;
-  workspaceName: string;
+  workspaceName?: string;
 };
 
 type AlertItem = {
@@ -41,6 +45,8 @@ export function DashboardShell({
   const [loadingAlerts, setLoadingAlerts] = useState(true);
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [modifierKey, setModifierKey] = useState("Cmd");
 
   const initials = user.name
     .split(" ")
@@ -48,6 +54,21 @@ export function DashboardShell({
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  useEffect(() => {
+    setModifierKey(getModifierKey());
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -83,7 +104,7 @@ export function DashboardShell({
     switch (type) {
       case "CRITICAL_STOCK": return { icon: AlertTriangle, color: "bg-danger-light text-danger" };
       case "LOW_STOCK": return { icon: Clock, color: "bg-warning-light text-warning" };
-      case "STAGNANT_STOCK": return { icon: Package, color: "bg-accent-soft text-accent-foreground" };
+      case "STAGNANT_STOCK": return { icon: Package, color: "bg-accent-soft text-accent" };
       default: return { icon: Bell, color: "bg-muted text-muted-foreground" };
     }
   };
@@ -98,7 +119,7 @@ export function DashboardShell({
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar workspaceName={user.workspaceName} />
+      <Sidebar />
       <div className="min-h-screen lg:pl-[230px]">
         <header className="hidden lg:flex sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-xl">
           <div className="flex h-16 items-center gap-3 px-6 flex-1">
@@ -106,17 +127,28 @@ export function DashboardShell({
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
                 <input
+                  ref={searchRef}
                   type="text"
-                  placeholder="Buscar productos, proveedores, ordenes..."
+                  placeholder="Buscar productos, proveedores, órdenes..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="h-10 w-full rounded-xl border border-border/60 bg-card/50 pl-10 pr-16 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary/40 focus:bg-card focus:ring-2 focus:ring-primary/10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground pointer-events-none">
-                  <Command className="h-3 w-3" /> K
+                  {modifierKey}+K
                 </span>
               </div>
             </form>
+
+            {/* Theme toggle */}
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-card/50 text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
+              aria-label="Cambiar tema"
+            >
+              <Sun className="h-4 w-4 hidden dark:block" />
+              <Moon className="h-4 w-4 block dark:hidden" />
+            </button>
 
             {/* Notifications */}
             <div className="relative" ref={notifRef}>
@@ -212,11 +244,15 @@ export function DashboardShell({
                   <div className="p-2 space-y-0.5">
                     <Link href="/dashboard/settings" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                       <Settings className="h-4 w-4 text-muted-foreground" />
-                      Configuracion
+                      Configuración
                     </Link>
                     <Link href="/dashboard/search" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                       <Search className="h-4 w-4 text-muted-foreground" />
-                      Busqueda global
+                      Búsqueda global
+                    </Link>
+                    <Link href="/dashboard/guide" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      Guía de uso
                     </Link>
                     <button
                       onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); setShowUserMenu(false); }}
@@ -231,7 +267,7 @@ export function DashboardShell({
                     <form action="/api/auth/logout" method="post">
                       <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger transition hover:bg-danger-light" type="submit">
                         <LogOut className="h-4 w-4" />
-                        Cerrar sesion
+                        Cerrar sesión
                       </button>
                     </form>
                   </div>

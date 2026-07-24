@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { Bell, Mail, MailCheck, MailX, Factory } from "lucide-react";
+import { moneyFormatter } from "@/lib/format";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 type Notification = {
   id: string;
@@ -25,11 +27,6 @@ type Notification = {
   createdAt: string;
 };
 
-const moneyFormatter = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-  maximumFractionDigits: 0,
-});
 
 export default function SupplierNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -80,9 +77,8 @@ export default function SupplierNotificationsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">Cargando notificaciones...</p>
+            <div className="p-6">
+              <TableSkeleton rows={4} cols={4} />
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">

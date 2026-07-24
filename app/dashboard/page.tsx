@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight, ArrowDownRight, Boxes, ClipboardList, Siren, TrendingUp, ShoppingCart, Clock, Package, Zap, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
   getWeeklySales,
 } from "@/lib/data/inventory";
 import { getCurrentUser } from "@/lib/auth";
-import { moneyFormatter } from "@/lib/mock-data";
+import { moneyFormatter } from "@/lib/format";
 
 function TrendBadge({ value }: { value: number }) {
   if (value === 0) return null;
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   const workspaceId = user?.workspaceId ?? null;
 
-  const [products, purchaseOrders, reorderRisks, potentialSavings, todayStats, topProducts, weeklySales] = await Promise.all([
+  const [, purchaseOrders, reorderRisks, , todayStats, topProducts, weeklySales] = await Promise.all([
     getProductsForDashboard(workspaceId),
     getPurchaseOrdersForDashboard(workspaceId),
     getReorderRisksForDashboard(workspaceId),
@@ -51,11 +52,9 @@ export default async function DashboardPage() {
     getWeeklySales(workspaceId),
   ]);
 
-  const stagnantSince = new Date("2026-04-20");
-  const stagnantProducts = products.filter(
-    (product) => product.lastSale !== "-" && new Date(product.lastSale) < stagnantSince,
-  );
-  const criticalProducts = reorderRisks.filter((item) => item.urgency === "Critica");
+  const stagnantSince = new Date();
+  stagnantSince.setDate(stagnantSince.getDate() - 30);
+  const criticalProducts = reorderRisks.filter((item) => item.urgency === "Crítica");
   const criticalCount = criticalProducts.length;
   const pendingOrders = purchaseOrders.filter((order) => !["Recibida", "RECEIVED"].includes(order.status)).length;
 
@@ -63,7 +62,7 @@ export default async function DashboardPage() {
 
   const kpis = [
     {
-      title: "Riesgo critico",
+      title: "Riesgo crítico",
       value: String(criticalCount),
       subtitle: criticalCount > 0 ? `${criticalCount} producto${criticalCount > 1 ? "s" : ""} necesita compra urgente` : "Todo abastecido",
       icon: Siren,
@@ -73,9 +72,9 @@ export default async function DashboardPage() {
       urgent: criticalCount > 0,
     },
     {
-      title: "Ordenes pendientes",
+      title: "Órdenes pendientes",
       value: String(pendingOrders),
-      subtitle: pendingOrders > 0 ? `${pendingOrders} orden${pendingOrders > 1 ? "es" : ""} sin recibir` : "Todo al dia",
+      subtitle: pendingOrders > 0 ? `${pendingOrders} orden${pendingOrders > 1 ? "es" : ""} sin recibir` : "Todo al día",
       icon: ClipboardList,
       trend: 0,
       iconBg: "from-amber-500 to-orange-600",
@@ -106,7 +105,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
@@ -118,7 +116,6 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
@@ -147,9 +144,7 @@ export default async function DashboardPage() {
         })}
       </div>
 
-      {/* Gráfico de ventas + Top productos */}
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
-        {/* Gráfico semanal */}
         <Card className="card-hover">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -164,13 +159,13 @@ export default async function DashboardPage() {
                   <TrendingUp className="h-7 w-7 text-muted-foreground" />
                 </div>
                 <p className="text-sm font-medium">Sin datos de ventas</p>
-                <p className="text-xs text-muted-foreground mt-1">Registra ventas para ver el grafico.</p>
+                <p className="text-xs text-muted-foreground mt-1">Registrar ventas para ver el gráfico.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-end gap-2 h-32">
                   {weeklySales.map((day, i) => {
-                    const dayNames = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+                    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
                     const d = new Date(day.date);
                     const dayName = dayNames[d.getDay()];
                     const isToday = i === weeklySales.length - 1;
@@ -193,19 +188,18 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
                   <span>Total: <strong className="text-foreground">{moneyFormatter.format(weeklySales.reduce((s, d) => s + d.revenue, 0))}</strong></span>
-                  <span>Promedio/dia: <strong className="text-foreground">{moneyFormatter.format(weeklySales.reduce((s, d) => s + d.revenue, 0) / 7)}</strong></span>
+                  <span>Promedio/día: <strong className="text-foreground">{moneyFormatter.format(weeklySales.reduce((s, d) => s + d.revenue, 0) / 7)}</strong></span>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Top productos */}
         <Card className="card-hover">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-4 w-4 text-primary" />
-              Top productos (30 dias)
+              Top productos (30 días)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -215,7 +209,7 @@ export default async function DashboardPage() {
                   <Package className="h-7 w-7 text-muted-foreground" />
                 </div>
                 <p className="text-sm font-medium">Sin datos de ventas</p>
-                <p className="text-xs text-muted-foreground mt-1">Los productos mas vendidos apareceran aqui.</p>
+                <p className="text-xs text-muted-foreground mt-1">Los productos más vendidos aparecerán aquí.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -240,9 +234,9 @@ export default async function DashboardPage() {
                   </div>
                 ))}
                 {topProducts.length > 5 && (
-                  <a href="/dashboard/products" className="flex items-center gap-1 text-xs text-primary hover:underline pt-1">
+                  <Link href="/dashboard/products" className="flex items-center gap-1 text-xs text-primary hover:underline pt-1">
                     Ver todos los productos <ChevronRight className="h-3 w-3" />
-                  </a>
+                  </Link>
                 )}
               </div>
             )}
@@ -250,16 +244,14 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Agotamientos + Últimas ventas */}
       <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-        {/* Agotamientos */}
         <Card className="card-hover">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Siren className="h-4 w-4 text-danger" />
-                  Proximos agotamientos
+                  Próximos agotamientos
                 </CardTitle>
               </div>
               {reorderRisks.length > 0 && (
@@ -282,14 +274,14 @@ export default async function DashboardPage() {
                   <div key={item.sku} className="flex items-center justify-between rounded-lg border border-border p-3 transition hover:bg-muted/30">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                        item.urgency === "Critica" ? "bg-danger-light" : "bg-warning-light"
+                        item.urgency === "Crítica" ? "bg-danger-light" : "bg-warning-light"
                       }`}>
-                        <Zap className={`h-5 w-5 ${item.urgency === "Critica" ? "text-danger" : "text-warning"}`} />
+                        <Zap className={`h-5 w-5 ${item.urgency === "Crítica" ? "text-danger" : "text-warning"}`} />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold truncate">{item.product}</p>
                         <p className="text-xs text-muted-foreground">
-                          Stock: <strong className={item.stock <= 10 ? "text-danger" : "text-foreground"}>{item.stock}</strong> · {item.burnRate}/dia · {item.supplier}
+                          Stock: <strong className={item.stock <= 10 ? "text-danger" : "text-foreground"}>{item.stock}</strong> · {item.burnRate}/día · {item.supplier}
                         </p>
                       </div>
                     </div>
@@ -297,31 +289,30 @@ export default async function DashboardPage() {
                       <Badge tone={item.daysRemaining <= 7 ? "danger" : "warning"}>
                         {item.daysRemaining}d
                       </Badge>
-                      <a
-                        href={`/dashboard/purchase-orders`}
+                      <Link
+                        href="/dashboard/purchase-orders"
                         className="inline-flex h-8 items-center gap-1 rounded-lg bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary/90"
                       >
                         Comprar
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 ))}
                 {reorderRisks.length > 5 && (
-                  <a href="/dashboard/purchase-orders" className="flex items-center gap-1 text-xs text-primary hover:underline pt-1">
+                  <Link href="/dashboard/purchase-orders" className="flex items-center gap-1 text-xs text-primary hover:underline pt-1">
                     Ver todas las alertas <ChevronRight className="h-3 w-3" />
-                  </a>
+                  </Link>
                 )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Últimas ventas */}
         <Card className="card-hover">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" />
-              Ultimas ventas
+              Últimas ventas
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -331,7 +322,7 @@ export default async function DashboardPage() {
                   <ShoppingCart className="h-7 w-7 text-muted-foreground" />
                 </div>
                 <p className="text-sm font-medium">Sin ventas recientes</p>
-                <p className="text-xs text-muted-foreground mt-1">Las ventas registradas apareceran aqui.</p>
+                <p className="text-xs text-muted-foreground mt-1">Las ventas registradas aparecerán aquí.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -354,49 +345,48 @@ export default async function DashboardPage() {
                     </div>
                   </div>
                 ))}
-                <a href="/dashboard/sales" className="flex items-center gap-1 text-xs text-primary hover:underline pt-1">
+                <Link href="/dashboard/sales" className="flex items-center gap-1 text-xs text-primary hover:underline pt-1">
                   Ver todas las ventas <ChevronRight className="h-3 w-3" />
-                  </a>
+                </Link>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Acciones rápidas */}
       <Card className="card-hover">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowUpRight className="h-4 w-4 text-primary" />
-            Acciones rapidas
+            Acciones rápidas
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <a href="/dashboard/products" className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-primary-light/20">
+            <Link href="/dashboard/products" className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-primary-light/20">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                 <Boxes className="h-5 w-5 text-primary" />
               </div>
               <span className="text-xs font-medium text-center">Ver productos</span>
-            </a>
-            <a href="/dashboard/suppliers" className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-primary-light/20">
+            </Link>
+            <Link href="/dashboard/suppliers" className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-primary-light/20">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                 <ClipboardList className="h-5 w-5 text-primary" />
               </div>
               <span className="text-xs font-medium text-center">Proveedores</span>
-            </a>
-            <a href="/dashboard/scan" className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-primary-light/20">
+            </Link>
+            <Link href="/dashboard/scan" className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-primary-light/20">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                 <Package className="h-5 w-5 text-primary" />
               </div>
               <span className="text-xs font-medium text-center">Escanear</span>
-            </a>
-            <a href="/dashboard/simulator" className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-primary-light/20">
+            </Link>
+            <Link href="/dashboard/simulator" className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-primary-light/20">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                 <TrendingUp className="h-5 w-5 text-primary" />
               </div>
               <span className="text-xs font-medium text-center">Simulador</span>
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
+import { useToast } from "@/components/ui/toast";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { Download, Plus, Search, ClipboardList, Trash2, FileText, Package, Calendar, Send, Truck, CheckCircle, XCircle, ArrowRight, Pencil } from "lucide-react";
 
 type OrderItem = {
@@ -108,6 +110,7 @@ const money = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function PurchaseOrdersPage() {
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
@@ -125,6 +128,8 @@ export default function PurchaseOrdersPage() {
   const [catalogMap, setCatalogMap] = useState<Map<string, { unitPrice: number; minOrderQty: number }>>(new Map());
   const [emailSending, setEmailSending] = useState<string | null>(null);
   const [pdfId, setPdfId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterSupplier, setFilterSupplier] = useState("all");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -178,9 +183,10 @@ export default function PurchaseOrdersPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Error"); return; }
+      if (!res.ok) { setError(data.error ?? "Error"); toast(data.error ?? "Error al guardar", "error"); return; }
       setShowModal(false); fetchData();
-    } catch { setError("Error de conexion"); } finally { setSaving(false); }
+      toast(isEdit ? "Orden actualizada" : "Orden creada", "success");
+    } catch { setError("Error de conexión"); toast("Error de conexión", "error"); } finally { setSaving(false); }
   };
 
   const changeStatus = async (orderId: string, newStatus: string) => {
@@ -191,16 +197,26 @@ export default function PurchaseOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.ok) fetchData();
-    } catch { /* fail silently */ } finally { setSaving(false); }
+      if (res.ok) {
+        fetchData();
+        toast(`Estado actualizado a "${newStatus}"`, "success");
+      } else {
+        toast("No se pudo cambiar el estado", "error");
+      }
+    } catch { toast("Error de conexión", "error"); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar esta orden? Esta accion no se puede deshacer.")) return;
     try {
       const res = await fetch(`/api/dashboard/purchase-orders/${id}`, { method: "DELETE" });
-      if (res.ok) fetchData();
-    } catch { /* fail silently */ }
+      if (res.ok) {
+        fetchData();
+        toast("Orden eliminada", "success");
+      } else {
+        toast("No se pudo eliminar la orden", "error");
+      }
+    } catch { toast("Error de conexión", "error"); }
   };
 
   const loadCatalog = async (supplierId: string) => {
@@ -259,11 +275,17 @@ export default function PurchaseOrdersPage() {
     a.click(); URL.revokeObjectURL(url);
   };
 
-  const filtered = orders.filter(
-    (o) => o.supplierName.toLowerCase().includes(search.toLowerCase()) ||
+  const filtered = orders.filter((o) => {
+    const matchesSearch = o.supplierName.toLowerCase().includes(search.toLowerCase()) ||
           o.status.toLowerCase().includes(search.toLowerCase()) ||
-          o.id.toLowerCase().includes(search.toLowerCase()),
-  );
+          o.id.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = filterStatus === "all" || o.status === filterStatus;
+    const matchesSupplier = filterSupplier === "all" || o.supplierId === filterSupplier;
+    return matchesSearch && matchesStatus && matchesSupplier;
+  });
+  const uniqueSuppliers = [...new Map(orders.map((o) => [o.supplierId, o.supplierName])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const statusOptions = ["DRAFT", "SENT", "CONFIRMED", "SHIPPED", "RECEIVED", "CANCELLED"];
+  const statusLabels: Record<string, string> = { DRAFT: "Borrador", SENT: "Enviada", CONFIRMED: "Confirmada", SHIPPED: "En camino", RECEIVED: "Recibida", CANCELLED: "Cancelada" };
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginatedOrders = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -277,7 +299,7 @@ export default function PurchaseOrdersPage() {
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="page-title text-3xl font-bold tracking-tight">Ordenes de compra</h1>
+          <h1 className="page-title text-3xl font-bold tracking-tight">Órdenes de compra</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Ciclo completo: seguimiento desde el borrador hasta la recepción.
           </p>
@@ -294,25 +316,71 @@ export default function PurchaseOrdersPage() {
 
       <Card className="card-hover">
         <CardHeader className="pb-4">
-          <CardTitle>Ordenes</CardTitle>
+          <CardTitle>Órdenes</CardTitle>
           <div className="relative max-w-sm mt-2">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar por proveedor, estado o ID..." value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
           </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <div className="flex rounded-lg border border-border overflow-hidden flex-wrap">
+              <button
+                onClick={() => { setFilterStatus("all"); setPage(1); }}
+                className={`px-3 py-1 text-xs font-medium transition ${
+                  filterStatus === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-muted-foreground hover:bg-muted/60"
+                }`}
+              >
+                Todas
+              </button>
+              {statusOptions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { setFilterStatus(s); setPage(1); }}
+                  className={`px-3 py-1 text-xs font-medium transition ${
+                    filterStatus === s
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  {statusLabels[s]}
+                </button>
+              ))}
+            </div>
+            {uniqueSuppliers.length > 0 && (
+              <select
+                value={filterSupplier}
+                onChange={(e) => { setFilterSupplier(e.target.value); setPage(1); }}
+                className="h-8 rounded-lg border border-border bg-card px-2 text-xs font-medium text-foreground outline-none transition hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+              >
+                <option value="all">Todos los proveedores</option>
+                {uniqueSuppliers.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            )}
+            {(filterStatus !== "all" || filterSupplier !== "all") && (
+              <button
+                onClick={() => { setFilterStatus("all"); setFilterSupplier("all"); setPage(1); }}
+                className="px-3 py-1 text-xs font-medium text-danger hover:bg-danger/10 rounded-lg transition"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">Cargando ordenes...</p>
+            <div className="p-6">
+              <TableSkeleton rows={6} cols={5} />
             </div>
           ) : filtered.length === 0 ? (
             <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
                 <ClipboardList className="h-8 w-8 text-primary" />
               </div>
-              <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay ordenes de compra"}</p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros terminos de busqueda." : "Crea una nueva orden para empezar."}</p>
+              <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay órdenes de compra"}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros términos de búsqueda." : "Crea una nueva orden para empezar."}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -324,7 +392,7 @@ export default function PurchaseOrdersPage() {
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft">
-                            <FileText className="h-5 w-5 text-accent-foreground" />
+                            <FileText className="h-5 w-5 text-accent" />
                           </div>
                           <div>
                             <p className="font-semibold text-sm">

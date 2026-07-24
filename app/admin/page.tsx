@@ -10,7 +10,7 @@ const metricConfig = [
   { key: "superAdmins", label: "Super admins", icon: Shield },
   { key: "products", label: "Productos", icon: Package },
   { key: "suppliers", label: "Proveedores", icon: Truck },
-  { key: "purchaseOrders", label: "Ordenes", icon: ClipboardList },
+  { key: "purchaseOrders", label: "Órdenes", icon: ClipboardList },
 ] as const;
 
 export default async function AdminPage() {

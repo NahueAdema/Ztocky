@@ -3,15 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
+import { useToast } from "@/components/ui/toast";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import {
   Download,
   FileUp,
   Plus,
   Search,
   ShoppingCart,
-  Trash2,
   Pencil,
   DollarSign,
   Package,
@@ -27,6 +29,7 @@ import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 type Sale = {
   id: string;
+  receiptNumber?: number;
   productId: string;
   productName: string;
   productSku: string;
@@ -34,6 +37,9 @@ type Sale = {
   saleDate: string;
   unitPrice: number;
   totalAmount: number;
+  paymentMethod?: string;
+  status?: string;
+  createdAt?: string;
 };
 type ProductOption = { id: string; name: string; sku: string; sellingPrice: number };
 type SaleForm = { productId: string; quantity: string; saleDate: string; unitPrice: string };
@@ -60,6 +66,7 @@ async function importBatch(url: string, batch: Record<string, string>[], type: s
 }
 
 export default function SalesPage() {
+  const { toast } = useToast();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +85,8 @@ export default function SalesPage() {
   const [page, setPage] = useState(1);
   const [undoTarget, setUndoTarget] = useState<Sale | null>(null);
   const [undoing, setUndoing] = useState(false);
+  const [filterPeriod, setFilterPeriod] = useState("all");
+  const [filterProduct, setFilterProduct] = useState("all");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -86,7 +95,45 @@ export default function SalesPage() {
         fetch("/api/dashboard/sales"),
         fetch("/api/dashboard/products"),
       ]);
-      if (salesRes.ok) setSales((await salesRes.json()).sales);
+      if (salesRes.ok) {
+        const raw = (await salesRes.json()).sales;
+        const flat: Sale[] = [];
+        for (const s of raw) {
+          for (const item of s.items ?? []) {
+            flat.push({
+              id: s.id,
+              receiptNumber: s.receiptNumber,
+              productId: item.productId,
+              productName: item.productName ?? "—",
+              productSku: item.productSku ?? "—",
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalAmount: item.totalPrice ?? item.unitPrice * item.quantity,
+              saleDate: s.saleDate,
+              paymentMethod: s.paymentMethod,
+              status: s.status,
+              createdAt: s.createdAt,
+            });
+          }
+          if (!s.items || s.items.length === 0) {
+            flat.push({
+              id: s.id,
+              receiptNumber: s.receiptNumber,
+              productId: "",
+              productName: "—",
+              productSku: "—",
+              quantity: 0,
+              unitPrice: 0,
+              totalAmount: Number(s.totalAmount),
+              saleDate: s.saleDate,
+              paymentMethod: s.paymentMethod,
+              status: s.status,
+              createdAt: s.createdAt,
+            });
+          }
+        }
+        setSales(flat);
+      }
       if (productsRes.ok) setProducts((await productsRes.json()).products);
     } catch {
     } finally { setLoading(false); }
@@ -112,14 +159,15 @@ export default function SalesPage() {
         body: JSON.stringify({ ...form, quantity: Number(form.quantity), unitPrice: Number(form.unitPrice) }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Error"); return; }
+      if (!res.ok) { setError(data.error ?? "Error"); toast(data.error ?? "Error al guardar", "error"); return; }
       if (!editingSale && data.newStock !== undefined) {
         const product = products.find((p) => p.id === form.productId);
         setSuccessMsg(`Venta registrada. Stock de ${product?.name ?? "producto"}: ${data.newStock} unidades`);
         setTimeout(() => setSuccessMsg(null), 4000);
       }
       setShowModal(false); fetchData();
-    } catch { setError("Error de conexion"); } finally { setSaving(false); }
+      toast(editingSale ? "Venta actualizada" : "Venta registrada", "success");
+    } catch { setError("Error de conexión"); toast("Error de conexión", "error"); } finally { setSaving(false); }
   };
 
   const handleUndo = async () => {
@@ -132,8 +180,11 @@ export default function SalesPage() {
         setSuccessMsg(`Venta revertida. Stock restaurado: ${data.restoredStock} unidades.`);
         setTimeout(() => setSuccessMsg(null), 5000);
         setUndoTarget(null); fetchData();
+        toast("Venta revertida correctamente", "success");
+      } else {
+        toast("No se pudo revertir la venta", "error");
       }
-    } catch {} finally { setUndoing(false); }
+    } catch { toast("Error de conexión", "error"); } finally { setUndoing(false); }
   };
 
   const handleExport = async (format: "csv" | "excel") => {
@@ -249,9 +300,27 @@ export default function SalesPage() {
 
   const totalRevenue = sales.reduce((sum, s) => sum + s.totalAmount, 0);
   const totalUnits = sales.reduce((sum, s) => sum + s.quantity, 0);
-  const filtered = sales.filter(
-    (s) => s.productName.toLowerCase().includes(search.toLowerCase()) || s.productSku.toLowerCase().includes(search.toLowerCase()),
-  );
+  const uniqueSaleIds = new Set(sales.map((s) => s.id)).size;
+  const filtered = sales.filter((s) => {
+    const matchesSearch = s.productName.toLowerCase().includes(search.toLowerCase()) || s.productSku.toLowerCase().includes(search.toLowerCase());
+    const matchesProduct = filterProduct === "all" || s.productId === filterProduct;
+    let matchesPeriod = true;
+    if (filterPeriod !== "all") {
+      const saleDate = new Date(s.saleDate);
+      const now = new Date();
+      if (filterPeriod === "today") {
+        matchesPeriod = saleDate.toDateString() === now.toDateString();
+      } else if (filterPeriod === "week") {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        matchesPeriod = saleDate >= weekAgo;
+      } else if (filterPeriod === "month") {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        matchesPeriod = saleDate >= monthAgo;
+      }
+    }
+    return matchesSearch && matchesProduct && matchesPeriod;
+  });
+  const uniqueProducts = [...new Map(sales.map((s) => [s.productId, s.productName])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginatedSales = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -333,7 +402,7 @@ export default function SalesPage() {
         {[
           { label: "Total ventas", value: money.format(totalRevenue), icon: DollarSign, color: "from-primary to-primary-dark" },
           { label: "Unidades vendidas", value: totalUnits, icon: Package, color: "from-sky-500 to-blue-600" },
-          { label: "Transacciones", value: sales.length, icon: Hash, color: "from-indigo-500 to-violet-600" },
+          { label: "Transacciones", value: uniqueSaleIds, icon: Hash, color: "from-indigo-500 to-violet-600" },
         ].map((stat) => (
           <Card key={stat.label} className={`card-hover ${stat.label === "Transacciones" ? "col-span-2 sm:col-span-1" : ""}`}>
             <CardContent className="p-4">
@@ -356,18 +425,59 @@ export default function SalesPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar por producto o SKU..." value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
           </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              {[
+                { value: "all", label: "Período" },
+                { value: "today", label: "Hoy" },
+                { value: "week", label: "7 días" },
+                { value: "month", label: "30 días" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setFilterPeriod(opt.value); setPage(1); }}
+                  className={`px-3 py-1 text-xs font-medium transition ${
+                    filterPeriod === opt.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {uniqueProducts.length > 0 && (
+              <select
+                value={filterProduct}
+                onChange={(e) => { setFilterProduct(e.target.value); setPage(1); }}
+                className="h-8 rounded-lg border border-border bg-card px-2 text-xs font-medium text-foreground outline-none transition hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+              >
+                <option value="all">Todos los productos</option>
+                {uniqueProducts.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            )}
+            {(filterPeriod !== "all" || filterProduct !== "all") && (
+              <button
+                onClick={() => { setFilterPeriod("all"); setFilterProduct("all"); setPage(1); }}
+                className="px-3 py-1 text-xs font-medium text-danger hover:bg-danger/10 rounded-lg transition"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">Cargando ventas...</p>
+            <div className="p-6">
+              <TableSkeleton rows={6} cols={5} />
             </div>
           ) : filtered.length === 0 ? (
             <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10"><ShoppingCart className="h-8 w-8 text-primary" /></div>
               <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay ventas registradas"}</p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros terminos de busqueda." : "Registra una nueva venta o importa desde un archivo CSV."}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros términos de búsqueda." : "Registra una nueva venta o importa desde un archivo CSV."}</p>
             </div>
           ) : (
             <>
@@ -375,22 +485,26 @@ export default function SalesPage() {
                 <table className="table-modern">
                   <thead>
                     <tr>
+                      <th className="text-left">Ticket</th>
                       <th className="text-left">Producto</th>
                       <th className="text-left">Cantidad</th>
                       <th className="text-left">Fecha</th>
                       <th className="text-left">Precio unit.</th>
                       <th className="text-left">Total</th>
+                      <th className="text-left">Pago</th>
                       <th className="text-left">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedSales.map((sale) => (
-                      <tr key={sale.id}>
+                      <tr key={`${sale.id}-${sale.productId}`}>
+                        <td className="text-sm font-mono text-muted-foreground">#{sale.receiptNumber ?? "—"}</td>
                         <td><p className="font-semibold">{sale.productName}</p><p className="text-xs text-muted-foreground font-mono">{sale.productSku}</p></td>
-                        <td><span className="inline-flex h-7 items-center justify-center rounded-md bg-accent-soft px-2.5 text-xs font-bold text-accent-foreground">{sale.quantity} uds</span></td>
+                        <td><span className="inline-flex h-7 items-center justify-center rounded-md bg-accent-light px-2.5 text-xs font-bold text-accent">{sale.quantity} uds</span></td>
                         <td className="text-sm text-muted-foreground">{sale.saleDate}</td>
                         <td className="text-sm">{money.format(sale.unitPrice)}</td>
                         <td className="text-sm font-bold">{money.format(sale.totalAmount)}</td>
+                        <td><Badge tone={sale.paymentMethod === "EFECTIVO" ? "success" : sale.paymentMethod === "CTA_CTE" ? "warning" : "default"}>{sale.paymentMethod ?? "—"}</Badge></td>
                         <td>
                           <div className="flex items-center gap-1.5">
                             <button onClick={() => openEdit(sale)} title="Editar venta" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>
@@ -405,10 +519,13 @@ export default function SalesPage() {
 
               <div className="flex flex-col gap-3 sm:hidden">
                 {paginatedSales.map((sale) => (
-                  <div key={sale.id} className="rounded-xl border border-border bg-card p-4">
+                  <div key={`${sale.id}-${sale.productId}`} className="rounded-xl border border-border bg-card p-4">
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div>
-                        <p className="font-semibold text-sm">{sale.productName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm">{sale.productName}</p>
+                          {sale.receiptNumber && <Badge tone="muted">#{sale.receiptNumber}</Badge>}
+                        </div>
                         <p className="text-xs text-muted-foreground font-mono">{sale.productSku} · {sale.saleDate}</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">

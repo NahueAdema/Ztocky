@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Camera, Check, Loader2, Package, Plus, ScanLine, X } from "lucide-react";
+import Link from "next/link";
+import { Camera, Check, Loader2, Package, Plus, ScanLine, X, ArrowRight, DollarSign, TrendingUp, AlertTriangle, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { moneyFormatter } from "@/lib/mock-data";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { moneyFormatter } from "@/lib/format";
 
 type ProductResult = {
   id: string;
@@ -16,11 +17,21 @@ type ProductResult = {
   costPrice: number;
   sellingPrice: number;
   category: string | null;
+  isActive: boolean;
 };
 
-type SaleFeedback = {
+type Feedback = {
   type: "success" | "error";
   message: string;
+};
+
+type ScanHistory = {
+  product: string;
+  sku: string;
+  stock: number;
+  price: number;
+  found: boolean;
+  timestamp: string;
 };
 
 export default function ScanPage() {
@@ -34,15 +45,12 @@ export default function ScanPage() {
   const [product, setProduct] = useState<ProductResult | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [quantity, setQuantity] = useState(1);
-  const [saleLoading, setSaleLoading] = useState(false);
-  const [feedback, setFeedback] = useState<SaleFeedback | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [hasBarcodeDetector, setHasBarcodeDetector] = useState(false);
-  const [history, setHistory] = useState<{ product: string; sku: string; qty: number; total: number }[]>([]);
+  const [history, setHistory] = useState<ScanHistory[]>([]);
 
-  // New product form
   const [newName, setNewName] = useState("");
   const [newSellingPrice, setNewSellingPrice] = useState("");
   const [newCostPrice, setNewCostPrice] = useState("");
@@ -67,6 +75,7 @@ export default function ScanPage() {
           setNewCostPrice("");
           setNewStock("0");
           setNewCategory("");
+          setHistory((prev) => [{ product: "—", sku: code.trim(), stock: 0, price: 0, found: false, timestamp: new Date().toISOString() }, ...prev].slice(0, 20));
         } else {
           setFeedback({ type: "error", message: "Error al buscar el producto" });
         }
@@ -74,7 +83,7 @@ export default function ScanPage() {
       }
       const data = await res.json();
       setProduct(data);
-      setQuantity(1);
+      setHistory((prev) => [{ product: data.name, sku: data.sku, stock: data.currentStock, price: data.sellingPrice, found: true, timestamp: new Date().toISOString() }, ...prev].slice(0, 20));
     } catch {
       setFeedback({ type: "error", message: "Error de conexión" });
     } finally {
@@ -114,11 +123,12 @@ export default function ScanPage() {
         costPrice: Number(newCostPrice) || 0,
         sellingPrice: Number(newSellingPrice),
         category: newCategory.trim() || null,
+        isActive: true,
       });
       setNotFound(false);
       setShowCreate(false);
-      setQuantity(1);
       setFeedback({ type: "success", message: `Producto "${newName.trim()}" creado correctamente` });
+      setHistory((prev) => [{ product: newName.trim(), sku: sku.trim(), stock: Number(newStock) || 0, price: Number(newSellingPrice), found: true, timestamp: new Date().toISOString() }, ...prev].slice(0, 20));
       inputRef.current?.focus();
     } catch {
       setFeedback({ type: "error", message: "Error de conexión al crear el producto" });
@@ -132,45 +142,6 @@ export default function ScanPage() {
     handleSkuSubmit(sku);
   };
 
-  const handleRegisterSale = async () => {
-    if (!product || quantity < 1) return;
-    if (quantity > product.currentStock) {
-      setFeedback({ type: "error", message: `Stock insuficiente. Hay ${product.currentStock} unidades.` });
-      return;
-    }
-    setSaleLoading(true);
-    setFeedback(null);
-    try {
-      const res = await fetch("/api/dashboard/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: product.id,
-          quantity,
-          saleDate: new Date().toISOString().slice(0, 10),
-          unitPrice: product.sellingPrice,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFeedback({ type: "error", message: data.error || "Error al registrar la venta" });
-        return;
-      }
-      setFeedback({ type: "success", message: `Venta registrada! Stock restante: ${data.newStock}` });
-      setHistory((prev) => [
-        { product: product.name, sku: product.sku, qty: quantity, total: quantity * product.sellingPrice },
-        ...prev,
-      ]);
-      setProduct((prev) => prev ? { ...prev, currentStock: data.newStock } : null);
-      setQuantity(1);
-      inputRef.current?.focus();
-    } catch {
-      setFeedback({ type: "error", message: "Error de conexión" });
-    } finally {
-      setSaleLoading(false);
-    }
-  };
-
   const stopCamera = useCallback(() => {
     scanningRef.current = false;
     setCameraActive(false);
@@ -180,7 +151,7 @@ export default function ScanPage() {
   const startCamera = useCallback(() => {
     setCameraError("");
     if (!("BarcodeDetector" in window)) {
-      setCameraError("Tu navegador no soporta la detección por cámara. Usá la entrada manual.");
+      setCameraError("Tu navegador no soporta detección por cámara.");
       return;
     }
     scanningRef.current = true;
@@ -188,7 +159,6 @@ export default function ScanPage() {
     setCameraActive(true);
   }, []);
 
-  // Efecto separado: arranca la cámara cuando el <video> ya está en el DOM
   useEffect(() => {
     if (!cameraActive) {
       scanningRef.current = false;
@@ -199,7 +169,6 @@ export default function ScanPage() {
       }
       return;
     }
-
     let cancelled = false;
     const initCamera = async () => {
       try {
@@ -212,12 +181,10 @@ export default function ScanPage() {
         }
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
-
         if (!scanningRef.current) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
-
         const detector = new BarcodeDetector({
           formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code", "codabar", "data_matrix", "itf", "pdf417"],
         });
@@ -240,13 +207,13 @@ export default function ScanPage() {
                 return;
               }
             }
-          } catch { /* detection frame error, keep going */ }
+          } catch { /* keep going */ }
           if (scanningRef.current) setTimeout(scan, 400);
         };
         scan();
       } catch {
         if (!cancelled) {
-          setCameraError("No se pudo acceder a la cámara. Verificá los permisos o conectá una cámara.");
+          setCameraError("No se pudo acceder a la cámara. Verificá los permisos.");
           setCameraActive(false);
         }
       }
@@ -269,12 +236,14 @@ export default function ScanPage() {
     inputRef.current?.focus();
   };
 
+  const margin = product ? Math.round(((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100) : 0;
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 animate-fade-in">
       <div>
-        <h1 className="page-title text-3xl font-bold tracking-tight">Escáner de códigos de barras</h1>
+        <h1 className="page-title text-3xl font-bold tracking-tight">Consulta rápida</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Escaneá con la cámara (Chrome/Edge Android), con un escáner USB en PC o ingresá el código manualmente para buscar un producto y venderlo al instante.
+          Escaneá un código de barras o ingresalo manualmente para ver la información de un producto al instante.
         </p>
       </div>
 
@@ -313,7 +282,7 @@ export default function ScanPage() {
                   ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
                   : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"
               } disabled:opacity-40 disabled:cursor-not-allowed`}
-              title={hasBarcodeDetector ? "Escanear con cámara" : "No disponible en este navegador (usá Chrome o Edge)"}
+              title={hasBarcodeDetector ? "Escanear con cámara" : "No disponible en este navegador"}
             >
               <Camera className="h-5 w-5" />
             </button>
@@ -325,7 +294,6 @@ export default function ScanPage() {
             </p>
           )}
 
-          {/* Camera preview */}
           {cameraActive && (
             <div className="relative mt-4 overflow-hidden rounded-xl bg-black">
               <video ref={videoRef} className="h-64 w-full object-cover" playsInline muted />
@@ -497,65 +465,48 @@ export default function ScanPage() {
 
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div className="rounded-lg bg-muted/50 p-3 text-center">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Precio venta</p>
+                <DollarSign className="mx-auto h-4 w-4 text-muted-foreground mb-1" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Venta</p>
                 <p className="mt-1 text-lg font-bold text-foreground">{moneyFormatter.format(product.sellingPrice)}</p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3 text-center">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Precio costo</p>
+                <DollarSign className="mx-auto h-4 w-4 text-muted-foreground mb-1" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Costo</p>
                 <p className="mt-1 text-lg font-bold text-foreground">{moneyFormatter.format(product.costPrice)}</p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3 text-center">
+                <TrendingUp className="mx-auto h-4 w-4 text-muted-foreground mb-1" />
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Margen</p>
-                <p className="mt-1 text-lg font-bold text-success">
-                  {Math.round(((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100)}%
+                <p className={`mt-1 text-lg font-bold ${margin >= 30 ? "text-success" : margin >= 15 ? "text-warning" : "text-danger"}`}>
+                  {margin}%
                 </p>
               </div>
             </div>
 
-            {product.category && (
-              <div className="mt-3">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {product.category && (
                 <Badge tone="muted" className="text-[11px]">{product.category}</Badge>
-              </div>
-            )}
+              )}
+              {product.currentStock <= product.minStock && (
+                <Badge tone="warning" className="text-[11px]">
+                  <AlertTriangle className="mr-1 h-3 w-3" />
+                  Stock bajo (mínimo: {product.minStock})
+                </Badge>
+              )}
+              {!product.isActive && (
+                <Badge tone="danger" className="text-[11px]">Inactivo</Badge>
+              )}
+            </div>
 
-            <div className="mt-5 flex items-end gap-3 border-t border-border pt-4">
-              <div className="flex-1">
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Cantidad</label>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-border transition-colors hover:bg-muted"
-                  >
-                    <span className="text-lg font-bold leading-none">-</span>
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    max={product.currentStock}
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, Math.min(product.currentStock, Number(e.target.value) || 1)))}
-                    className="h-10 w-16 rounded-lg border border-border bg-background text-center text-base font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  />
-                  <button
-                    onClick={() => setQuantity((q) => Math.min(product.currentStock, q + 1))}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-border transition-colors hover:bg-muted"
-                  >
-                    <span className="text-lg font-bold leading-none">+</span>
-                  </button>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Total</p>
-                <p className="text-xl font-bold">{moneyFormatter.format(quantity * product.sellingPrice)}</p>
-              </div>
-              <button
-                onClick={handleRegisterSale}
-                disabled={saleLoading || quantity < 1 || quantity > product.currentStock}
-                className="flex h-10 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            <div className="mt-5 border-t border-border pt-4">
+              <Link
+                href="/dashboard/pos"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90"
               >
-                {saleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                Vender
-              </button>
+                <Wallet className="h-4 w-4" />
+                Ir al POS para vender
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -575,15 +526,14 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* Session history */}
+      {/* Scan history */}
       {history.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ScanLine className="h-4 w-4 text-primary" />
-              Escaneos de esta sesión
+              Consultas recientes
             </CardTitle>
-            <CardDescription>{history.length} producto{history.length !== 1 ? "s" : ""} vendido{history.length !== 1 ? "s" : ""}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-hidden rounded-lg border border-border">
@@ -592,8 +542,9 @@ export default function ScanPage() {
                   <tr>
                     <th className="text-left">Producto</th>
                     <th className="text-left">SKU</th>
-                    <th className="text-right">Cant.</th>
-                    <th className="text-right">Total</th>
+                    <th className="text-right">Stock</th>
+                    <th className="text-right">Precio</th>
+                    <th className="text-right">Estado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -601,16 +552,18 @@ export default function ScanPage() {
                     <tr key={i}>
                       <td className="font-medium">{item.product}</td>
                       <td className="font-mono text-xs text-muted-foreground">{item.sku}</td>
-                      <td className="text-right">{item.qty}</td>
-                      <td className="text-right font-medium">{moneyFormatter.format(item.total)}</td>
+                      <td className="text-right text-sm">{item.found ? item.stock : "—"}</td>
+                      <td className="text-right text-sm">{item.found ? moneyFormatter.format(item.price) : "—"}</td>
+                      <td className="text-right">
+                        <Badge tone={item.found ? "success" : "danger"} className="text-[10px]">
+                          {item.found ? "Encontrado" : "No existe"}
+                        </Badge>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 text-right text-sm text-muted-foreground">
-              Total: <span className="font-bold text-foreground">{moneyFormatter.format(history.reduce((a, i) => a + i.total, 0))}</span>
-            </p>
           </CardContent>
         </Card>
       )}

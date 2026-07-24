@@ -74,6 +74,11 @@ async function main() {
 
   console.log(`📦 Workspace: ${workspace.name} (${workspace.id.slice(0, 8)})`);
 
+  const workspaceMember = await prisma.workspaceMember.findFirst({
+    where: { workspaceId: workspace.id },
+  });
+  const userId = workspaceMember?.userId ?? "system";
+
   const createdProducts: { id: string; sku: string; dailySales: number }[] = [];
 
   for (const def of productDefs) {
@@ -158,10 +163,11 @@ async function main() {
   }
   console.log(`  ✅ ${catalogMappings.length} items de catalogo`);
 
-  console.log("📊 Generando 90 dias de ventas historicas...");
+  console.log("📊 Generando 90 días de ventas históricas...");
 
   const now = new Date();
   let totalSales = 0;
+  let receiptCounter = 0;
 
   for (const { id: productId, dailySales } of createdProducts) {
     for (let daysAgo = 90; daysAgo >= 1; daysAgo--) {
@@ -184,20 +190,33 @@ async function main() {
       const product = await prisma.product.findUnique({ where: { id: productId } });
       if (!product) continue;
 
+      receiptCounter++;
+      const unitPrice = Number(product.sellingPrice);
+      const totalAmount = quantity * unitPrice;
+
       await prisma.sale.create({
         data: {
-          productId,
-          quantity,
+          workspaceId: workspace.id,
+          userId,
+          receiptNumber: receiptCounter,
+          paymentMethod: "CASH",
+          totalAmount,
           saleDate,
-          unitPrice: Number(product.sellingPrice),
-          totalAmount: quantity * Number(product.sellingPrice),
+          items: {
+            create: {
+              productId,
+              quantity,
+              unitPrice,
+              totalPrice: totalAmount,
+            },
+          },
         },
       });
       totalSales++;
     }
   }
 
-  console.log(`  ✅ ${totalSales} ventas generadas (90 dias x ${createdProducts.length} productos)`);
+  console.log(`  ✅ ${totalSales} ventas generadas (90 días x ${createdProducts.length} productos)`);
 
   console.log("🎉 Seed completado!");
   console.log(`   ${createdProducts.length} productos`);

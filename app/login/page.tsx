@@ -39,11 +39,11 @@ export default async function LoginPage() {
           </h1>
           <p className="mt-4 text-lg leading-7 text-white/70">
             Cada usuario entra a su propio espacio de trabajo para separar productos,
-            proveedores, alertas y ordenes.
+            proveedores, alertas y órdenes.
           </p>
         </div>
         <div className="relative z-10 grid grid-cols-3 gap-3">
-          {["Alertas de stock", "Proveedores", "Ordenes"].map((item) => (
+          {["Alertas de stock", "Proveedores", "Órdenes"].map((item) => (
             <div className="rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm" key={item}>
               <p className="text-sm font-medium text-white">{item}</p>
             </div>

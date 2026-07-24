@@ -1,10 +1,4 @@
 import { getPrisma } from "@/lib/prisma";
-import {
-  products as mockProducts,
-  purchaseOrders as mockPurchaseOrders,
-  reorderRisks as mockReorderRisks,
-  suppliers as mockSuppliers,
-} from "@/lib/mock-data";
 
 function asNumber(value: unknown) {
   return Number(value ?? 0);
@@ -21,8 +15,9 @@ export async function getProductsForDashboard(workspaceId?: string | null) {
     const prisma = getPrisma();
     const rows = await prisma.product.findMany({
       include: {
-        sales: {
-          orderBy: { saleDate: "desc" },
+        saleItems: {
+          include: { sale: { select: { saleDate: true } } },
+          orderBy: { sale: { saleDate: "desc" } },
           take: 1,
         },
       },
@@ -50,11 +45,12 @@ export async function getProductsForDashboard(workspaceId?: string | null) {
         burnRate: 0,
         daysRemaining: 999,
         margin,
-        lastSale: product.sales[0]?.saleDate.toISOString().slice(0, 10) ?? "-",
+        lastSale: product.saleItems[0]?.sale.saleDate.toISOString().slice(0, 10) ?? "-",
       };
     });
   } catch {
-    return mockProducts;
+    const { products } = await import("@/lib/mock-data");
+    return products;
   }
 }
 
@@ -76,7 +72,8 @@ export async function getSuppliersForDashboard(workspaceId?: string | null) {
       focus: supplier.leadTime <= 4 ? "Entrega rapida" : "Compra planificada",
     }));
   } catch {
-    return mockSuppliers;
+    const { suppliers } = await import("@/lib/mock-data");
+    return suppliers;
   }
 }
 
@@ -102,7 +99,8 @@ export async function getPurchaseOrdersForDashboard(workspaceId?: string | null)
       createdAt: order.createdAt.toISOString().slice(0, 10),
     }));
   } catch {
-    return mockPurchaseOrders;
+    const { purchaseOrders } = await import("@/lib/mock-data");
+    return purchaseOrders;
   }
 }
 
@@ -115,8 +113,10 @@ export async function getPotentialSavings(workspaceId?: string | null) {
         catalogItems: {
           include: { supplier: true },
         },
-        sales: {
-          where: { saleDate: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
+        saleItems: {
+          where: {
+            sale: { saleDate: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
+          },
         },
       },
     });
@@ -131,7 +131,7 @@ export async function getPotentialSavings(workspaceId?: string | null) {
       const mostExpensive = Math.max(...prices);
       const savingPerUnit = mostExpensive - cheapest;
 
-      const monthlyVolume = product.sales.reduce((s, sale) => s + sale.quantity, 0);
+      const monthlyVolume = product.saleItems.reduce((s, item) => s + item.quantity, 0);
       const projectedAnnualVolume = Math.max(monthlyVolume * 12, product.minStock * 4);
 
       totalSavings += savingPerUnit * projectedAnnualVolume;
@@ -155,8 +155,10 @@ export async function getReorderRisksForDashboard(workspaceId?: string | null) {
           orderBy: { unitPrice: "asc" },
           take: 1,
         },
-        sales: {
-          where: { saleDate: { gte: since } },
+        saleItems: {
+          where: {
+            sale: { saleDate: { gte: since } },
+          },
         },
       },
       orderBy: { currentStock: "asc" },
@@ -165,7 +167,7 @@ export async function getReorderRisksForDashboard(workspaceId?: string | null) {
 
     return products
       .map((product) => {
-        const sold = product.sales.reduce((sum, sale) => sum + sale.quantity, 0);
+        const sold = product.saleItems.reduce((sum, item) => sum + item.quantity, 0);
         const burnRate = sold / 30;
         const daysRemaining =
           burnRate > 0 ? Math.max(1, Math.floor(product.currentStock / burnRate)) : 999;
@@ -177,7 +179,7 @@ export async function getReorderRisksForDashboard(workspaceId?: string | null) {
 
         let urgency: string;
         if (isCriticalStock || daysRemaining <= leadTime) {
-          urgency = "Critica";
+          urgency = "Crítica";
         } else if (isLowStock || daysRemaining <= leadTime + 7) {
           urgency = "Alta";
         } else {
@@ -199,11 +201,12 @@ export async function getReorderRisksForDashboard(workspaceId?: string | null) {
       .filter((item) => {
         const product = products.find((p) => p.sku === item.sku);
         const isLowStock = product ? product.currentStock <= product.minStock : false;
-        return item.urgency === "Critica" || item.urgency === "Alta" || isLowStock || item.daysRemaining <= item.leadTime + 14;
+        return item.urgency === "Crítica" || item.urgency === "Alta" || isLowStock || item.daysRemaining <= item.leadTime + 14;
       })
       .slice(0, 10);
   } catch {
-    return mockReorderRisks;
+    const { reorderRisks } = await import("@/lib/mock-data");
+    return reorderRisks;
   }
 }
 
@@ -211,7 +214,7 @@ export async function getTodayStats(workspaceId?: string | null) {
   try {
     const prisma = getPrisma();
 
-    const whereClause = workspaceId ? { product: { workspaceId } } : {};
+    const whereClause = workspaceId ? { workspaceId } : {};
 
     const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -223,7 +226,9 @@ export async function getTodayStats(workspaceId?: string | null) {
           ...whereClause,
           saleDate: { gte: last7Days },
         },
-        include: { product: { select: { name: true, sku: true } } },
+        include: {
+          items: { include: { product: { select: { name: true, sku: true } } } },
+        },
         orderBy: { createdAt: "desc" },
       }),
       prisma.sale.findMany({
@@ -231,13 +236,16 @@ export async function getTodayStats(workspaceId?: string | null) {
           ...whereClause,
           saleDate: { gte: last30Days, lt: last7Days },
         },
+        include: { items: true },
       }),
       prisma.sale.findMany({
         where: {
           ...whereClause,
           saleDate: { gte: lastDay },
         },
-        include: { product: { select: { name: true, sku: true } } },
+        include: {
+          items: { include: { product: { select: { name: true, sku: true } } } },
+        },
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
@@ -245,8 +253,12 @@ export async function getTodayStats(workspaceId?: string | null) {
 
     const recentRevenue = recentSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
     const olderRevenue = olderSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-    const recentUnits = recentSales.reduce((sum, s) => sum + s.quantity, 0);
-    const olderUnits = olderSales.reduce((sum, s) => sum + s.quantity, 0);
+
+    const recentUnits = recentSales.reduce((sum, s) => {
+      const saleUnits = s.items?.reduce((itemSum, item) => itemSum + item.quantity, 0) ?? 0;
+      return sum + saleUnits;
+    }, 0);
+    const olderUnits = olderSales.reduce((sum, s) => sum + s.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
     const transactions = recentSales.length;
 
     const weeklyAvgRevenue = olderRevenue / 3 || 0;
@@ -260,15 +272,18 @@ export async function getTodayStats(workspaceId?: string | null) {
       units: recentUnits,
       unitsChange: Math.round(unitsChange),
       transactions,
-      recentSales: (latestSales.length > 0 ? latestSales : recentSales.slice(0, 10)).map((s) => ({
-        id: s.id,
-        productName: s.product.name,
-        productSku: s.product.sku,
-        quantity: s.quantity,
-        totalAmount: Number(s.totalAmount),
-        unitPrice: Number(s.unitPrice),
-        time: s.createdAt.toISOString(),
-      })),
+      recentSales: (latestSales.length > 0 ? latestSales : recentSales.slice(0, 10)).map((s) => {
+        const firstItem = s.items?.[0];
+        return {
+          id: s.id,
+          productName: firstItem?.product.name ?? "N/A",
+          productSku: firstItem?.product.sku ?? "N/A",
+          quantity: s.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0,
+          totalAmount: Number(s.totalAmount),
+          unitPrice: firstItem ? Number(firstItem.unitPrice) : 0,
+          time: s.createdAt.toISOString(),
+        };
+      }),
     };
   } catch (e) {
     console.error("[getTodayStats] Error:", e);
@@ -286,8 +301,11 @@ export async function getTopProducts(workspaceId?: string | null) {
     const products = await prisma.product.findMany({
       where: whereClause,
       include: {
-        sales: {
-          where: { saleDate: { gte: since } },
+        saleItems: {
+          where: {
+            sale: { saleDate: { gte: since } },
+          },
+          include: { sale: { select: { totalAmount: true } } },
         },
         catalogItems: {
           include: { supplier: { select: { name: true } } },
@@ -300,8 +318,8 @@ export async function getTopProducts(workspaceId?: string | null) {
 
     const ranked = products
       .map((p) => {
-        const sold = p.sales.reduce((sum, s) => sum + s.quantity, 0);
-        const revenue = p.sales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+        const sold = p.saleItems.reduce((sum, item) => sum + item.quantity, 0);
+        const revenue = p.saleItems.reduce((sum, item) => sum + Number(item.totalPrice), 0);
         const burnRate = sold / 30;
         const daysRemaining = burnRate > 0 ? Math.floor(p.currentStock / burnRate) : 999;
         return {
@@ -329,32 +347,42 @@ export async function getTopProducts(workspaceId?: string | null) {
 export async function getWeeklySales(workspaceId?: string | null) {
   try {
     const prisma = getPrisma();
-    const days: { date: string; sales: number; revenue: number }[] = [];
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    weekAgo.setHours(0, 0, 0, 0);
+
+    const whereClause = workspaceId ? { workspaceId } : {};
+
+    const sales = await prisma.sale.findMany({
+      where: {
+        ...whereClause,
+        saleDate: { gte: weekAgo },
+      },
+      select: { saleDate: true, totalAmount: true },
+    });
+
+    const dayMap = new Map<string, { sales: number; revenue: number }>();
 
     for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date();
-      dayStart.setDate(dayStart.getDate() - i);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
-
-      const whereClause = workspaceId ? { product: { workspaceId } } : {};
-
-      const sales = await prisma.sale.findMany({
-        where: {
-          ...whereClause,
-          saleDate: { gte: dayStart, lt: dayEnd },
-        },
-      });
-
-      days.push({
-        date: dayStart.toISOString().slice(0, 10),
-        sales: sales.length,
-        revenue: sales.reduce((sum, s) => sum + Number(s.totalAmount), 0),
-      });
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dayMap.set(d.toISOString().slice(0, 10), { sales: 0, revenue: 0 });
     }
 
-    return days;
+    for (const s of sales) {
+      const key = s.saleDate.toISOString().slice(0, 10);
+      const entry = dayMap.get(key);
+      if (entry) {
+        entry.sales++;
+        entry.revenue += Number(s.totalAmount);
+      }
+    }
+
+    return Array.from(dayMap.entries()).map(([date, data]) => ({
+      date,
+      sales: data.sales,
+      revenue: data.revenue,
+    }));
   } catch (e) {
     console.error("[getWeeklySales] Error:", e);
     return [];

@@ -94,6 +94,7 @@ export async function clearSession() {
 export async function getCurrentUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const activeWorkspaceId = cookieStore.get("active_workspace")?.value;
 
   if (!token) {
     return null;
@@ -108,7 +109,6 @@ export async function getCurrentUser() {
             memberships: {
               include: { workspace: true },
               orderBy: { createdAt: "asc" },
-              take: 1,
             },
           },
         },
@@ -120,7 +120,16 @@ export async function getCurrentUser() {
       return null;
     }
 
-    const membership = session.user.memberships[0];
+    let membership = session.user.memberships[0];
+
+    if (activeWorkspaceId) {
+      const target = session.user.memberships.find(
+        (m) => m.workspaceId === activeWorkspaceId,
+      );
+      if (target) {
+        membership = target;
+      }
+    }
 
     return {
       id: session.user.id,
@@ -129,7 +138,7 @@ export async function getCurrentUser() {
       globalRole: session.user.role,
       status: session.user.status,
       workspaceId: membership?.workspaceId ?? null,
-      workspaceName: membership?.workspace.name ?? "Mi comercio",
+      workspaceName: membership?.workspace.name ?? "Sin nombre",
       role: membership?.role ?? "OWNER",
     };
   } catch {
@@ -155,7 +164,7 @@ export async function registerUser(input: {
 }) {
   const prisma = getPrisma();
   const email = normalizeEmail(input.email);
-  const workspaceName = input.name.trim() || email.split("@")[0] || "Mi comercio";
+  const workspaceName = input.name.trim() || email.split("@")[0] || "Mi negocio";
   const slugBase = slugify(workspaceName);
   const workspaceSlug = `${slugBase}-${randomBytes(3).toString("hex")}`;
   const superAdminCount = await prisma.user.count({

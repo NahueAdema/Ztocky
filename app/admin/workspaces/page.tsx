@@ -27,7 +27,7 @@ export default async function AdminWorkspacesPage() {
               <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                 <Metric label="Productos" value={workspace._count.products} />
                 <Metric label="Proveedores" value={workspace._count.suppliers} />
-                <Metric label="Ordenes" value={workspace._count.orders} />
+                <Metric label="Órdenes" value={workspace._count.orders} />
                 <Metric label="Alertas" value={workspace._count.alerts} />
               </div>
               <div className="space-y-2 text-sm">
