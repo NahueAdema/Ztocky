@@ -280,7 +280,7 @@ export default async function Home() {
               </ul>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href="/register"
+                  href="/login?mode=register"
                   className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:bg-primary/90 active:scale-[0.97]"
                 >
                   Probá la caja gratis

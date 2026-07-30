@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import Link from "next/link";
-import { Camera, Check, Loader2, Package, Plus, ScanLine, X, ArrowRight, DollarSign, TrendingUp, AlertTriangle, Wallet } from "lucide-react";
+import { Camera, Check, Loader2, Package, Plus, ScanLine, X, DollarSign, TrendingUp, AlertTriangle, Wallet, CreditCard, ArrowRightLeft, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
 import { moneyFormatter } from "@/lib/format";
 
 type ProductResult = {
@@ -34,7 +34,15 @@ type ScanHistory = {
   timestamp: string;
 };
 
+const PAYMENT_METHODS = [
+  { value: "CASH", label: "Efectivo", icon: DollarSign, color: "text-success" },
+  { value: "CARD", label: "Tarjeta", icon: CreditCard, color: "text-sky" },
+  { value: "TRANSFER", label: "Transferencia", icon: ArrowRightLeft, color: "text-primary" },
+  { value: "ACCOUNT", label: "Cta Cte", icon: User, color: "text-warning" },
+];
+
 export default function ScanPage() {
+  const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastCodeRef = useRef<string>("");
@@ -50,6 +58,8 @@ export default function ScanPage() {
   const [cameraError, setCameraError] = useState("");
   const [hasBarcodeDetector, setHasBarcodeDetector] = useState(false);
   const [history, setHistory] = useState<ScanHistory[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [selling, setSelling] = useState(false);
 
   const [newName, setNewName] = useState("");
   const [newSellingPrice, setNewSellingPrice] = useState("");
@@ -140,6 +150,34 @@ export default function ScanPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSkuSubmit(sku);
+  };
+
+  const handleSale = async () => {
+    if (!product) return;
+    setSelling(true);
+    try {
+      const res = await fetch("/api/dashboard/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ productId: product.id, quantity: 1, unitPrice: product.sellingPrice }],
+          paymentMethod,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || "Error al registrar la venta", "error");
+        return;
+      }
+      const label = PAYMENT_METHODS.find((m) => m.value === paymentMethod)?.label ?? paymentMethod;
+      toast(`Venta registrada — ${label}`, "success");
+      setProduct({ ...product, currentStock: product.currentStock - 1 });
+      setHistory((prev) => [{ product: product.name, sku: product.sku, stock: product.currentStock - 1, price: product.sellingPrice, found: true, timestamp: new Date().toISOString() }, ...prev].slice(0, 20));
+    } catch {
+      toast("Error de conexión", "error");
+    } finally {
+      setSelling(false);
+    }
   };
 
   const stopCamera = useCallback(() => {
@@ -498,15 +536,35 @@ export default function ScanPage() {
               )}
             </div>
 
-            <div className="mt-5 border-t border-border pt-4">
-              <Link
-                href="/dashboard/pos"
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90"
+            <div className="mt-5 border-t border-border pt-4 space-y-3">
+              <div className="grid grid-cols-4 gap-1">
+                {PAYMENT_METHODS.map((method) => {
+                  const Icon = method.icon;
+                  return (
+                    <button
+                      key={method.value}
+                      onClick={() => setPaymentMethod(method.value)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all ${
+                        paymentMethod === method.value
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {method.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={handleSale}
+                disabled={selling || product.currentStock <= 0}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Wallet className="h-4 w-4" />
-                Ir al POS para vender
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+                {selling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+                {product.currentStock <= 0 ? "Sin stock" : "Vender"}
+              </button>
             </div>
           </CardContent>
         </Card>

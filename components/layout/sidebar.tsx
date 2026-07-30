@@ -16,10 +16,13 @@ import {
   ScanLine,
   ShoppingCart,
   Siren,
+  Undo2,
   Wallet,
   X,
   Bell,
   Settings,
+  Users,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
@@ -30,6 +33,8 @@ const navigation = [
   { href: "/dashboard/alerts", label: "Alertas", icon: Siren },
   { href: "/dashboard/products", label: "Productos", icon: Boxes },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+  { href: "/dashboard/customers", label: "Clientes", icon: Users },
+  { href: "/dashboard/returns", label: "Devoluciones", icon: Undo2 },
   { href: "/dashboard/scan", label: "Escanear", icon: ScanLine },
   { href: "/dashboard/suppliers", label: "Proveedores", icon: Factory },
   { href: "/dashboard/supplier-notifications", label: "Notif. Proveedores", icon: Bell },
@@ -40,6 +45,7 @@ const navigation = [
     icon: ChartNoAxesCombined,
   },
   { href: "/dashboard/ai-console", label: "Consola IA", icon: Bot },
+  { href: "/dashboard/feedback", label: "Feedback", icon: MessageSquare },
 ];
 
 function SidebarContent({
