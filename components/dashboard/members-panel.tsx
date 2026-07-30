@@ -25,6 +25,7 @@ import {
   Mail,
   X,
   Clock,
+  RotateCcw,
 } from "lucide-react";
 
 type Member = {
@@ -76,6 +77,7 @@ export function MembersPanel() {
   const [inviteRole, setInviteRole] = useState("MEMBER");
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadMembers = async () => {
@@ -154,6 +156,27 @@ export function MembersPanel() {
       if (res.ok) refreshMembers();
     } catch {
       // silent
+    }
+  };
+
+  const handleResend = async (invitationId: string) => {
+    setResendingId(invitationId);
+    try {
+      const res = await fetch("/api/dashboard/workspace/invite/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invitationId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setError(null);
+      } else {
+        setError(data.error);
+      }
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -277,9 +300,23 @@ export function MembersPanel() {
                 </p>
               </div>
             </div>
-            <Badge tone={ROLE_TONES[inv.role] || "muted"}>
-              {ROLE_LABELS[inv.role] || inv.role}
-            </Badge>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge tone={ROLE_TONES[inv.role] || "muted"}>
+                {ROLE_LABELS[inv.role] || inv.role}
+              </Badge>
+              <button
+                onClick={() => handleResend(inv.id)}
+                disabled={resendingId === inv.id}
+                title="Reenviar invitación"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+              >
+                {resendingId === inv.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
           </div>
         ))}
       </CardContent>

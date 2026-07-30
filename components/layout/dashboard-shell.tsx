@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen } from "lucide-react";
+import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen, MessageSquare } from "lucide-react";
 import { useTheme } from "next-themes";
 
 function getModifierKey() {
@@ -253,6 +253,10 @@ export function DashboardShell({
                     <Link href="/dashboard/guide" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                       <BookOpen className="h-4 w-4 text-muted-foreground" />
                       Guía de uso
+                    </Link>
+                    <Link href="/dashboard/feedback" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      Feedback
                     </Link>
                     <button
                       onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); setShowUserMenu(false); }}

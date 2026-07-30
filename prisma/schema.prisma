@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  
 }
 
 datasource db {
@@ -9,27 +8,29 @@ datasource db {
 
 // ========== USUARIOS / WORKSPACES ==========
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  cuitCuil     String?  @map("cuit_cuil")
-  passwordHash String?  @map("password_hash")
-  role         UserRole @default(USER)
-  status       UserStatus @default(ACTIVE)
-  lastLoginAt  DateTime? @map("last_login_at")
-  supportNotes  String?  @map("support_notes")
-  emailVerified Boolean  @default(false) @map("email_verified")
+  id            String     @id @default(cuid())
+  name          String
+  email         String     @unique
+  cuitCuil      String?    @map("cuit_cuil")
+  passwordHash  String?    @map("password_hash")
+  role          UserRole   @default(USER)
+  status        UserStatus @default(ACTIVE)
+  lastLoginAt   DateTime?  @map("last_login_at")
+  supportNotes  String?    @map("support_notes")
+  emailVerified Boolean    @default(false) @map("email_verified")
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   sessions           Session[]
   verificationTokens VerificationToken[]
   memberships        WorkspaceMember[]
   invitationsSent    WorkspaceInvitation[]
   sales              Sale[]
-  openedRegisters    CashRegister[] @relation("OpenedRegisters")
-  closedRegisters    CashRegister[] @relation("ClosedRegisters")
+  openedRegisters    CashRegister[]        @relation("OpenedRegisters")
+  closedRegisters    CashRegister[]        @relation("ClosedRegisters")
+  accountPayments    AccountPayment[]
+  returns            Return[]
 
   @@map("users")
 }
@@ -42,7 +43,7 @@ model Session {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -57,7 +58,7 @@ model VerificationToken {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
@@ -65,22 +66,22 @@ model VerificationToken {
 }
 
 model Workspace {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
 
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  members     WorkspaceMember[]
-  products    Product[]
-  suppliers   Supplier[]
-  orders      PurchaseOrder[]
-  alerts      Alert[]
-  invitations WorkspaceInvitation[]
-  sales       Sale[]
+  members       WorkspaceMember[]
+  products      Product[]
+  suppliers     Supplier[]
+  orders        PurchaseOrder[]
+  alerts        Alert[]
+  invitations   WorkspaceInvitation[]
+  sales         Sale[]
   cashRegisters CashRegister[]
-  customers   Customer[]
+  customers     Customer[]
 
   @@map("workspaces")
 }
@@ -91,10 +92,10 @@ model WorkspaceMember {
   workspaceId String        @map("workspace_id")
   role        WorkspaceRole @default(OWNER)
 
-  createdAt   DateTime      @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
   @@index([workspaceId])
@@ -103,54 +104,55 @@ model WorkspaceMember {
 
 // ========== PRODUCTOS ==========
 model Product {
-  id            String    @id @default(cuid())
-  workspaceId   String?   @map("workspace_id")
-  name          String
-  sku           String    @unique
-  description   String?
-  currentStock  Int       @default(0)
-  minStock      Int       @default(10)
-  costPrice     Decimal   @map("cost_price")
-  sellingPrice  Decimal   @map("selling_price")
-  category      String?
-  isActive      Boolean   @default(true)
-  
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  
-  workspace      Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id           String  @id @default(cuid())
+  workspaceId  String? @map("workspace_id")
+  name         String
+  sku          String  @unique
+  description  String?
+  currentStock Int     @default(0)
+  minStock     Int     @default(10)
+  costPrice    Decimal @map("cost_price")
+  sellingPrice Decimal @map("selling_price")
+  category     String?
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace      Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   saleItems      SaleItem[]
   purchaseOrders PurchaseOrderItem[]
   alerts         Alert[]
   catalogItems   CatalogItems[]
-  
+
   @@index([workspaceId])
   @@map("products")
 }
 
 // ========== VENTAS ==========
 model Sale {
-  id              String          @id @default(cuid())
-  workspaceId     String          @map("workspace_id")
-  userId          String          @map("user_id")
-  cashRegisterId  String?         @map("cash_register_id")
-  customerId      String?         @map("customer_id")
-  receiptNumber   Int             @map("receipt_number")
-  paymentMethod   PaymentMethod   @map("payment_method")
-  status          SaleStatus      @default(COMPLETED)
-  discountAmount  Decimal         @default(0) @map("discount_amount") @db.Decimal(10, 2)
-  totalAmount     Decimal         @map("total_amount") @db.Decimal(10, 2)
-  notes           String?
-  saleDate        DateTime        @map("sale_date") @db.Date
-  
-  createdAt       DateTime        @default(now()) @map("created_at")
-  
-  workspace       Workspace       @relation(fields: [workspaceId], references: [id])
-  user            User            @relation(fields: [userId], references: [id])
-  cashRegister    CashRegister?   @relation(fields: [cashRegisterId], references: [id])
-  customer        Customer?       @relation(fields: [customerId], references: [id])
-  items           SaleItem[]
-  
+  id             String        @id @default(cuid())
+  workspaceId    String        @map("workspace_id")
+  userId         String        @map("user_id")
+  cashRegisterId String?       @map("cash_register_id")
+  customerId     String?       @map("customer_id")
+  receiptNumber  Int           @map("receipt_number")
+  paymentMethod  PaymentMethod @map("payment_method")
+  status         SaleStatus    @default(COMPLETED)
+  discountAmount Decimal       @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount    Decimal       @map("total_amount") @db.Decimal(10, 2)
+  notes          String?
+  saleDate       DateTime      @map("sale_date") @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id])
+  customer     Customer?     @relation(fields: [customerId], references: [id])
+  items        SaleItem[]
+  returns      Return[]
+
   @@unique([workspaceId, receiptNumber])
   @@index([workspaceId, saleDate])
   @@index([userId])
@@ -159,58 +161,59 @@ model Sale {
 }
 
 model SaleItem {
-  id              String   @id @default(cuid())
-  saleId          String   @map("sale_id")
-  productId       String   @map("product_id")
-  quantity        Int
-  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)
-  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
-  totalPrice      Decimal  @map("total_price") @db.Decimal(10, 2)
-  
-  sale            Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product         Product  @relation(fields: [productId], references: [id])
-  
+  id             String  @id @default(cuid())
+  saleId         String  @map("sale_id")
+  productId      String  @map("product_id")
+  quantity       Int
+  unitPrice      Decimal @map("unit_price") @db.Decimal(10, 2)
+  discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalPrice     Decimal @map("total_price") @db.Decimal(10, 2)
+
+  sale        Sale         @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     Product      @relation(fields: [productId], references: [id])
+  returnItems ReturnItem[]
+
   @@map("sale_items")
 }
 
 // ========== PROVEEDORES ==========
 model Supplier {
-  id              String    @id @default(cuid())
-  workspaceId     String?   @map("workspace_id")
-  name            String
-  contactEmail    String?   @map("contact_email")
-  contactPhone    String?   @map("contact_phone")
-  leadTime        Int       @default(7) // Días promedio de entrega
-  shippingCost    Decimal   @default(0) @map("shipping_cost")
-  reliability     Float     @default(4.5) // Rating 1-5
-  notes           String?
-  
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  
+  id           String  @id @default(cuid())
+  workspaceId  String? @map("workspace_id")
+  name         String
+  contactEmail String? @map("contact_email")
+  contactPhone String? @map("contact_phone")
+  leadTime     Int     @default(7) // Días promedio de entrega
+  shippingCost Decimal @default(0) @map("shipping_cost")
+  reliability  Float   @default(4.5) // Rating 1-5
+  notes        String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  catalog         CatalogItems[]
-  purchaseOrders  PurchaseOrder[]
-  notifications   SupplierNotification[]
-  
+  workspace      Workspace?             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  catalog        CatalogItems[]
+  purchaseOrders PurchaseOrder[]
+  notifications  SupplierNotification[]
+
   @@index([workspaceId])
   @@map("suppliers")
 }
 
 // ========== CATÁLOGO DE PROVEEDORES ==========
 model CatalogItems {
-  id          String   @id @default(cuid())
-  supplierId  String   @map("supplier_id")
-  productId   String   @map("product_id")
-  unitPrice   Decimal  @map("unit_price") // Precio del proveedor para este producto
-  minOrderQty Int      @default(1) @map("min_order_qty")
-  
+  id          String  @id @default(cuid())
+  supplierId  String  @map("supplier_id")
+  productId   String  @map("product_id")
+  unitPrice   Decimal @map("unit_price") // Precio del proveedor para este producto
+  minOrderQty Int     @default(1) @map("min_order_qty")
+
   // Relaciones
-  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier     Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   priceHistory PriceHistory[]
-  
+
   @@unique([supplierId, productId])
   @@map("catalog_items")
 }
@@ -225,14 +228,14 @@ model PriceHistory {
   newPrice        Decimal  @map("new_price")
   previousMinQty  Int?     @map("previous_min_qty")
   newMinQty       Int?     @map("new_min_qty")
-  changeType      String   // CREATED, UPDATED, DELETED, IMPORTED
+  changeType      String // CREATED, UPDATED, DELETED, IMPORTED
   changedByUserId String?  @map("changed_by_user_id")
   notes           String?
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  
-  catalogItem     CatalogItems? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
-  
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  catalogItem CatalogItems? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+
   @@index([supplierId, createdAt])
   @@index([productId, createdAt])
   @@index([createdAt])
@@ -241,20 +244,20 @@ model PriceHistory {
 
 // ========== NOTIFICACIONES A PROVEEDORES ==========
 model SupplierNotification {
-  id              String   @id @default(cuid())
-  supplierId      String   @map("supplier_id")
-  workspaceId     String?  @map("workspace_id")
-  type            String   // PRICE_CHANGE, PRICE_ACCEPTED, PRICE_REJECTED
-  subject         String
-  message         String
-  changesSummary  Json?    @map("changes_summary")
-  emailSentAt     DateTime? @map("email_sent_at")
-  emailTo         String?  @map("email_to")
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  
-  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  
+  id             String    @id @default(cuid())
+  supplierId     String    @map("supplier_id")
+  workspaceId    String?   @map("workspace_id")
+  type           String // PRICE_CHANGE, PRICE_ACCEPTED, PRICE_REJECTED
+  subject        String
+  message        String
+  changesSummary Json?     @map("changes_summary")
+  emailSentAt    DateTime? @map("email_sent_at")
+  emailTo        String?   @map("email_to")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
   @@index([supplierId, createdAt])
   @@index([workspaceId])
   @@map("supplier_notifications")
@@ -262,20 +265,20 @@ model SupplierNotification {
 
 // ========== INVITACIONES A WORKSPACE ==========
 model WorkspaceInvitation {
-  id              String   @id @default(cuid())
-  workspaceId     String   @map("workspace_id")
+  id              String        @id @default(cuid())
+  workspaceId     String        @map("workspace_id")
   email           String
   role            WorkspaceRole @default(MEMBER)
-  token           String   @unique
-  invitedByUserId String   @map("invited_by_user_id")
-  status          String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED
-  expiresAt       DateTime @map("expires_at")
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  
-  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  invitedByUser   User?     @relation(fields: [invitedByUserId], references: [id], onDelete: SetNull)
-  
+  token           String        @unique
+  invitedByUserId String        @map("invited_by_user_id")
+  status          String        @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  expiresAt       DateTime      @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedByUser User?     @relation(fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
   @@index([workspaceId])
   @@index([email])
   @@index([token])
@@ -284,24 +287,24 @@ model WorkspaceInvitation {
 
 // ========== CAJA REGISTRADORA ==========
 model CashRegister {
-  id              String              @id @default(cuid())
-  workspaceId     String              @map("workspace_id")
-  openedBy        String              @map("opened_by")
-  closedBy        String?             @map("closed_by")
-  openingAmount   Decimal             @map("opening_amount") @db.Decimal(10, 2)
-  closingAmount   Decimal?            @map("closing_amount") @db.Decimal(10, 2)
-  status          CashRegisterStatus  @default(OPEN)
-  expectedCash    Decimal?            @map("expected_cash") @db.Decimal(10, 2)
-  difference      Decimal?            @map("difference") @db.Decimal(10, 2)
-  notes           String?
-  openedAt        DateTime            @default(now()) @map("opened_at")
-  closedAt        DateTime?           @map("closed_at")
-  
-  workspace       Workspace           @relation(fields: [workspaceId], references: [id])
-  opener          User                @relation("OpenedRegisters", fields: [openedBy], references: [id])
-  closer          User?               @relation("ClosedRegisters", fields: [closedBy], references: [id])
-  sales           Sale[]
-  
+  id            String             @id @default(cuid())
+  workspaceId   String             @map("workspace_id")
+  openedBy      String             @map("opened_by")
+  closedBy      String?            @map("closed_by")
+  openingAmount Decimal            @map("opening_amount") @db.Decimal(10, 2)
+  closingAmount Decimal?           @map("closing_amount") @db.Decimal(10, 2)
+  status        CashRegisterStatus @default(OPEN)
+  expectedCash  Decimal?           @map("expected_cash") @db.Decimal(10, 2)
+  difference    Decimal?           @map("difference") @db.Decimal(10, 2)
+  notes         String?
+  openedAt      DateTime           @default(now()) @map("opened_at")
+  closedAt      DateTime?          @map("closed_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  opener    User      @relation("OpenedRegisters", fields: [openedBy], references: [id])
+  closer    User?     @relation("ClosedRegisters", fields: [closedBy], references: [id])
+  sales     Sale[]
+
   @@index([workspaceId, status])
   @@index([openedBy])
   @@map("cash_registers")
@@ -309,81 +312,132 @@ model CashRegister {
 
 // ========== CLIENTES ==========
 model Customer {
-  id          String   @id @default(cuid())
-  workspaceId String   @map("workspace_id")
+  id          String  @id @default(cuid())
+  workspaceId String  @map("workspace_id")
   name        String
   email       String?
   phone       String?
   address     String?
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
-  sales       Sale[]
-  
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id])
+  sales           Sale[]
+  accountPayments AccountPayment[]
+
   @@index([workspaceId])
   @@map("customers")
 }
 
+// ========== CUENTA CORRIENTE ==========
+model AccountPayment {
+  id          String   @id @default(cuid())
+  customerId  String
+  workspaceId String
+  userId      String?
+  amount      Decimal  @db.Decimal(12, 2)
+  note        String?
+  createdAt   DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  user     User?    @relation(fields: [userId], references: [id])
+
+  @@index([customerId])
+  @@index([workspaceId])
+}
+
 // ========== ÓRDENES DE COMPRA ==========
 model PurchaseOrder {
-  id            String     @id @default(cuid())
-  workspaceId   String?    @map("workspace_id")
-  supplierId    String     @map("supplier_id")
+  id            String      @id @default(cuid())
+  workspaceId   String?     @map("workspace_id")
+  supplierId    String      @map("supplier_id")
   status        OrderStatus @default(DRAFT)
-  totalAmount   Decimal    @default(0) @map("total_amount")
+  totalAmount   Decimal     @default(0) @map("total_amount")
   notes         String?
-  generatedByAI Boolean    @default(true) @map("generated_by_ai")
-  emailSentAt   DateTime?  @map("email_sent_at")
-  
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
-  
+  generatedByAI Boolean     @default(true) @map("generated_by_ai")
+  emailSentAt   DateTime?   @map("email_sent_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  workspace     Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  supplier      Supplier              @relation(fields: [supplierId], references: [id])
-  items         PurchaseOrderItem[]
-  
+  workspace Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  supplier  Supplier            @relation(fields: [supplierId], references: [id])
+  items     PurchaseOrderItem[]
+
   @@index([workspaceId])
   @@map("purchase_orders")
 }
 
 model PurchaseOrderItem {
-  id              String        @id @default(cuid())
-  purchaseOrderId String        @map("purchase_order_id")
-  productId       String        @map("product_id")
+  id              String  @id @default(cuid())
+  purchaseOrderId String  @map("purchase_order_id")
+  productId       String  @map("product_id")
   quantity        Int
-  unitPrice       Decimal       @map("unit_price")
-  totalPrice      Decimal       @map("total_price")
-  
+  unitPrice       Decimal @map("unit_price")
+  totalPrice      Decimal @map("total_price")
+
   // Relaciones
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  product         Product       @relation(fields: [productId], references: [id])
-  
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
   @@map("purchase_order_items")
 }
 
 // ========== ALERTAS ==========
 model Alert {
-  id          String      @id @default(cuid())
-  workspaceId String?     @map("workspace_id")
-  productId   String      @map("product_id")
-  type        AlertType   
+  id          String    @id @default(cuid())
+  workspaceId String?   @map("workspace_id")
+  productId   String    @map("product_id")
+  type        AlertType
   message     String
-  isRead      Boolean     @default(false)
-  isResolved  Boolean     @default(false)
-  metadata    Json?       // Datos adicionales como burnRate, días hasta agotamiento, etc.
-  
-  createdAt   DateTime    @default(now()) @map("created_at")
-  
+  isRead      Boolean   @default(false)
+  isResolved  Boolean   @default(false)
+  metadata    Json? // Datos adicionales como burnRate, días hasta agotamiento, etc.
+
+  createdAt DateTime @default(now()) @map("created_at")
+
   // Relaciones
-  workspace   Workspace?  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   @@index([workspaceId])
   @@index([productId, createdAt])
   @@map("alerts")
+}
+
+// ========== DEVOLUCIONES ==========
+model Return {
+  id          String   @id @default(cuid())
+  saleId      String
+  workspaceId String
+  userId      String?
+  reason      String?
+  totalRefund Decimal  @db.Decimal(12, 2)
+  status      String   @default("COMPLETED") // COMPLETED, PENDING
+  createdAt   DateTime @default(now())
+
+  sale  Sale         @relation(fields: [saleId], references: [id])
+  items ReturnItem[]
+  user  User?        @relation(fields: [userId], references: [id])
+
+  @@index([saleId])
+  @@index([workspaceId])
+}
+
+model ReturnItem {
+  id         String  @id @default(cuid())
+  returnId   String
+  saleItemId String
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(12, 2)
+  total      Decimal @db.Decimal(12, 2)
+
+  return   Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  saleItem SaleItem @relation(fields: [saleItemId], references: [id])
+
+  @@index([returnId])
 }
 
 // ========== ENUMS ==========
