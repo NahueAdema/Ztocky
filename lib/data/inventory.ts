@@ -1,4 +1,5 @@
 import { getPrisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 function asNumber(value: unknown) {
   return Number(value ?? 0);
@@ -13,17 +14,18 @@ function scopedWhere(workspaceId?: string | null) {
 export async function getProductsForDashboard(workspaceId?: string | null) {
   try {
     const prisma = getPrisma();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
     const rows = await prisma.product.findMany({
       include: {
         saleItems: {
           include: { sale: { select: { saleDate: true } } },
-          orderBy: { sale: { saleDate: "desc" } },
-          take: 1,
+          where: { sale: { saleDate: { gte: thirtyDaysAgo } } },
         },
       },
       where: scopedWhere(workspaceId),
       orderBy: { name: "asc" },
-      take: 100,
+      take: 200,
     });
 
     return rows.map((product) => {
@@ -34,6 +36,20 @@ export async function getProductsForDashboard(workspaceId?: string | null) {
           ? Math.round(((sellingPrice - costPrice) / sellingPrice) * 100)
           : 0;
 
+      const totalSoldLast30 = product.saleItems.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      );
+      const burnRate = Math.round((totalSoldLast30 / 30) * 10) / 10;
+      const daysRemaining =
+        burnRate > 0 ? Math.floor(product.currentStock / burnRate) : 999;
+
+      const lastSaleDate = product.saleItems.length > 0
+        ? product.saleItems.sort(
+            (a, b) => b.sale.saleDate.getTime() - a.sale.saleDate.getTime()
+          )[0]?.sale.saleDate.toISOString().slice(0, 10)
+        : "-";
+
       return {
         sku: product.sku,
         name: product.name,
@@ -42,15 +58,15 @@ export async function getProductsForDashboard(workspaceId?: string | null) {
         minStock: product.minStock,
         costPrice,
         sellingPrice,
-        burnRate: 0,
-        daysRemaining: 999,
+        burnRate,
+        daysRemaining,
         margin,
-        lastSale: product.saleItems[0]?.sale.saleDate.toISOString().slice(0, 10) ?? "-",
+        lastSale: lastSaleDate,
       };
     });
-  } catch {
-    const { products } = await import("@/lib/mock-data");
-    return products;
+  } catch (e) {
+    logger.error("DB query failed", e);
+    return [];
   }
 }
 
@@ -71,9 +87,9 @@ export async function getSuppliersForDashboard(workspaceId?: string | null) {
       reliability: supplier.reliability,
       focus: supplier.leadTime <= 4 ? "Entrega rapida" : "Compra planificada",
     }));
-  } catch {
-    const { suppliers } = await import("@/lib/mock-data");
-    return suppliers;
+  } catch (e) {
+    logger.error("DB query failed", e);
+    return [];
   }
 }
 
@@ -98,9 +114,9 @@ export async function getPurchaseOrdersForDashboard(workspaceId?: string | null)
       totalAmount: asNumber(order.totalAmount),
       createdAt: order.createdAt.toISOString().slice(0, 10),
     }));
-  } catch {
-    const { purchaseOrders } = await import("@/lib/mock-data");
-    return purchaseOrders;
+  } catch (e) {
+    logger.error("DB query failed", e);
+    return [];
   }
 }
 
@@ -138,8 +154,9 @@ export async function getPotentialSavings(workspaceId?: string | null) {
     }
 
     return Math.round(totalSavings);
-  } catch {
-    return 126000;
+  } catch (e) {
+    logger.error("DB query failed", e);
+    return [];
   }
 }
 
@@ -204,9 +221,9 @@ export async function getReorderRisksForDashboard(workspaceId?: string | null) {
         return item.urgency === "Crítica" || item.urgency === "Alta" || isLowStock || item.daysRemaining <= item.leadTime + 14;
       })
       .slice(0, 10);
-  } catch {
-    const { reorderRisks } = await import("@/lib/mock-data");
-    return reorderRisks;
+  } catch (e) {
+    logger.error("DB query failed", e);
+    return [];
   }
 }
 
@@ -286,7 +303,7 @@ export async function getTodayStats(workspaceId?: string | null) {
       }),
     };
   } catch (e) {
-    console.error("[getTodayStats] Error:", e);
+    logger.error("getTodayStats failed", e);
     return { revenue: 0, revenueChange: 0, units: 0, unitsChange: 0, transactions: 0, recentSales: [] };
   }
 }
@@ -339,7 +356,7 @@ export async function getTopProducts(workspaceId?: string | null) {
 
     return ranked;
   } catch (e) {
-    console.error("[getTopProducts] Error:", e);
+    logger.error("getTopProducts failed", e);
     return [];
   }
 }
@@ -384,7 +401,7 @@ export async function getWeeklySales(workspaceId?: string | null) {
       revenue: data.revenue,
     }));
   } catch (e) {
-    console.error("[getWeeklySales] Error:", e);
+    logger.error("getWeeklySales failed", e);
     return [];
   }
 }

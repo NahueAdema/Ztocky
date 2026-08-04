@@ -16,6 +16,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "El mensaje debe tener al menos 10 caracteres" }, { status: 400 });
   }
 
+  if (message.trim().length > 2000) {
+    return NextResponse.json({ error: "El mensaje no puede superar los 2000 caracteres" }, { status: 400 });
+  }
+
   console.log("[Feedback]", {
     userId: user.id,
     email: email || user.email,

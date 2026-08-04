@@ -22,7 +22,6 @@ import {
   Bell,
   Settings,
   Users,
-  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
@@ -45,7 +44,6 @@ const navigation = [
     icon: ChartNoAxesCombined,
   },
   { href: "/dashboard/ai-console", label: "Consola IA", icon: Bot },
-  { href: "/dashboard/feedback", label: "Feedback", icon: MessageSquare },
 ];
 
 function SidebarContent({

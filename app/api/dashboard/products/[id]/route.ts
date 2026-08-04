@@ -79,11 +79,19 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  const prisma = getPrisma();
+
+  const member = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id, workspaceId: user.workspaceId },
+  });
+  if (!member || (member.role !== "OWNER" && member.role !== "ADMIN")) {
+    return NextResponse.json({ error: "No tenés permiso para eliminar productos" }, { status: 403 });
+  }
+
   const { id } = await params;
   const product = await getProductAndVerify(id, user.workspaceId);
   if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
 
-  const prisma = getPrisma();
   await prisma.product.delete({ where: { id } });
 
   return NextResponse.json({ success: true });

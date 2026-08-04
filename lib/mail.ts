@@ -1,6 +1,15 @@
 import nodemailer from "nodemailer";
 import { env } from "@/lib/env";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function getTransporter() {
   if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) return null;
   return nodemailer.createTransport({
@@ -31,7 +40,7 @@ export async function sendPasswordResetEmail(
 <table align="center" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
 <tr><td style="padding:32px 32px 0;text-align:center">
 <p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
-<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${name},</strong></p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${escapeHtml(name)},</strong></p>
 <p style="font-size:14px;color:#666;line-height:1.5">Recibimos una solicitud para restablecer tu contraseña. Hacé clic en el botón para crear una nueva.</p>
 <a href="${resetUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:#038786;color:#fff;border-radius:12px;text-decoration:none;font-size:15px;font-weight:600">Restablecer contraseña</a>
 <p style="margin-top:24px;font-size:12px;color:#999">O copiá este link en tu navegador:<br><span style="color:#038786">${resetUrl}</span></p>
@@ -49,7 +58,7 @@ export async function sendVerificationEmail(email: string, token: string, name: 
 <table align="center" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
 <tr><td style="padding:32px 32px 0;text-align:center">
 <p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
-<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${name},</strong></p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${escapeHtml(name)},</strong></p>
 <p style="font-size:14px;color:#666;line-height:1.5">Gracias por registrarte. Hacé clic en el botón para verificar tu correo y activar tu cuenta.</p>
 <a href="${verifyUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:#038786;color:#fff;border-radius:12px;text-decoration:none;font-size:15px;font-weight:600">Verificar email</a>
 <p style="margin-top:24px;font-size:12px;color:#999">O copiá este link en tu navegador:<br><span style="color:#038786">${verifyUrl}</span></p>
@@ -71,15 +80,15 @@ export async function sendAlertNotification(
 <table align="center" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
 <tr><td style="padding:32px 32px 0;text-align:center">
 <p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
-<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${name},</strong></p>
-<p style="margin-top:8px;font-size:14px;color:#666;line-height:1.5">${alert.message}</p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${escapeHtml(name)},</strong></p>
+<p style="margin-top:8px;font-size:14px;color:#666;line-height:1.5">${escapeHtml(alert.message)}</p>
 <div style="margin-top:16px;padding:16px;border-radius:12px;background:${color}10;border:1px solid ${color}30">
-<p style="font-size:13px;color:#1a1a1a"><strong>${alert.productName}</strong></p>
+<p style="font-size:13px;color:#1a1a1a"><strong>${escapeHtml(alert.productName)}</strong></p>
 </div>
 <p style="margin-top:16px;font-size:12px;color:#999">Ingresá a Ztocky para ver los detalles y tomar acción.</p>
 </td></tr></table></body></html>`;
 
-  await sendMail(email, `⚠️ Alerta: ${alert.productName} — Ztocky`, html);
+  await sendMail(email, `⚠️ Alerta: ${escapeHtml(alert.productName)} — Ztocky`, html);
 }
 
 export async function sendOrderNotification(
@@ -101,8 +110,8 @@ export async function sendOrderNotification(
 <table align="center" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
 <tr><td style="padding:32px 32px 0;text-align:center">
 <p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
-<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${name},</strong></p>
-<p style="margin-top:8px;font-size:14px;color:#666;line-height:1.5">La orden <strong>#${order.id.slice(0, 8).toUpperCase()}</strong> de <strong>${order.supplierName}</strong> fue <strong>${label}</strong>.</p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${escapeHtml(name)},</strong></p>
+<p style="margin-top:8px;font-size:14px;color:#666;line-height:1.5">La orden <strong>#${order.id.slice(0, 8).toUpperCase()}</strong> de <strong>${escapeHtml(order.supplierName)}</strong> fue <strong>${escapeHtml(label)}</strong>.</p>
 <div style="margin-top:16px;padding:16px;border-radius:12px;background:#03878610;border:1px solid #03878630">
 <p style="font-size:13px;color:#1a1a1a">Total: <strong>${order.totalAmount}</strong></p>
 </div>
@@ -125,7 +134,7 @@ export async function sendOrderToSupplier(
   const itemsHtml = order.items
     .map(
       (i) => `<tr>
-        <td style="padding:8px 16px;border-bottom:1px solid #eee">${i.productName}</td>
+        <td style="padding:8px 16px;border-bottom:1px solid #eee">${escapeHtml(i.productName)}</td>
         <td style="padding:8px 16px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td>
         <td style="padding:8px 16px;border-bottom:1px solid #eee;text-align:right">${i.unitPrice}</td>
         <td style="padding:8px 16px;border-bottom:1px solid #eee;text-align:right">${i.totalPrice}</td>
@@ -139,7 +148,7 @@ export async function sendOrderToSupplier(
 <tr><td style="padding:32px 32px 0;text-align:center">
 <p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
 <p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Nueva orden de compra</strong></p>
-<p style="font-size:14px;color:#666;line-height:1.5">Orden <strong>#${order.id.slice(0, 8).toUpperCase()}</strong> — ${order.supplierName}</p>
+<p style="font-size:14px;color:#666;line-height:1.5">Orden <strong>#${order.id.slice(0, 8).toUpperCase()}</strong> — ${escapeHtml(order.supplierName)}</p>
 </td></tr>
 <tr><td style="padding:16px 32px">
 <table style="width:100%;border-collapse:collapse">
@@ -155,7 +164,7 @@ export async function sendOrderToSupplier(
 <tr><td style="padding:16px 32px;text-align:right;border-top:2px solid #038786">
 <p style="font-size:18px;font-weight:bold;color:#038786">Total: ${order.totalAmount}</p>
 </td></tr>
-${order.notes ? `<tr><td style="padding:0 32px 16px;font-size:13px;color:#666"><strong>Notas:</strong> ${order.notes}</td></tr>` : ""}
+${order.notes ? `<tr><td style="padding:0 32px 16px;font-size:13px;color:#666"><strong>Notas:</strong> ${escapeHtml(order.notes)}</td></tr>` : ""}
 <tr><td style="padding:16px 32px 32px;text-align:center;font-size:12px;color:#999">
 <p>Este es un pedido generado automáticamente desde Ztocky.</p>
 </td></tr>
@@ -192,8 +201,8 @@ export async function sendPriceChangesToSupplier(
           : money.format(c.newPrice);
       return `<tr>
         <td style="padding:10px 16px;border-bottom:1px solid #eee">
-          <p style="margin:0;font-size:13px;font-weight:600;color:#1a1a1a">${c.productName}</p>
-          <p style="margin:2px 0 0;font-size:11px;color:#999;font-family:monospace">${c.productSku}</p>
+          <p style="margin:0;font-size:13px;font-weight:600;color:#1a1a1a">${escapeHtml(c.productName)}</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#999;font-family:monospace">${escapeHtml(c.productSku)}</p>
         </td>
         <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:center">${badge}</td>
         <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;color:#1a1a1a">${priceInfo}</td>
@@ -207,7 +216,7 @@ export async function sendPriceChangesToSupplier(
 <tr><td style="padding:32px 32px 0;text-align:center">
 <p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
 <p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Actualización de precios</strong></p>
-<p style="font-size:14px;color:#666;line-height:1.5"><strong>${storeName}</strong> actualizó los precios de <strong>${changes.length}</strong> producto${changes.length > 1 ? "s" : ""} en tu catálogo.</p>
+<p style="font-size:14px;color:#666;line-height:1.5"><strong>${escapeHtml(storeName)}</strong> actualizó los precios de <strong>${changes.length}</strong> producto${changes.length > 1 ? "s" : ""} en tu catálogo.</p>
 </td></tr>
 <tr><td style="padding:16px 32px">
 <table style="width:100%;border-collapse:collapse">
@@ -224,7 +233,7 @@ export async function sendPriceChangesToSupplier(
 </td></tr>
 </table></body></html>`;
 
-  await sendMail(supplierEmail, `💰 ${storeName} actualizó precios — Ztocky`, html);
+  await sendMail(supplierEmail, `💰 ${escapeHtml(storeName)} actualizó precios — Ztocky`, html);
 }
 
 export async function sendInvitationEmail(
@@ -242,11 +251,11 @@ export async function sendInvitationEmail(
 <tr><td style="padding:32px 32px 0;text-align:center">
 <p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
 <p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Te invitaron a un equipo</strong></p>
-<p style="font-size:14px;color:#666;line-height:1.5"><strong>${inviterName}</strong> te invitó a formar parte de <strong>"${workspaceName}"</strong> en Ztocky.</p>
+<p style="font-size:14px;color:#666;line-height:1.5"><strong>${escapeHtml(inviterName)}</strong> te invitó a formar parte de <strong>"${escapeHtml(workspaceName)}"</strong> en Ztocky.</p>
 <a href="${inviteUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:#038786;color:#fff;border-radius:12px;text-decoration:none;font-size:15px;font-weight:600">Aceptar invitación</a>
 <p style="margin-top:24px;font-size:12px;color:#999">O copiá este link en tu navegador:<br><span style="color:#038786">${inviteUrl}</span></p>
 <p style="margin-top:20px;font-size:12px;color:#999">Si no conoces a esta persona, ignorá este correo.</p>
 </td></tr></table></body></html>`;
 
-  await sendMail(email, `Te invitaron a "${workspaceName}" — Ztocky`, html);
+  await sendMail(email, `Te invitaron a "${escapeHtml(workspaceName)}" — Ztocky`, html);
 }
