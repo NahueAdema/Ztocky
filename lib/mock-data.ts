@@ -146,9 +146,3 @@ export const purchaseOrders = [
 export const stagnantProducts = products.filter(
   (product) => new Date(product.lastSale) < new Date("2026-04-20"),
 );
-
-export const moneyFormatter = new Intl.NumberFormat("es-AR", {
-  currency: "ARS",
-  maximumFractionDigits: 0,
-  style: "currency",
-});

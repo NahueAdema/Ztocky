@@ -50,12 +50,12 @@ export default function SimulatorPage() {
     const projectedBurnRate = p.burnRate * (1 + demandIncrease / 100);
     const currentDays = p.burnRate > 0 ? Math.floor(p.currentStock / p.burnRate) : 999;
     const projectedDays = projectedBurnRate > 0 ? Math.floor(p.currentStock / projectedBurnRate) : 999;
-    const willCollapse = projectedDays <= 7 && currentDays > 7;
+    const willCollapse = p.burnRate > 0 && projectedDays <= 7 && currentDays > 7;
     return { ...p, projectedBurnRate, currentDays, projectedDays, willCollapse };
   }).sort((a, b) => a.projectedDays - b.projectedDays);
 
   const collapseCount = simulatedProducts.filter((p) => p.willCollapse).length;
-  const attentionCount = simulatedProducts.filter((p) => !p.willCollapse && p.projectedDays <= 14).length;
+  const attentionCount = simulatedProducts.filter((p) => !p.willCollapse && p.burnRate > 0 && p.projectedDays <= 14).length;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -162,16 +162,18 @@ export default function SimulatorPage() {
                           {product.currentStock}
                         </span>
                       </td>
-                      <td className="text-sm">{product.burnRate}/dia</td>
-                      <td className="text-sm font-bold text-primary">{product.projectedBurnRate.toFixed(1)}/dia</td>
-                      <td className="text-sm">{product.currentDays}</td>
+                      <td className="text-sm">{product.burnRate > 0 ? `${product.burnRate}/dia` : "N/A"}</td>
+                      <td className="text-sm font-bold text-primary">{product.burnRate > 0 ? `${product.projectedBurnRate.toFixed(1)}/dia` : "N/A"}</td>
+                      <td className="text-sm">{product.burnRate > 0 ? product.currentDays : "∞"}</td>
                       <td>
-                        <span className={`text-sm font-bold ${product.projectedDays <= 7 ? "text-danger" : ""}`}>
-                          {product.projectedDays}
+                        <span className={`text-sm font-bold ${product.burnRate > 0 && product.projectedDays <= 7 ? "text-danger" : ""}`}>
+                          {product.burnRate > 0 ? product.projectedDays : "∞"}
                         </span>
                       </td>
                       <td>
-                        {product.willCollapse ? (
+                        {product.burnRate === 0 ? (
+                          <Badge tone="muted">Sin datos</Badge>
+                        ) : product.willCollapse ? (
                           <Badge tone="danger">
                             <TrendingDown className="mr-1 h-3 w-3" />
                             Colapsa

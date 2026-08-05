@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
         catalogItems: { include: { supplier: true } },
       },
       orderBy: { name: "asc" },
+      take: 200,
     }),
     prisma.supplier.findMany({ where, orderBy: { name: "asc" } }),
     prisma.alert.findMany({

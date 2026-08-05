@@ -15,6 +15,13 @@ export async function POST(request: NextRequest) {
 
   const prisma = getPrisma();
 
+  const member = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id, workspaceId: user.workspaceId },
+  });
+  if (!member || (member.role !== "OWNER" && member.role !== "ADMIN")) {
+    return NextResponse.json({ error: "No tenés permiso para anular ventas" }, { status: 403 });
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findFirst({
