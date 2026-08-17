@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { getCurrentUser } from "@/lib/auth";
+import { AppInstallSection } from "@/components/landing/app-install-section";
 
 interface Feature {
   icon: LucideIcon;
@@ -171,6 +172,7 @@ export default async function Home() {
             <NavLink href="#inicio">Inicio</NavLink>
             <NavLink href="#funcionalidades">Funcionalidades</NavLink>
             <NavLink href="#punto-de-venta">Punto de Venta</NavLink>
+            <NavLink href="#aplicacion">App</NavLink>
             <NavLink href="#nosotros">Nosotros</NavLink>
             <NavLink href="#contacto">Contacto</NavLink>
           </nav>
@@ -332,6 +334,9 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* ── APP ───────────────────────────────────────────────────────────── */}
+      <AppInstallSection />
+
       {/* ── ABOUT ─────────────────────────────────────────────────────────── */}
       <section id="nosotros" className="border-y border-border bg-card-white">
         <div className="mx-auto grid max-w-7xl gap-14 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:items-center">
@@ -398,6 +403,7 @@ export default async function Home() {
             <a href="#inicio" className="transition-colors hover:text-primary">Inicio</a>
             <a href="#funcionalidades" className="transition-colors hover:text-primary">Funcionalidades</a>
             <a href="#punto-de-venta" className="transition-colors hover:text-primary">Punto de Venta</a>
+            <a href="#aplicacion" className="transition-colors hover:text-primary">App</a>
             <Link href="/nosotros" className="transition-colors hover:text-primary">Nosotros</Link>
           </nav>
         </div>

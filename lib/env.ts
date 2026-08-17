@@ -38,4 +38,7 @@ export const env = {
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD || '',
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'ztocky',
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY || '',
+  VAPID_EMAIL: process.env.VAPID_EMAIL || 'notificaciones@ztocky.app',
 } as const

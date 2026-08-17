@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { sendAlertNotification } from "@/lib/mail";
+import { sendPushToWorkspace } from "@/lib/push";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -233,6 +234,21 @@ export async function POST() {
         }
       }
     } catch { /* email errors silent */ }
+  }
+
+  if (created > 0 && user.workspaceId) {
+    const summary =
+      newAlerts.slice(0, 3).join(", ") + (created > 3 ? ` y ${created - 3} más` : "");
+    sendPushToWorkspace(
+      user.workspaceId,
+      {
+        title: `⚠️ ${created} nueva${created > 1 ? "s" : ""} alerta${created > 1 ? "s" : ""} de stock`,
+        body: summary,
+        url: "/dashboard/alerts",
+        tag: "stock-alerts",
+      },
+      { skipUserId: user.id },
+    ).catch(() => {});
   }
 
   return NextResponse.json({
