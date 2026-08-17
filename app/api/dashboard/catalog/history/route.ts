@@ -37,7 +37,23 @@ export async function GET(request: NextRequest) {
   ]);
 
   return NextResponse.json({
-    items: items.map((item) => ({
+    items: items.map((item: {
+      id: string;
+      catalogItemId: string;
+      supplierId: string;
+      productId: string;
+      previousPrice: number | { toString(): string } | null;
+      newPrice: number | { toString(): string };
+      previousMinQty: number | null;
+      newMinQty: number | null;
+      changeType: string;
+      notes: string | null;
+      createdAt: Date;
+      catalogItem?: {
+        supplier?: { name: string } | null;
+        product?: { name: string; sku: string } | null;
+      } | null;
+    }) => ({
       id: item.id,
       catalogItemId: item.catalogItemId,
       supplierId: item.supplierId,

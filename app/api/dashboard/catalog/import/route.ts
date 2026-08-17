@@ -26,14 +26,15 @@ export async function POST(request: NextRequest) {
     where: { supplierId },
     include: { product: { select: { sku: true } } },
   });
-  const existingBySku = new Map(existingCatalog.map((c) => [c.product.sku, c]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existingBySku = new Map<string, any>(existingCatalog.map((c) => [c.product.sku, c]));
 
   const skus = rows.map((r: { sku: string }) => r.sku).filter(Boolean);
   const products = await prisma.product.findMany({
     where: { workspaceId: user.workspaceId, sku: { in: skus } },
     select: { id: true, sku: true, name: true },
   });
-  const productBySku = new Map(products.map((p) => [p.sku, p]));
+  const productBySku = new Map<string, { id: string; sku: string; name: string }>(products.map((p) => [p.sku, p]));
 
   const matchedNew: { sku: string; productName: string; unitPrice: number; minOrderQty: number }[] = [];
   const matchedUpdate: { sku: string; productName: string; unitPrice: number; minOrderQty: number; previousUnitPrice: number }[] = [];
