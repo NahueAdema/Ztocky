@@ -165,7 +165,7 @@ export default function SearchPage() {
       {!loading && query && results.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Search className="h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-semibold">Sin resultados para "{query}"</p>
+          <p className="text-sm font-semibold">Sin resultados para &ldquo;{query}&rdquo;</p>
           <p className="text-xs text-muted-foreground mt-1">Intenta con otros términos.</p>
         </div>
       )}
