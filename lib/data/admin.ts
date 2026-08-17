@@ -1,60 +1,115 @@
-import { Prisma } from "@prisma/client";
 import { getPrisma } from "@/lib/prisma";
 
 export const PAGE_SIZE = 15;
 
-export type AdminWorkspace = Prisma.WorkspaceGetPayload<{
-  include: {
-    _count: {
-      select: {
-        alerts: true;
-        members: true;
-        orders: true;
-        products: true;
-        suppliers: true;
-      };
-    };
-    members: { include: { user: true } };
-  };
-}>;
+export type AdminWorkspaceMember = {
+  id: string;
+  role: string;
+  createdAt: Date;
+  user: { id: string; name: string; email: string; status: string };
+};
 
-export type AdminUser = Prisma.UserGetPayload<{
-  include: {
-    _count: { select: { sessions: true; memberships: true } };
-    memberships: { include: { workspace: true } };
+export type AdminWorkspace = {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: Date;
+  updatedAt: Date;
+  _count: {
+    alerts: number;
+    members: number;
+    orders: number;
+    products: number;
+    suppliers: number;
   };
-}>;
+  members: AdminWorkspaceMember[];
+};
 
-export type AdminSession = Prisma.SessionGetPayload<{
-  include: { user: true };
-}>;
+export type AdminUserMembership = {
+  id: string;
+  role: string;
+  createdAt: Date;
+  workspace: { id: string; name: string; slug: string };
+};
 
-export type UserDetail = Prisma.UserGetPayload<{
-  include: {
-    _count: { select: { sessions: true; memberships: true; sales: true; returns: true } };
-    memberships: { include: { workspace: true } };
-    sessions: { orderBy: { createdAt: "desc" }; take: 20 };
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  cuitCuil: string | null;
+  supportNotes: string | null;
+  _count: { sessions: number; memberships: number };
+  memberships: AdminUserMembership[];
+};
+
+export type AdminSession = {
+  id: string;
+  userId: string;
+  expiresAt: Date;
+  createdAt: Date;
+  user: { id: string; name: string; email: string };
+};
+
+export type UserDetailSession = {
+  id: string;
+  expiresAt: Date;
+  createdAt: Date;
+};
+
+export type UserDetail = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  cuitCuil: string | null;
+  supportNotes: string | null;
+  emailVerified: boolean;
+  _count: { sessions: number; memberships: number; sales: number; returns: number };
+  memberships: AdminUserMembership[];
+  sessions: UserDetailSession[];
+};
+
+export type WorkspaceDetailProduct = {
+  id: string;
+  name: string;
+  sku: string;
+  currentStock: number;
+  category: string | null;
+};
+
+export type WorkspaceDetailAlert = {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: Date;
+};
+
+export type WorkspaceDetail = {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: Date;
+  updatedAt: Date;
+  _count: {
+    alerts: number;
+    members: number;
+    orders: number;
+    products: number;
+    suppliers: number;
+    sales: number;
+    customers: number;
   };
-}>;
-
-export type WorkspaceDetail = Prisma.WorkspaceGetPayload<{
-  include: {
-    _count: {
-      select: {
-        alerts: true;
-        members: true;
-        orders: true;
-        products: true;
-        suppliers: true;
-        sales: true;
-        customers: true;
-      };
-    };
-    members: { include: { user: true } };
-    products: { orderBy: { createdAt: "desc" }; take: 20 };
-    alerts: { where: { isResolved: false }; orderBy: { createdAt: "desc" }; take: 20 };
-  };
-}>;
+  members: AdminWorkspaceMember[];
+  products: WorkspaceDetailProduct[];
+  alerts: WorkspaceDetailAlert[];
+};
 
 export async function getAdminOverview() {
   const prisma = getPrisma();
@@ -105,7 +160,8 @@ type UsersParams = {
 export async function getAdminUsers(params: UsersParams = {}) {
   const prisma = getPrisma();
   const page = Math.max(1, params.page || 1);
-  const where: Prisma.UserWhereInput = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {};
 
   if (params.search) {
     const q = params.search;
@@ -116,11 +172,11 @@ export async function getAdminUsers(params: UsersParams = {}) {
   }
 
   if (params.role && ["USER", "SUPER_ADMIN"].includes(params.role)) {
-    where.role = params.role as "USER" | "SUPER_ADMIN";
+    where.role = params.role;
   }
 
   if (params.status && ["ACTIVE", "SUSPENDED"].includes(params.status)) {
-    where.status = params.status as "ACTIVE" | "SUSPENDED";
+    where.status = params.status;
   }
 
   const [items, total] = await Promise.all([
@@ -130,10 +186,10 @@ export async function getAdminUsers(params: UsersParams = {}) {
         _count: { select: { sessions: true, memberships: true } },
         memberships: {
           include: { workspace: true },
-          orderBy: { createdAt: "asc" },
+          orderBy: { createdAt: "asc" as const },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" as const },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -151,7 +207,8 @@ type WorkspacesParams = {
 export async function getAdminWorkspaces(params: WorkspacesParams = {}) {
   const prisma = getPrisma();
   const page = Math.max(1, params.page || 1);
-  const where: Prisma.WorkspaceWhereInput = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {};
 
   if (params.search) {
     const q = params.search;
@@ -176,11 +233,11 @@ export async function getAdminWorkspaces(params: WorkspacesParams = {}) {
         },
         members: {
           include: { user: true },
-          orderBy: { createdAt: "asc" },
+          orderBy: { createdAt: "asc" as const },
           take: 3,
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" as const },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -200,7 +257,8 @@ export async function getAdminSessions(params: SessionsParams = {}) {
   const prisma = getPrisma();
   const page = Math.max(1, params.page || 1);
   const now = new Date();
-  const where: Prisma.SessionWhereInput = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {};
 
   if (params.search) {
     const q = params.search;
@@ -222,7 +280,7 @@ export async function getAdminSessions(params: SessionsParams = {}) {
     prisma.session.findMany({
       where,
       include: { user: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" as const },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -238,7 +296,7 @@ export async function getUserDetail(id: string): Promise<UserDetail | null> {
     include: {
       _count: { select: { sessions: true, memberships: true, sales: true, returns: true } },
       memberships: { include: { workspace: true } },
-      sessions: { orderBy: { createdAt: "desc" }, take: 20 },
+      sessions: { orderBy: { createdAt: "desc" as const }, take: 20 },
     },
   });
   return user as UserDetail | null;
@@ -260,8 +318,8 @@ export async function getWorkspaceDetail(id: string): Promise<WorkspaceDetail | 
         },
       },
       members: { include: { user: true } },
-      products: { orderBy: { createdAt: "desc" }, take: 20 },
-      alerts: { where: { isResolved: false }, orderBy: { createdAt: "desc" }, take: 20 },
+      products: { orderBy: { createdAt: "desc" as const }, take: 20 },
+      alerts: { where: { isResolved: false }, orderBy: { createdAt: "desc" as const }, take: 20 },
     },
   });
   return workspace as WorkspaceDetail | null;

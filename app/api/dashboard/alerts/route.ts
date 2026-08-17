@@ -19,7 +19,7 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    alerts: alerts.map((a) => ({
+    alerts: alerts.map((a: { id: string; productId: string; product: { name: string; sku: string }; type: string; message: string; isRead: boolean; isResolved: boolean; metadata: unknown; createdAt: Date }) => ({
       id: a.id,
       productId: a.productId,
       productName: a.product.name,
@@ -65,7 +65,7 @@ export async function POST() {
   const newAlerts: string[] = [];
   const newOrders: string[] = [];
 
-  const productIds = products.map((p) => p.id);
+  const productIds = products.map((p: { id: string }) => p.id);
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const [existingAlerts, pendingPOs] = await Promise.all([
@@ -88,8 +88,8 @@ export async function POST() {
     }),
   ]);
 
-  const alertSet = new Set(existingAlerts.map((a) => `${a.productId}:${a.type}`));
-  const poProductIds = new Set(pendingPOs.flatMap((po) => po.items.map((i) => i.productId)));
+  const alertSet = new Set(existingAlerts.map((a: { productId: string; type: string }) => `${a.productId}:${a.type}`));
+  const poProductIds = new Set(pendingPOs.flatMap((po: { items: { productId: string }[] }) => po.items.map((i: { productId: string }) => i.productId)));
 
   for (const product of products) {
     const sold = product.saleItems.reduce((sum, item) => sum + item.quantity, 0);

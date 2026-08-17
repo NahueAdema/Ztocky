@@ -74,7 +74,7 @@ export default async function WorkspaceDetailPage({
               <p className="text-sm text-muted-foreground">No hay miembros.</p>
             ) : (
               <div className="space-y-2">
-                {workspace.members.map((member) => (
+                {workspace.members.map((member: { id: string; role: string; user: { name: string; email: string } }) => (
                   <div key={member.id} className="flex items-center justify-between rounded-lg bg-muted p-3">
                     <div>
                       <p className="text-sm font-medium">{member.user.name}</p>
@@ -136,7 +136,7 @@ export default async function WorkspaceDetailPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {workspace.products.map((product) => (
+                  {workspace.products.map((product: { id: string; name: string; sku: string; currentStock: number; category: string | null }) => (
                     <tr key={product.id} className="hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-4 font-medium">{product.name}</td>
                       <td className="py-3 px-4 text-xs text-muted-foreground">{product.sku}</td>
@@ -174,7 +174,7 @@ export default async function WorkspaceDetailPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {workspace.alerts.map((alert) => (
+                  {workspace.alerts.map((alert: { id: string; type: string; message: string; createdAt: Date }) => (
                     <tr key={alert.id} className="hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-4">
                         <Badge tone={alert.type === "CRITICAL_STOCK" ? "danger" : alert.type === "LOW_STOCK" ? "warning" : "muted"}>
