@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import groq, { GROQ_MODEL } from "@/lib/ai/groq";
@@ -38,11 +39,15 @@ export async function POST(request: NextRequest) {
     prisma.purchaseOrder.count({ where }),
   ]);
 
-  const productSummary = products.map((p) => {
-    const sold = p.saleItems.reduce((s, item) => s + item.quantity, 0);
+  type ProductWithRelations = Prisma.ProductGetPayload<{
+    include: { saleItems: true; catalogItems: { include: { supplier: true } } };
+  }>;
+
+  const productSummary = products.map((p: ProductWithRelations) => {
+    const sold = p.saleItems.reduce((s: number, item: { quantity: number }) => s + item.quantity, 0);
     const burnRate = sold / 30;
     const cheapest = p.catalogItems.length > 0
-      ? Math.min(...p.catalogItems.map((c) => Number(c.unitPrice)))
+      ? Math.min(...p.catalogItems.map((c: { unitPrice: Prisma.Decimal }) => Number(c.unitPrice)))
       : 0;
     return {
       nombre: p.name,
@@ -55,7 +60,7 @@ export async function POST(request: NextRequest) {
       burnRate: Number(burnRate.toFixed(1)),
       diasRestantes: burnRate > 0 ? Math.floor(p.currentStock / burnRate) : "sin ventas",
       mejorPrecioProveedor: cheapest,
-      proveedores: p.catalogItems.map((c) => ({
+      proveedores: p.catalogItems.map((c: { supplier: { name: string; leadTime: number | null }; unitPrice: Prisma.Decimal }) => ({
         nombre: c.supplier.name,
         precio: Number(c.unitPrice),
         leadTime: c.supplier.leadTime,

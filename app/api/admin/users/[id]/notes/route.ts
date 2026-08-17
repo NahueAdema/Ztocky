@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getRequiredSuperAdmin } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 
-export async function POST(
+export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
@@ -15,23 +15,16 @@ export async function POST(
 
   const { id } = await context.params;
   const body = await request.json().catch(() => ({}));
-  const status = String(body?.status || "");
+  const notes = typeof body?.notes === "string" ? body.notes : null;
 
-  if (!["ACTIVE", "SUSPENDED"].includes(status)) {
-    return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
-  }
-
-  if (id === admin.id && status === "SUSPENDED") {
-    return NextResponse.json(
-      { error: "No podés suspender tu propia cuenta admin." },
-      { status: 400 },
-    );
+  if (notes === null) {
+    return NextResponse.json({ error: "Notes field required" }, { status: 400 });
   }
 
   await getPrisma().user.update({
     where: { id },
-    data: { status: status as "ACTIVE" | "SUSPENDED" },
+    data: { supportNotes: notes || null },
   });
 
-  return NextResponse.json({ ok: true, status });
+  return NextResponse.json({ ok: true });
 }
