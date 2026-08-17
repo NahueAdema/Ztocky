@@ -31,6 +31,7 @@ model User {
   closedRegisters    CashRegister[]        @relation("ClosedRegisters")
   accountPayments    AccountPayment[]
   returns            Return[]
+  pushSubscriptions  PushSubscription[]
 
   @@map("users")
 }
@@ -65,11 +66,28 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+// ========== SUSCRIPCIONES PUSH (PWA) ==========
+model PushSubscription {
+  id        String  @id @default(cuid())
+  userId    String  @map("user_id")
+  endpoint  String  @unique
+  authSecret String @map("auth_secret")
+  p256dh    String
+  userAgent String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
 model Workspace {
   id   String @id @default(cuid())
   name String
   slug String @unique
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

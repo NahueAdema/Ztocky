@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { sendAlertNotification } from "@/lib/mail";
+import { sendPushToWorkspace } from "@/lib/push";
+
+type ProductWithAlerts = {
+  id: string;
+  name: string;
+  sku: string;
+  currentStock: number;
+  minStock: number;
+  saleItems: { quantity: number; sale?: { saleDate?: Date } }[];
+  catalogItems: { unitPrice: number | { toString(): string }; supplier: { name: string; leadTime: number | null }; supplierId: string }[];
+};
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -18,7 +29,7 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    alerts: alerts.map((a) => ({
+    alerts: alerts.map((a: { id: string; productId: string; product: { name: string; sku: string }; type: string; message: string; isRead: boolean; isResolved: boolean; metadata: unknown; createdAt: Date }) => ({
       id: a.id,
       productId: a.productId,
       productName: a.product.name,
@@ -64,7 +75,7 @@ export async function POST() {
   const newAlerts: string[] = [];
   const newOrders: string[] = [];
 
-  const productIds = products.map((p) => p.id);
+  const productIds = products.map((p: { id: string }) => p.id);
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const [existingAlerts, pendingPOs] = await Promise.all([
@@ -87,11 +98,11 @@ export async function POST() {
     }),
   ]);
 
-  const alertSet = new Set(existingAlerts.map((a) => `${a.productId}:${a.type}`));
-  const poProductIds = new Set(pendingPOs.flatMap((po) => po.items.map((i) => i.productId)));
+  const alertSet = new Set(existingAlerts.map((a: { productId: string; type: string }) => `${a.productId}:${a.type}`));
+  const poProductIds = new Set(pendingPOs.flatMap((po: { items: { productId: string }[] }) => po.items.map((i: { productId: string }) => i.productId)));
 
-  for (const product of products) {
-    const sold = product.saleItems.reduce((sum, item) => sum + item.quantity, 0);
+  for (const product of products as unknown as ProductWithAlerts[]) {
+    const sold = product.saleItems.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0);
     const burnRate = sold / 30;
     const daysRemaining = burnRate > 0 ? Math.floor(product.currentStock / burnRate) : 999;
     const catalogItem = product.catalogItems[0];
@@ -154,7 +165,7 @@ export async function POST() {
                 create: {
                   productId: product.id,
                   quantity: suggestedQty,
-                  unitPrice: bestCatalog.unitPrice,
+                  unitPrice: Number(bestCatalog.unitPrice),
                   totalPrice,
                 },
               },
@@ -167,9 +178,9 @@ export async function POST() {
     }
   }
 
-  for (const product of products) {
+  for (const product of products as unknown as ProductWithAlerts[]) {
     const lastSaleItem = product.saleItems.length > 0
-      ? product.saleItems.sort((a, b) => {
+      ? product.saleItems.sort((a: { sale?: { saleDate?: Date } }, b: { sale?: { saleDate?: Date } }) => {
           const saleA = (a as unknown as { sale?: { saleDate?: Date } }).sale;
           const saleB = (b as unknown as { sale?: { saleDate?: Date } }).sale;
           return (saleB?.saleDate?.getTime() ?? 0) - (saleA?.saleDate?.getTime() ?? 0);
@@ -221,7 +232,7 @@ export async function POST() {
       for (const member of members) {
         if (member.user.emailVerified) {
           for (const alert of newAlerts) {
-            const product = products.find((p) => p.name === alert);
+            const product = (products as unknown as ProductWithAlerts[]).find((p: ProductWithAlerts) => p.name === alert);
             if (product) {
               sendAlertNotification(member.user.email, member.user.name, {
                 type: "CRITICAL_STOCK",
@@ -233,6 +244,21 @@ export async function POST() {
         }
       }
     } catch { /* email errors silent */ }
+  }
+
+  if (created > 0 && user.workspaceId) {
+    const summary =
+      newAlerts.slice(0, 3).join(", ") + (created > 3 ? ` y ${created - 3} más` : "");
+    sendPushToWorkspace(
+      user.workspaceId,
+      {
+        title: `⚠️ ${created} nueva${created > 1 ? "s" : ""} alerta${created > 1 ? "s" : ""} de stock`,
+        body: summary,
+        url: "/dashboard/alerts",
+        tag: "stock-alerts",
+      },
+      { skipUserId: user.id },
+    ).catch(() => {});
   }
 
   return NextResponse.json({

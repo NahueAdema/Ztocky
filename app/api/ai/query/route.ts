@@ -3,6 +3,33 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import groq, { GROQ_MODEL } from "@/lib/ai/groq";
 
+type ProductItem = { quantity: number };
+type CatalogItem = {
+  unitPrice: number | { toString(): string };
+  supplier: { name: string; leadTime: number | null };
+};
+type ProductRow = {
+  name: string;
+  sku: string;
+  currentStock: number;
+  sellingPrice: number | { toString(): string };
+  costPrice: number | { toString(): string };
+  category: string | null;
+  saleItems: ProductItem[];
+  catalogItems: CatalogItem[];
+};
+type SupplierRow = {
+  name: string;
+  leadTime: number | null;
+  shippingCost: number | { toString(): string };
+  reliability: number | null;
+};
+type AlertRow = {
+  type: string;
+  productId: string;
+  message: string;
+};
+
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -38,7 +65,7 @@ export async function POST(request: NextRequest) {
     prisma.purchaseOrder.count({ where }),
   ]);
 
-  const productSummary = products.map((p) => {
+  const productSummary = (products as unknown as ProductRow[]).map((p) => {
     const sold = p.saleItems.reduce((s, item) => s + item.quantity, 0);
     const burnRate = sold / 30;
     const cheapest = p.catalogItems.length > 0
@@ -63,14 +90,14 @@ export async function POST(request: NextRequest) {
     };
   });
 
-  const supplierSummary = suppliers.map((s) => ({
+  const supplierSummary = (suppliers as unknown as SupplierRow[]).map((s) => ({
     nombre: s.name,
     leadTime: s.leadTime,
     costoEnvio: Number(s.shippingCost),
     confiabilidad: s.reliability,
   }));
 
-  const alertSummary = alerts.map((a) => ({
+  const alertSummary = (alerts as unknown as AlertRow[]).map((a) => ({
     tipo: a.type,
     producto: a.productId,
     mensaje: a.message,

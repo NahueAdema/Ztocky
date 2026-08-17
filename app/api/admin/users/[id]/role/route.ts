@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
 import { getRequiredSuperAdmin } from "@/lib/auth";
@@ -15,8 +14,8 @@ export async function POST(
   }
 
   const { id } = await context.params;
-  const form = await request.formData();
-  const role = String(form.get("role"));
+  const body = await request.json().catch(() => ({}));
+  const role = String(body?.role || "");
 
   if (!["USER", "SUPER_ADMIN"].includes(role)) {
     return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
@@ -48,5 +47,5 @@ export async function POST(
     data: { role: role as "USER" | "SUPER_ADMIN" },
   });
 
-  redirect("/admin/users");
+  return NextResponse.json({ ok: true, role });
 }

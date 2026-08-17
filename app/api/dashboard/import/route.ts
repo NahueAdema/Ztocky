@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   const prisma = getPrisma();
   let created = 0;
-  let errors: string[] = [];
+  const errors: string[] = [];
 
   if (type === "products") {
     for (const record of records) {
