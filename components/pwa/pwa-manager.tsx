@@ -54,13 +54,21 @@ export function PwaManager() {
   const isLogged = useClientBool(isLoggedIn);
   const isPromptDismissed = useClientBool(isNotifPromptDismissed);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [iosDismissed, setIosDismissed] = useState(false);
+  const [installDismissed, setInstallDismissed] = useState(false);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/", updateViaCache: "none" })
         .catch(() => {});
+    }
+
+    try {
+      if (sessionStorage.getItem("ztocky_install_dismissed") === "1") {
+        setInstallDismissed(true);
+      }
+    } catch {
+      // ignore
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -142,7 +150,17 @@ export function PwaManager() {
   const showNotifPrompt =
     pushSupported && !pushGranted && isLogged && !isPromptDismissed && !isStandalone && isDashboard;
 
-  const showInstallBanner = !isStandalone && !showNotifPrompt && (installPrompt !== null || (isIOS && !iosDismissed));
+  const showInstallBanner =
+    !isStandalone && !showNotifPrompt && !installDismissed && (installPrompt !== null || isIOS);
+
+  function dismissInstallBanner() {
+    setInstallDismissed(true);
+    try {
+      sessionStorage.setItem("ztocky_install_dismissed", "1");
+    } catch {
+      // ignore
+    }
+  }
 
   return (
     <>
@@ -202,15 +220,13 @@ export function PwaManager() {
               Instalar
             </button>
           )}
-          {isIOS && (
-            <button
-              onClick={() => setIosDismissed(true)}
-              className="rounded-md px-1 text-xs text-muted-foreground"
-              aria-label="Cerrar"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+          <button
+            onClick={dismissInstallBanner}
+            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
     </>
