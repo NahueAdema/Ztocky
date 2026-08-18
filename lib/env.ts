@@ -26,6 +26,12 @@ export function validateEnv(): boolean {
     console.log('✅ Auth0 configurado')
   }
 
+  if (!process.env.GEMINI_API_KEY) {
+    console.log('ℹ️ GEMINI_API_KEY no configurada — usando Groq como proveedor de IA')
+  } else {
+    console.log('✅ Gemini configurado como proveedor de IA principal')
+  }
+
   console.log('✅ Todas las variables de entorno configuradas')
   return true
 }
@@ -34,6 +40,8 @@ export const env = {
   DATABASE_URL: process.env.DATABASE_URL!,
   GROQ_API_KEY: process.env.GROQ_API_KEY!,
   GROQ_MODEL: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
   GMAIL_USER: process.env.GMAIL_USER || '',
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD || '',
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',

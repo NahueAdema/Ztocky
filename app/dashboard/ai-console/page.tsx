@@ -1,17 +1,60 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, Database, Send, Sparkles, MessageSquare, AlertCircle, Package } from "lucide-react";
+import {
+  Bot,
+  Database,
+  Send,
+  Sparkles,
+  MessageSquare,
+  AlertCircle,
+  Package,
+  TrendingDown,
+  ShoppingCart,
+  Factory,
+  BarChart3,
+  Zap,
+} from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const examples = [
-  "¿Qué producto no se vendió en 30 días?",
-  "Cuales se agotan antes del viernes?",
-  "¿Qué proveedor conviene si necesito entrega urgente?",
-  "Cual es el producto con mayor margen?",
-  "¿Qué proveedor me conviene más hoy?",
-  "¿Cuántas órdenes de compra tenemos?",
+const QUICK_QUERIES = [
+  {
+    category: "Stock",
+    icon: Package,
+    queries: [
+      { label: "¿Qué productos se están agotando?", query: "¿Qué productos se están agotando más rápido y cuándo se quedan sin stock?" },
+      { label: "Stock crítico actual", query: "¿Qué productos tienen stock crítico ahora mismo?" },
+      { label: "Productos sin movimiento", query: "¿Qué productos no se vendieron en los últimos 30 días?" },
+    ],
+  },
+  {
+    category: "Ventas",
+    icon: TrendingDown,
+    queries: [
+      { label: "Top productos vendidos", query: "¿Cuáles son los 5 productos más vendidos este mes?" },
+      { label: "Productos con mayor margen", query: "¿Cuáles son los productos con mayor margen de ganancia?" },
+      { label: "Resumen de ventas", query: "¿Cómo fueron las ventas del último mes comparado con el anterior?" },
+    ],
+  },
+  {
+    category: "Proveedores",
+    icon: Factory,
+    queries: [
+      { label: "Mejor proveedor hoy", query: "¿Qué proveedor me conviene más hoy considerando precio, confiabilidad y tiempo de entrega?" },
+      { label: "Comparar precios", query: "Compara los precios de los proveedores para los productos con mayor rotación." },
+      { label: "Órdenes pendientes", query: "¿Cuántas órdenes de compra tenemos y cuáles están pendientes?" },
+    ],
+  },
+  {
+    category: "Acción",
+    icon: Zap,
+    queries: [
+      { label: "¿Qué debería comprar?", query: "Basado en el stock actual y las ventas, ¿qué debería comprar esta semana y en qué cantidades?" },
+      { label: "Recomendar proveedor", query: "Para los productos que necesitan reposición, ¿qué proveedor me recomiendás y por qué?" },
+      { label: "Plan de reposición", query: "Generá un plan de reposición para la próxima semana con cantidades y proveedores sugeridos." },
+    ],
+  },
 ];
 
 export default function AiConsolePage() {
@@ -20,8 +63,10 @@ export default function AiConsolePage() {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  const handleQuery = async () => {
-    if (!query.trim()) return;
+  const handleQuery = async (q?: string) => {
+    const queryText = q || query.trim();
+    if (!queryText) return;
+    setQuery(queryText);
     setIsLoading(true);
     setError("");
     setResult(null);
@@ -29,7 +74,7 @@ export default function AiConsolePage() {
       const res = await fetch("/api/ai/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim() }),
+        body: JSON.stringify({ query: queryText }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -48,7 +93,7 @@ export default function AiConsolePage() {
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-primary">
         <Sparkles className="h-4 w-4 animate-pulse" />
-        Groq esta analizando tus datos...
+        Analizando tus datos...
       </div>
       <div className="space-y-2">
         <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
@@ -91,9 +136,34 @@ export default function AiConsolePage() {
         </p>
       </div>
 
+      {/* Quick query cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {QUICK_QUERIES.map((group) => (
+          <div key={group.category} className="rounded-xl border border-border bg-card p-3 space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <group.icon className="h-3.5 w-3.5 text-primary" />
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.category}</p>
+            </div>
+            {group.queries.map((q) => (
+              <button
+                key={q.label}
+                type="button"
+                disabled={isLoading}
+                onClick={() => handleQuery(q.query)}
+                className="flex w-full items-center gap-2 rounded-lg border border-border/60 px-3 py-2 text-left text-xs text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary-light/50 hover:text-foreground disabled:opacity-50"
+              >
+                <MessageSquare className="h-3 w-3 shrink-0 text-primary/60" />
+                {q.label}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Search bar */}
       <Card className="card-hover overflow-hidden border-primary/10">
         <div className="h-1 bg-gradient-to-r from-primary to-teal-400" />
-        <CardContent className="p-5 space-y-4">
+        <CardContent className="p-5">
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
               <MessageSquare className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -106,12 +176,12 @@ export default function AiConsolePage() {
                     handleQuery();
                   }
                 }}
-                placeholder="Ej: qué producto me hizo perder más dinero?"
+                placeholder="Escribí tu pregunta personalizada..."
                 className="h-11 w-full rounded-xl border border-border bg-background pl-10 pr-4 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <button
-              onClick={handleQuery}
+              onClick={() => handleQuery()}
               disabled={isLoading || !query.trim()}
               className="flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -128,28 +198,10 @@ export default function AiConsolePage() {
               )}
             </button>
           </div>
-
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Consultas de ejemplo
-            </p>
-            <div className="grid gap-1.5 grid-cols-1 sm:grid-cols-2">
-              {examples.map((example) => (
-                <button
-                  key={example}
-                  type="button"
-                  onClick={() => setQuery(example)}
-                  className="flex items-start gap-2 rounded-xl border border-border p-2.5 text-left text-xs text-muted-foreground transition hover:border-primary/30 hover:bg-primary-light hover:text-foreground"
-                >
-                  <MessageSquare className="h-3 w-3 shrink-0 mt-0.5" />
-                  {example}
-                </button>
-              ))}
-            </div>
-          </div>
         </CardContent>
       </Card>
 
+      {/* Result */}
       <Card className={`card-hover ${result ? "border-success/20" : error ? "border-danger/20" : ""}`}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -168,10 +220,10 @@ export default function AiConsolePage() {
           </CardTitle>
           <CardDescription>
             {result
-              ? "Respuesta generada por Groq basada en tus datos."
+              ? "Respuesta generada basada en tus datos."
               : error
                 ? "No se pudo completar la consulta."
-                : "Escribe una pregunta para ver el resultado aqui."}
+                : "Seleccioná una consulta rápida o escribí tu propia pregunta."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -194,10 +246,10 @@ export default function AiConsolePage() {
             <div className="flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-center px-4">
               <Bot className="h-10 w-10 text-muted-foreground/50" />
               <p className="mt-3 text-sm font-medium text-muted-foreground">
-                Sin consulta activa
+                Elegí una consulta o escribí tu pregunta
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Escribe una pregunta en lenguaje natural y Ztocky analizara tus datos con Groq.
+                La IA analiza tus productos, ventas y proveedores en tiempo real.
               </p>
             </div>
           )}

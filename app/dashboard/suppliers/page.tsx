@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
@@ -586,19 +587,12 @@ export default function SuppliersPage() {
               <TableSkeleton rows={6} cols={4} />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-                <Factory className="h-8 w-8 text-primary" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">
-                {search ? "Sin resultados." : "No hay proveedores"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
-                {search
-                  ? "Intenta con otros términos de búsqueda."
-                  : "Crea uno nuevo o importa desde un archivo CSV."}
-              </p>
-            </div>
+            <EmptyState
+              icon={Factory}
+              title={search ? "Sin resultados." : "No hay proveedores"}
+              description={search ? "Intentá con otros términos de búsqueda." : "Cargá tu primer proveedor para empezar a gestionar precios y órdenes de compra."}
+              action={!search ? { label: "Crear proveedor", href: "#" } : undefined}
+            />
           ) : (
             <>
               {/* Tabla desktop */}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
-import groq, { GROQ_MODEL } from "@/lib/ai/groq";
+import { askAI } from "@/lib/ai/groq";
 
 type ProductItem = { quantity: number };
 type CatalogItem = {
@@ -132,23 +132,16 @@ Pregunta del usuario: "${query}"
 Respondé analizando los datos reales del contexto. Si te preguntan por productos específicos, usa los nombres reales del contexto.`;
 
   try {
-    const answer = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
-      model: GROQ_MODEL,
-      temperature: 0.3,
-      max_tokens: 2048,
-    });
+    const { answer } = await askAI([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: prompt },
+    ]);
 
-    const content = answer.choices[0]?.message?.content || "No pude procesar la consulta.";
-
-    return NextResponse.json({ answer: content });
+    return NextResponse.json({ answer });
   } catch (error) {
-    console.error("Error en Groq:", error);
+    console.error("Error en IA:", error);
     return NextResponse.json({
-      answer: "Lo siento, hubo un error al procesar tu consulta. Verificá que la API key de Groq esté configurada correctamente.",
+      answer: "Lo siento, hubo un error al procesar tu consulta. Verificá que las API keys de IA estén configuradas correctamente.",
     });
   }
 }
