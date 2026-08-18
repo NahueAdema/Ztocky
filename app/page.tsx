@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -21,6 +20,7 @@ import {
 
 import { getCurrentUser } from "@/lib/auth";
 import { AppInstallSection } from "@/components/landing/app-install-section";
+import { LandingHeader } from "@/components/landing/landing-header";
 
 interface Feature {
   icon: LucideIcon;
@@ -62,21 +62,6 @@ const BENEFITS = [
   "Identificación de productos con baja rotación.",
   "Importación sencilla de listas de precios mediante archivos CSV.",
 ];
-
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  if (href.startsWith("#")) {
-    return (
-      <a href={href} className="text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-primary">
-        {children}
-      </a>
-    );
-  }
-  return (
-    <Link href={href} className="text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-primary">
-      {children}
-    </Link>
-  );
-}
 
 function FeatureCard({ icon: Icon, title, text, accent }: Feature) {
   return (
@@ -164,35 +149,7 @@ export default async function Home() {
           style={{ backgroundImage: "linear-gradient(rgba(75,75,76,0.12) 1px,transparent 1px),linear-gradient(90deg,rgba(75,75,76,0.12) 1px,transparent 1px)", backgroundSize: "64px 64px" }}
         />
 
-        <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="Ztocky" width={260} height={95} priority className="h-[95px] w-auto rounded object-contain" />
-          </Link>
-          <nav aria-label="Navegación principal" className="hidden items-center gap-8 md:flex">
-            <NavLink href="#inicio">Inicio</NavLink>
-            <NavLink href="#funcionalidades">Funcionalidades</NavLink>
-            <NavLink href="#punto-de-venta">Punto de Venta</NavLink>
-            <NavLink href="#aplicacion">App</NavLink>
-            <NavLink href="#nosotros">Nosotros</NavLink>
-            <NavLink href="#contacto">Contacto</NavLink>
-          </nav>
-          <div className="flex items-center gap-3">
-            {user ? (
-              <Link href={mainHref} className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold !text-white shadow-lg shadow-primary/40 transition-all duration-200 hover:bg-primary-dark hover:shadow-xl hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
-                {mainLabel}<ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="hidden sm:inline-flex h-10 items-center rounded-full border border-border px-5 text-sm font-bold text-foreground transition-all duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
-                  Ingresar
-                </Link>
-                <Link href="/login?mode=register" className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold !text-white shadow-lg shadow-primary/40 transition-all duration-200 hover:bg-primary-dark hover:shadow-xl hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
-                  Crear cuenta<ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </>
-            )}
-          </div>
-        </header>
+        <LandingHeader user={user} />
 
         <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-16 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-2 lg:items-center lg:py-32">
           <div className="flex flex-col items-start">
