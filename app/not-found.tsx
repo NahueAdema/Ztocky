@@ -1,15 +1,19 @@
 import Link from "next/link";
-import { ArrowLeft, Home, Search } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, Home } from "lucide-react";
 
 export default function NotFound() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-5">
       <div className="flex flex-col items-center text-center max-w-sm">
         <div className="relative mb-8">
-          <img
+          <Image
             src="/404.png"
             alt="Ztocky no encuentra la página"
+            width={224}
+            height={224}
             className="h-48 w-48 object-contain drop-shadow-xl sm:h-56 sm:w-56"
+            priority
           />
         </div>
 
