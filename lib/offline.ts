@@ -8,6 +8,7 @@ export type PendingSale = {
   discountAmount: number;
   cashRegisterId: string | null;
   customerId: string | null;
+  amountPaid: number;
 };
 
 export type ProductCache = {

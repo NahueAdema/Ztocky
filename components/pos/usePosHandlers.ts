@@ -19,6 +19,7 @@ interface UsePosHandlersProps {
   paymentMethod: string;
   discount: number;
   cashReceived: string;
+  amountPaid: string;
   selectedCustomer: Customer | null;
   todaySales: TodaySale[];
   openingAmount: string;
@@ -27,6 +28,7 @@ interface UsePosHandlersProps {
   clearCart: () => void;
   setDiscount: (v: number) => void;
   setCashReceived: (v: string) => void;
+  setAmountPaid: (v: string) => void;
   setSelectedCustomer: (v: Customer | null) => void;
   setShowMobileCart: (v: boolean) => void;
   setRegister: (v: CashRegister | null) => void;
@@ -46,6 +48,7 @@ export function usePosHandlers({
   register,
   paymentMethod,
   discount,
+  amountPaid,
   selectedCustomer,
   todaySales,
   openingAmount,
@@ -54,6 +57,7 @@ export function usePosHandlers({
   clearCart,
   setDiscount,
   setCashReceived,
+  setAmountPaid,
   setSelectedCustomer,
   setShowMobileCart,
   setRegister,
@@ -78,6 +82,19 @@ export function usePosHandlers({
       toast("Abrí la caja primero", "error");
       return;
     }
+    if (paymentMethod === "ACCOUNT" && !selectedCustomer) {
+      toast("Para cobrar a cuenta corriente seleccioná un cliente", "error");
+      return;
+    }
+    const paid = Number(amountPaid) || 0;
+    if (paymentMethod === "ACCOUNT" && paid > 0) {
+      const cartTotal =
+        cart.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0) - discount;
+      if (paid > cartTotal) {
+        toast("La seña no puede superar el total de la venta", "error");
+        return;
+      }
+    }
     setProcessing(true);
     try {
       const res = await fetch("/api/dashboard/pos/checkout", {
@@ -94,6 +111,7 @@ export function usePosHandlers({
           discountAmount: discount,
           cashRegisterId: register.id,
           customerId: selectedCustomer?.id || null,
+          amountPaid: Number(amountPaid) || 0,
         }),
       });
       const data = await res.json();
@@ -105,6 +123,7 @@ export function usePosHandlers({
       clearCart();
       setDiscount(0);
       setCashReceived("");
+      setAmountPaid("");
       setSelectedCustomer(null);
       setShowMobileCart(false);
       fetchProducts();
@@ -118,19 +137,21 @@ export function usePosHandlers({
         discountAmount: discount,
         cashRegisterId: register?.id ?? null,
         customerId: selectedCustomer?.id || null,
+        amountPaid: Number(amountPaid) || 0,
       });
       cart.forEach((i) => updateCachedStock(i.productId, i.quantity));
       onOfflineSale?.(pending);
       clearCart();
       setDiscount(0);
       setCashReceived("");
+      setAmountPaid("");
       setSelectedCustomer(null);
       setShowMobileCart(false);
       toast("Sin conexión: venta guardada para sincronizar", "info");
     } finally {
       setProcessing(false);
     }
-  }, [cart, register, paymentMethod, discount, selectedCustomer, toast, setShowReceipt, clearCart, setDiscount, setCashReceived, setSelectedCustomer, setShowMobileCart, fetchProducts, fetchRegister, fetchDailySummary, setProcessing, onOfflineSale]);
+  }, [cart, register, paymentMethod, discount, amountPaid, selectedCustomer, toast, setShowReceipt, clearCart, setDiscount, setCashReceived, setAmountPaid, setSelectedCustomer, setShowMobileCart, fetchProducts, fetchRegister, fetchDailySummary, setProcessing, onOfflineSale]);
 
   const handleVoidSale = useCallback(async (saleId: string) => {
     if (!confirm("Anular esta venta? Se restaurará el stock.")) return;

@@ -45,6 +45,7 @@ export default function POSPage() {
   const [openingAmount, setOpeningAmount] = useState("");
   const [closingAmount, setClosingAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
+  const [amountPaid, setAmountPaid] = useState("");
   const [dailySummary, setDailySummary] = useState<{ totalRevenue: number; transactionCount: number; cashTotal: number; cardTotal: number } | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -143,6 +144,7 @@ export default function POSPage() {
                 discountAmount: sale.discountAmount,
                 cashRegisterId: sale.cashRegisterId,
                 customerId: sale.customerId,
+                amountPaid: sale.amountPaid,
               }),
             });
             if (res.ok) {
@@ -184,6 +186,7 @@ export default function POSPage() {
       paymentMethod,
       discount,
       cashReceived,
+      amountPaid,
       selectedCustomer,
       todaySales,
       openingAmount,
@@ -192,6 +195,7 @@ export default function POSPage() {
       clearCart,
       setDiscount,
       setCashReceived,
+      setAmountPaid,
       setSelectedCustomer,
       setShowMobileCart,
       setRegister,
@@ -243,6 +247,7 @@ export default function POSPage() {
   });
 
   const changeDue = paymentMethod === "CASH" && cashReceived ? Math.max(0, Number(cashReceived) - total) : 0;
+  const accountDue = paymentMethod === "ACCOUNT" && amountPaid ? Math.max(0, total - Number(amountPaid)) : total;
 
   const filteredCustomers = customers.filter((c) => {
     const q = customerSearch.toLowerCase();
@@ -287,6 +292,9 @@ export default function POSPage() {
     setDiscount,
     cashReceived,
     setCashReceived,
+    amountPaid,
+    setAmountPaid,
+    accountDue,
     selectedCustomer,
     setSelectedCustomer,
     customers,

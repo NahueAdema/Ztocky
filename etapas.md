@@ -74,7 +74,7 @@
 - [x] **Descuentos por item y por total** con porcentaje o monto fijo
 - [x] **Devolución** — seleccionar una venta y devolver items (restaura stock y anula el ingreso)
 - [x] **Historial de ventas del día** en vivo con total acumulado
-- [ ] **Cobro parcial / seña** — registrar anticipos y saldar después
+- [x] **Cobro parcial / seña** — registrar un anticipo (seña) en la venta a Cta Cte; el saldo queda como deuda del cliente y la seña cuenta como efectivo en el cierre de caja
 - [x] **Modo offline** — vender sin internet y sincronizar cuando vuelva la conexión (cola de ventas + sync automático; catálogo cacheado en localStorage). MVP: requiere tener la app abierta (sin precacheo del Service Worker)
 - [x] **Base de clientes** con historial de compras, deuda y datos de contacto
 - [ ] **Múltiples puntos de venta** — una misma cuenta puede tener varias cajas abiertas simultáneamente

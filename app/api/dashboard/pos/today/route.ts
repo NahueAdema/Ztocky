@@ -26,6 +26,15 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
+  const señaPayments = await prisma.accountPayment.findMany({
+    where: {
+      workspaceId: user.workspaceId!,
+      createdAt: { gte: today, lt: tomorrow },
+      note: { startsWith: "Seña venta" },
+    },
+    select: { amount: true },
+  });
+
   let totalRevenue = 0;
   let cashTotal = 0;
   let cardTotal = 0;
@@ -55,6 +64,8 @@ export async function GET() {
       productSales[key].revenue += Number(item.totalPrice);
     }
   }
+
+  cashTotal += señaPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
   const topProducts = Object.values(productSales)
     .sort((a, b) => b.revenue - a.revenue)

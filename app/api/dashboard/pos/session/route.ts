@@ -25,9 +25,20 @@ export async function GET() {
     return NextResponse.json({ register: null });
   }
 
-  const cashSales = openRegister.sales
-    .filter((s) => s.paymentMethod === "CASH")
-    .reduce((sum, s) => sum + Number(s.totalAmount), 0);
+  const señaPayments = await prisma.accountPayment.findMany({
+    where: {
+      workspaceId: user.workspaceId!,
+      createdAt: { gte: openRegister.openedAt },
+      note: { startsWith: "Seña venta" },
+    },
+    select: { amount: true },
+  });
+
+  const cashSales =
+    openRegister.sales
+      .filter((s) => s.paymentMethod === "CASH")
+      .reduce((sum, s) => sum + Number(s.totalAmount), 0) +
+    señaPayments.reduce((sum, s) => sum + Number(s.amount), 0);
 
   const totalSales = openRegister.sales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
 
@@ -128,8 +139,18 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Caja no encontrada o ya cerrada" }, { status: 404 });
   }
 
+  const señaPayments = await prisma.accountPayment.findMany({
+    where: {
+      workspaceId: user.workspaceId!,
+      createdAt: { gte: register.openedAt },
+      note: { startsWith: "Seña venta" },
+    },
+    select: { amount: true },
+  });
+
   const cashFromSales = register.sales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-  const expectedCash = Number(register.openingAmount) + cashFromSales;
+  const cashFromSeñas = señaPayments.reduce((sum, s) => sum + Number(s.amount), 0);
+  const expectedCash = Number(register.openingAmount) + cashFromSales + cashFromSeñas;
   const difference = closingAmount - expectedCash;
 
   const updated = await prisma.cashRegister.update({

@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const [accountSales, totalPayments] = await Promise.all([
     prisma.sale.aggregate({
-      where: { customerId: id, workspaceId: user.workspaceId, paymentMethod: "ACCOUNT" },
+      where: { customerId: id, workspaceId: user.workspaceId, paymentMethod: "ACCOUNT", status: "COMPLETED" },
       _sum: { totalAmount: true },
     }),
     prisma.accountPayment.aggregate({
