@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen, MessageSquare } from "lucide-react";
+import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen, MessageSquare, Building2, HelpCircle, ShieldCheck } from "lucide-react";
 import { useTheme } from "next-themes";
 
 function getModifierKey() {
@@ -17,6 +17,7 @@ type DashboardUser = {
   name: string;
   email: string;
   workspaceName?: string;
+  globalRole?: string;
 };
 
 type AlertItem = {
@@ -249,10 +250,20 @@ export function DashboardShell({
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                   <div className="p-2 space-y-0.5">
+                    <Link href="/dashboard/team" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      Equipo
+                    </Link>
                     <Link href="/dashboard/settings" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                       <Settings className="h-4 w-4 text-muted-foreground" />
                       Configuración
                     </Link>
+                    {user.globalRole === "SUPER_ADMIN" && (
+                      <Link href="/admin" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                        Panel de administración
+                      </Link>
+                    )}
                     <Link href="/dashboard/search" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                       <Search className="h-4 w-4 text-muted-foreground" />
                       Búsqueda global
@@ -260,6 +271,10 @@ export function DashboardShell({
                     <Link href="/dashboard/guide" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                       <BookOpen className="h-4 w-4 text-muted-foreground" />
                       Guía de uso
+                    </Link>
+                    <Link href="/dashboard/help" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                      Centro de ayuda
                     </Link>
                     <Link href="/dashboard/feedback" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -384,10 +399,20 @@ export function DashboardShell({
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
                 <div className="p-2 space-y-0.5">
+                  <Link href="/dashboard/team" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    Equipo
+                  </Link>
                   <Link href="/dashboard/settings" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                     <Settings className="h-4 w-4 text-muted-foreground" />
                     Configuración
                   </Link>
+                  {user.globalRole === "SUPER_ADMIN" && (
+                    <Link href="/admin" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                      <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                      Panel de administración
+                    </Link>
+                  )}
                   <Link href="/dashboard/search" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                     <Search className="h-4 w-4 text-muted-foreground" />
                     Búsqueda global
@@ -395,6 +420,10 @@ export function DashboardShell({
                   <Link href="/dashboard/guide" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                     <BookOpen className="h-4 w-4 text-muted-foreground" />
                     Guía de uso
+                  </Link>
+                  <Link href="/dashboard/help" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    Centro de ayuda
                   </Link>
                   <Link href="/dashboard/feedback" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />

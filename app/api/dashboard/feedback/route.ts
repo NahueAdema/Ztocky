@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { sendPushToWorkspace } from "@/lib/push";
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
@@ -32,6 +33,26 @@ export async function POST(request: NextRequest) {
       email: email?.trim() || null,
     },
   });
+
+  if (user.workspaceId) {
+    const typeLabel: Record<string, string> = {
+      error: "Error",
+      suggestion: "Sugerencia",
+      doubt: "Duda",
+      feature: "Solicitud de feature",
+      other: "Otro",
+    };
+    sendPushToWorkspace(
+      user.workspaceId,
+      {
+        title: `💬 Nuevo feedback: ${typeLabel[type] ?? type}`,
+        body: `${user.name}: ${message.trim().slice(0, 120)}${message.trim().length > 120 ? "…" : ""}`,
+        url: "/admin/feedback",
+        tag: "feedback",
+      },
+      { skipUserId: user.id, roles: ["OWNER", "ADMIN"] },
+    ).catch(() => {});
+  }
 
   return NextResponse.json({ success: true });
 }
