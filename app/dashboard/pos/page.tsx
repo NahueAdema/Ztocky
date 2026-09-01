@@ -22,6 +22,10 @@ import {
   type TodaySale,
 } from "@/components/pos/types";
 import { useOnline } from "@/hooks/useOnline";
+
+// Función estable a nivel de módulo: evita que `setLoadingRegister` cambie de
+// identidad en cada render y dispare un bucle infinito de refetch en el POS.
+const NOOP = () => {};
 import {
   getPendingSales,
   removePendingSale,
@@ -101,7 +105,7 @@ export default function POSPage() {
   } = usePosData({
     setProducts,
     setRegister,
-    setLoadingRegister: () => {},
+    setLoadingRegister: NOOP,
     setDailySummary,
     setTodaySales,
     setCustomers,

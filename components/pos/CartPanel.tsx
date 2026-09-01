@@ -363,17 +363,25 @@ export function CartPanel({
                     ))}
                     <button
                       onClick={async () => {
-                        const res = await fetch("/api/dashboard/customers", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ name: customerSearch }),
-                        });
-                        const data = await res.json();
-                        if (data.customer) {
-                          setSelectedCustomer(data.customer);
-                          setCustomerSearch("");
-                          setShowCustomerList(false);
-                          fetchCustomers();
+                        try {
+                          const res = await fetch("/api/dashboard/customers", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: customerSearch }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) {
+                            console.error("Error al crear cliente:", data.error || res.status);
+                            return;
+                          }
+                          if (data.id) {
+                            setSelectedCustomer(data);
+                            setCustomerSearch("");
+                            setShowCustomerList(false);
+                            fetchCustomers();
+                          }
+                        } catch (err) {
+                          console.error("Failed to create customer:", err);
                         }
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary/5 border-t border-border"
