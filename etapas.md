@@ -75,7 +75,7 @@
 - [x] **Devolución** — seleccionar una venta y devolver items (restaura stock y anula el ingreso)
 - [x] **Historial de ventas del día** en vivo con total acumulado
 - [ ] **Cobro parcial / seña** — registrar anticipos y saldar después
-- [ ] **Modo offline** — vender sin internet y sincronizar cuando vuelva la conexión (critical para ferias/mercados)
+- [x] **Modo offline** — vender sin internet y sincronizar cuando vuelva la conexión (cola de ventas + sync automático; catálogo cacheado en localStorage). MVP: requiere tener la app abierta (sin precacheo del Service Worker)
 - [x] **Base de clientes** con historial de compras, deuda y datos de contacto
 - [ ] **Múltiples puntos de venta** — una misma cuenta puede tener varias cajas abiertas simultáneamente
 - [x] **Escáner de cámara** compatible con Android e iOS (ZXing, reemplaza BarcodeDetector)
@@ -198,6 +198,6 @@
 - [ ] Auditoría de seguridad
 - [ ] Optimización de performance (caching, queries N+1)
 - [ ] Documentación de API actualizada
-- [ ] Modo offline / PWA para mobile
+- [ ] Modo offline / PWA para mobile (POS listo con cola de ventas; falta precacheo del Service Worker y full app shell)
 - [ ] Infraestructura multi-región
 - [ ] Migración a cola de tareas (procesamiento async de imports pesados)

@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { moneyFormatter } from "@/lib/format";
 import {
-  type Product,
   type CartItem,
   type CashRegister,
   type SaleResult,
@@ -12,6 +11,7 @@ import {
   type TodaySale,
 } from "./types";
 import { PAYMENT_METHODS } from "./constants";
+import { enqueueSale, updateCachedStock, type PendingSale } from "@/lib/offline";
 
 interface UsePosHandlersProps {
   cart: CartItem[];
@@ -38,6 +38,7 @@ interface UsePosHandlersProps {
   fetchProducts: () => void;
   fetchRegister: () => void;
   fetchDailySummary: () => void;
+  onOfflineSale?: (pending: PendingSale) => void;
 }
 
 export function usePosHandlers({
@@ -64,6 +65,7 @@ export function usePosHandlers({
   fetchProducts,
   fetchRegister,
   fetchDailySummary,
+  onOfflineSale,
 }: UsePosHandlersProps) {
   const { toast } = useToast();
 
@@ -110,11 +112,25 @@ export function usePosHandlers({
       fetchDailySummary();
       toast("Venta registrada", "success");
     } catch {
-      toast("Error de conexión", "error");
+      const pending = enqueueSale({
+        cart,
+        paymentMethod,
+        discountAmount: discount,
+        cashRegisterId: register?.id ?? null,
+        customerId: selectedCustomer?.id || null,
+      });
+      cart.forEach((i) => updateCachedStock(i.productId, i.quantity));
+      onOfflineSale?.(pending);
+      clearCart();
+      setDiscount(0);
+      setCashReceived("");
+      setSelectedCustomer(null);
+      setShowMobileCart(false);
+      toast("Sin conexión: venta guardada para sincronizar", "info");
     } finally {
       setProcessing(false);
     }
-  }, [cart, register, paymentMethod, discount, selectedCustomer, toast, setShowReceipt, clearCart, setDiscount, setCashReceived, setSelectedCustomer, setShowMobileCart, fetchProducts, fetchRegister, fetchDailySummary, setProcessing]);
+  }, [cart, register, paymentMethod, discount, selectedCustomer, toast, setShowReceipt, clearCart, setDiscount, setCashReceived, setSelectedCustomer, setShowMobileCart, fetchProducts, fetchRegister, fetchDailySummary, setProcessing, onOfflineSale]);
 
   const handleVoidSale = useCallback(async (saleId: string) => {
     if (!confirm("Anular esta venta? Se restaurará el stock.")) return;
