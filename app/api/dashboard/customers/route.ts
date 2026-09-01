@@ -11,6 +11,9 @@ export async function GET() {
   const customers = await prisma.customer.findMany({
     where: { workspaceId: user.workspaceId },
     orderBy: { createdAt: "desc" },
+    include: {
+      _count: { select: { sales: true, accountPayments: true } },
+    },
   });
 
   return NextResponse.json({
@@ -21,6 +24,8 @@ export async function GET() {
       phone: c.phone,
       address: c.address,
       createdAt: c.createdAt.toISOString(),
+      _count: { sales: c._count.sales, accountPayments: c._count.accountPayments },
+      sales: [],
     })),
   });
 }
