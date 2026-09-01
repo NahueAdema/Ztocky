@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
+import { DecodeHintType } from "@zxing/library";
 
 interface UseCameraScannerProps {
   onScan: (code: string) => void;
@@ -10,95 +12,99 @@ export function useCameraScanner({ onScan }: UseCameraScannerProps) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const scanningRef = useRef(false);
-  const lastCodeRef = useRef("");
+  const controlsRef = useRef<IScannerControls | null>(null);
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const lastCodeRef = useRef("");
+  const onScanRef = useRef(onScan);
 
   const stopCamera = useCallback(() => {
     scanningRef.current = false;
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+    codeReaderRef.current = null;
     setCameraActive(false);
     setCameraError("");
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((t) => t.stop());
+      videoRef.current.srcObject = null;
+    }
   }, []);
 
-  const startCamera = useCallback(() => {
+  const startCamera = useCallback(async () => {
     setCameraError("");
-    if (!("BarcodeDetector" in window)) {
-      setCameraError("Tu navegador no soporta detección por cámara.");
-      return;
-    }
     scanningRef.current = true;
     lastCodeRef.current = "";
     setCameraActive(true);
-  }, []);
 
-  const handleBarcodeSubmit = useCallback(
-    async (code: string) => {
-      if (!code.trim()) return;
-      onScan(code.trim());
-    },
-    [onScan]
-  );
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      if (!scanningRef.current || !videoRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
+      if (!codeReaderRef.current) {
+        const hints = new Map();
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+          "EAN_13",
+          "EAN_8",
+          "CODE_128",
+          "CODE_39",
+          "UPC_A",
+          "UPC_E",
+          "QR_CODE",
+          "CODABAR",
+        ]);
+        codeReaderRef.current = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 200 });
+      }
+      controlsRef.current = await codeReaderRef.current.decodeFromStream(
+        stream,
+        videoRef.current,
+        (result) => {
+          if (!scanningRef.current || !result) return;
+          const code = result.getText().trim();
+          if (code === lastCodeRef.current) return;
+          lastCodeRef.current = code;
+          scanningRef.current = false;
+          const detected = code;
+          requestAnimationFrame(() => {
+            stopCamera();
+            onScanRef.current(detected);
+          });
+        }
+      );
+    } catch (err) {
+      const e = err as Error;
+      const denied =
+        e?.name === "NotAllowedError" ||
+        e?.name === "PermissionDeniedError" ||
+        e?.name === "SecurityError";
+      setCameraActive(false);
+      setCameraError(
+        denied
+          ? "Permiso de cámara denegado. Activá la cámara en la configuración del navegador e intentá de nuevo."
+          : `No se pudo acceder a la cámara: ${e?.message || "error desconocido"}`
+      );
+    }
+  }, [stopCamera]);
 
   useEffect(() => {
-    if (!cameraActive) {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
+  useEffect(() => {
+    return () => {
       scanningRef.current = false;
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((t) => t.stop());
-        videoRef.current.srcObject = null;
-      }
-      return;
-    }
-    let cancelled = false;
-    const initCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
-        });
-        if (cancelled || !videoRef.current) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        if (!scanningRef.current) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        const detector = new BarcodeDetector({
-          formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code", "codabar"],
-        });
-        const scan = async () => {
-          if (!videoRef.current || !scanningRef.current) return;
-          try {
-            const barcodes = await detector.detect(videoRef.current);
-            if (barcodes.length > 0) {
-              const code = barcodes[0].rawValue;
-              if (code !== lastCodeRef.current) {
-                lastCodeRef.current = code;
-                scanningRef.current = false;
-                setCameraActive(false);
-                if (videoRef.current?.srcObject) {
-                  (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-                  videoRef.current.srcObject = null;
-                }
-                onScan(code);
-                return;
-              }
-            }
-          } catch { /* keep going */ }
-          if (scanningRef.current) setTimeout(scan, 400);
-        };
-        scan();
-      } catch {
-        if (!cancelled) {
-          setCameraError("No se pudo acceder a la cámara. Verificá los permisos.");
-          setCameraActive(false);
-        }
-      }
+      controlsRef.current?.stop();
+      controlsRef.current = null;
+      codeReaderRef.current = null;
     };
-    initCamera();
-    return () => { cancelled = true; };
-  }, [cameraActive, onScan]);
+  }, []);
 
   return {
     cameraActive,

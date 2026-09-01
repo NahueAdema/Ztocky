@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
@@ -405,12 +406,14 @@ export default function SalesPage() {
           { label: "Transacciones", value: uniqueSaleIds, icon: Hash, color: "from-indigo-500 to-violet-600" },
         ].map((stat) => (
           <Card key={stat.label} className={`card-hover ${stat.label === "Transacciones" ? "col-span-2 sm:col-span-1" : ""}`}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${stat.color} text-white`}><stat.icon className="h-4 w-4" /></div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground truncate">{stat.label}</p>
-                  <p className="text-lg font-bold">{stat.value}</p>
+            <CardContent className="p-0">
+              <div className="p-4 pt-5">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${stat.color} text-white`}><stat.icon className="h-4 w-4" /></div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground truncate">{stat.label}</p>
+                    <p className="text-lg font-bold">{stat.value}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -474,11 +477,11 @@ export default function SalesPage() {
               <TableSkeleton rows={6} cols={5} />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10"><ShoppingCart className="h-8 w-8 text-primary" /></div>
-              <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay ventas registradas"}</p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros términos de búsqueda." : "Registra una nueva venta o importa desde un archivo CSV."}</p>
-            </div>
+            <EmptyState
+              icon={ShoppingCart}
+              title={search ? "Sin resultados." : "No hay ventas registradas"}
+              description={search ? "Intentá con otros términos de búsqueda." : "Tus ventas aparecerán acá cuando registres una venta desde el Punto de Venta."}
+            />
           ) : (
             <>
               <div className="hidden sm:block overflow-hidden rounded-xl border border-border">

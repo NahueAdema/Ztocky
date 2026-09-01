@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { Boxes, Download, FileUp, Plus, Search, Trash2, Pencil, Loader2, CheckCircle2, AlertTriangle, FileSpreadsheet, FileText } from "lucide-react";
@@ -458,11 +459,12 @@ export default function ProductsPage() {
               <TableSkeleton rows={6} cols={5} />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10"><Boxes className="h-8 w-8 text-primary" /></div>
-              <p className="text-sm font-semibold text-foreground">{search ? "Sin resultados." : "No hay productos"}</p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">{search ? "Intenta con otros términos de búsqueda." : "Crea uno nuevo o importa desde un archivo CSV."}</p>
-            </div>
+            <EmptyState
+              icon={Boxes}
+              title={search ? "Sin resultados." : "No hay productos"}
+              description={search ? "Intentá con otros términos de búsqueda." : "Cargá tu primer producto o importá desde un archivo CSV para empezar a gestionar tu stock."}
+              action={!search ? { label: "Crear producto", href: "#" } : undefined}
+            />
           ) : (
             <>
               {/* Tabla — solo desktop */}

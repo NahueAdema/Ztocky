@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { getPrisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
@@ -17,16 +18,19 @@ export async function POST(request: NextRequest) {
   }
 
   if (message.trim().length > 2000) {
-    return NextResponse.json({ error: "El mensaje no puede superar los 2000 caracteres" }, { status: 400 });
+    return NextResponse.json({ error: "El mensaje no puede superar 2000 caracteres" }, { status: 400 });
   }
 
-  console.log("[Feedback]", {
-    userId: user.id,
-    email: email || user.email,
-    type,
-    message: message.trim(),
-    workspaceId: user.workspaceId,
-    createdAt: new Date().toISOString(),
+  const prisma = getPrisma();
+
+  await prisma.feedback.create({
+    data: {
+      userId: user.id,
+      workspaceId: user.workspaceId ?? null,
+      type,
+      message: message.trim(),
+      email: email?.trim() || null,
+    },
   });
 
   return NextResponse.json({ success: true });

@@ -15,7 +15,7 @@ import {
   KeyRound,
   ArrowLeft,
   X,
-  Shield,
+  MessageSquare,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ const adminNav = [
   { href: "/admin/users", label: "Usuarios", icon: Users },
   { href: "/admin/workspaces", label: "Workspaces", icon: Building2 },
   { href: "/admin/sessions", label: "Sesiones", icon: KeyRound },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
 ];
 
 function AdminSidebarContent({

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
@@ -258,19 +259,11 @@ export default function ReturnsPage() {
               <TableSkeleton rows={5} cols={5} />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="empty-state flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-                <Undo2 className="h-8 w-8 text-primary" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">
-                {search ? "Sin resultados." : "No hay devoluciones registradas"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
-                {search
-                  ? "Intenta con otros términos de búsqueda."
-                  : "Registrar una nueva devolución desde el botón superior."}
-              </p>
-            </div>
+            <EmptyState
+              icon={Undo2}
+              title={search ? "Sin resultados." : "No hay devoluciones"}
+              description={search ? "Intentá con otros términos de búsqueda." : "Las devoluciones aparecerán acá cuando registres una desde el historial de ventas."}
+            />
           ) : (
             <>
               <div className="hidden sm:block overflow-hidden rounded-xl border border-border">
