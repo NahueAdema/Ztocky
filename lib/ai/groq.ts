@@ -6,7 +6,7 @@ const gemini = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
-export const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+export const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };

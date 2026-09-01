@@ -45,6 +45,8 @@ export function DashboardShell({
   const [loadingAlerts, setLoadingAlerts] = useState(true);
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
+  const notifRefMobile = useRef<HTMLDivElement>(null);
+  const userRefMobile = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [modifierKey, setModifierKey] = useState("Cmd");
 
@@ -90,8 +92,13 @@ export function DashboardShell({
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false);
-      if (userRef.current && !userRef.current.contains(e.target as Node)) setShowUserMenu(false);
+      const target = e.target as Node;
+      const insideNotif =
+        notifRef.current?.contains(target) || notifRefMobile.current?.contains(target);
+      const insideUser =
+        userRef.current?.contains(target) || userRefMobile.current?.contains(target);
+      if (!insideNotif) setShowNotif(false);
+      if (!insideUser) setShowUserMenu(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -166,7 +173,7 @@ export function DashboardShell({
                 )}
               </button>
               {showNotif && (
-                <div className="absolute right-0 top-12 w-80 rounded-xl border border-border bg-card shadow-xl animate-slide-down">
+                <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-border bg-card shadow-xl animate-slide-down">
                   <div className="p-4 border-b border-border flex items-center justify-between">
                     <p className="text-sm font-semibold">Notificaciones</p>
                     {unread.length > 0 && (
@@ -236,7 +243,7 @@ export function DashboardShell({
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
               </button>
               {showUserMenu && (
-                <div className="absolute right-0 top-12 w-64 rounded-xl border border-border bg-card shadow-xl animate-slide-down">
+                <div className="absolute right-0 top-12 z-50 w-64 rounded-xl border border-border bg-card shadow-xl animate-slide-down">
                   <div className="p-4 border-b border-border">
                     <p className="text-sm font-semibold">{user.name}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
@@ -290,7 +297,7 @@ export function DashboardShell({
           </Link>
 
           {/* Notifications */}
-          <div className="relative" ref={notifRef}>
+          <div className="relative" ref={notifRefMobile}>
             <button
               onClick={() => setShowNotif(!showNotif)}
               className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-card/50 text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
@@ -359,7 +366,7 @@ export function DashboardShell({
           </div>
 
           {/* User menu */}
-          <div className="relative ml-auto" ref={userRef}>
+          <div className="relative ml-auto" ref={userRefMobile}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-card/50 transition-all hover:bg-muted/60"
@@ -371,7 +378,7 @@ export function DashboardShell({
               </div>
             </button>
             {showUserMenu && (
-              <div className="absolute right-0 top-12 w-64 rounded-xl border border-border bg-card shadow-xl animate-slide-down">
+              <div className="absolute right-0 top-12 z-50 w-64 rounded-xl border border-border bg-card shadow-xl animate-slide-down">
                 <div className="p-4 border-b border-border">
                   <p className="text-sm font-semibold">{user.name}</p>
                   <p className="text-xs text-muted-foreground">{user.email}</p>

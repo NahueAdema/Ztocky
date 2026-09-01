@@ -406,12 +406,14 @@ export default function SalesPage() {
           { label: "Transacciones", value: uniqueSaleIds, icon: Hash, color: "from-indigo-500 to-violet-600" },
         ].map((stat) => (
           <Card key={stat.label} className={`card-hover ${stat.label === "Transacciones" ? "col-span-2 sm:col-span-1" : ""}`}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${stat.color} text-white`}><stat.icon className="h-4 w-4" /></div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground truncate">{stat.label}</p>
-                  <p className="text-lg font-bold">{stat.value}</p>
+            <CardContent className="p-0">
+              <div className="p-4 pt-5">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${stat.color} text-white`}><stat.icon className="h-4 w-4" /></div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground truncate">{stat.label}</p>
+                    <p className="text-lg font-bold">{stat.value}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>

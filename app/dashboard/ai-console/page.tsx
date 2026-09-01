@@ -14,7 +14,10 @@ import {
   Factory,
   BarChart3,
   Zap,
+  ChevronDown,
 } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -62,6 +65,7 @@ export default function AiConsolePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [showQuickQueries, setShowQuickQueries] = useState(false);
 
   const handleQuery = async (q?: string) => {
     const queryText = q || query.trim();
@@ -104,26 +108,8 @@ export default function AiConsolePage() {
     </div>
   );
 
-  const formatAnswer = (text: string) => {
-    return text.split("\n").map((line, i) => {
-      if (line.trim().startsWith("-")) {
-        return (
-          <li key={i} className="ml-5 list-disc text-sm text-foreground/90">
-            {line.trim().slice(1).trim()}
-          </li>
-        );
-      }
-      if (line.trim() === "") return <br key={i} />;
-      return (
-        <p key={i} className="text-sm text-foreground/90 leading-relaxed">
-          {line}
-        </p>
-      );
-    });
-  };
-
   return (
-    <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
+    <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
       <div className="text-center">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 shadow-lg shadow-teal/20 mb-3">
           <Bot className="h-7 w-7 text-white" />
@@ -136,35 +122,56 @@ export default function AiConsolePage() {
         </p>
       </div>
 
-      {/* Quick query cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {QUICK_QUERIES.map((group) => (
-          <div key={group.category} className="rounded-xl border border-border bg-card p-3 space-y-2">
-            <div className="flex items-center gap-2 px-1">
-              <group.icon className="h-3.5 w-3.5 text-primary" />
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.category}</p>
+      {/* Quick queries (collapsible) */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <button
+          type="button"
+          onClick={() => setShowQuickQueries(!showQuickQueries)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+          aria-expanded={showQuickQueries}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-teal-600">
+              <Sparkles className="h-4 w-4 text-white" />
             </div>
-            {group.queries.map((q) => (
-              <button
-                key={q.label}
-                type="button"
-                disabled={isLoading}
-                onClick={() => handleQuery(q.query)}
-                className="flex w-full items-center gap-2 rounded-lg border border-border/60 px-3 py-2 text-left text-xs text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary-light/50 hover:text-foreground disabled:opacity-50"
-              >
-                <MessageSquare className="h-3 w-3 shrink-0 text-primary/60" />
-                {q.label}
-              </button>
+            <div>
+              <p className="text-sm font-semibold">Consultas rápidas</p>
+              <p className="text-xs text-muted-foreground">Preguntas predefinidas sobre tu negocio</p>
+            </div>
+          </div>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${showQuickQueries ? "rotate-180" : ""}`} />
+        </button>
+        {showQuickQueries && (
+          <div className="border-t border-border p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {QUICK_QUERIES.map((group) => (
+              <div key={group.category} className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                  <group.icon className="h-3.5 w-3.5 text-primary" />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.category}</p>
+                </div>
+                {group.queries.map((q) => (
+                  <button
+                    key={q.label}
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => handleQuery(q.query)}
+                    className="flex w-full items-center gap-2 rounded-lg border border-border/60 px-3 py-2 text-left text-xs text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary-light/50 hover:text-foreground disabled:opacity-50"
+                  >
+                    <MessageSquare className="h-3 w-3 shrink-0 text-primary/60" />
+                    {q.label}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
-        ))}
+        )}
       </div>
 
       {/* Search bar */}
       <Card className="card-hover overflow-hidden border-primary/10">
         <div className="h-1 bg-gradient-to-r from-primary to-teal-400" />
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-2 sm:flex-row">
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-2 p-5 pt-6 sm:flex-row">
             <div className="relative flex-1">
               <MessageSquare className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -232,9 +239,9 @@ export default function AiConsolePage() {
               <LoadingSkeleton />
             </div>
           ) : result ? (
-            <div className="rounded-xl border border-success/20 bg-success-light/10 p-5">
-              <div className="prose prose-sm max-w-none">
-                {formatAnswer(result)}
+            <div className="rounded-xl border border-success/20 bg-success-light/10 p-6 sm:p-8">
+              <div className="prose prose-sm sm:prose-base max-w-none text-foreground/90 prose-headings:mt-6 prose-headings:mb-3 prose-headings:text-foreground prose-strong:text-foreground [&_table]:block [&_table]:overflow-x-auto [&_table]:w-full [&_table]:leading-normal prose-th:text-foreground prose-td:text-foreground [&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:p-3 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:border [&_td]:border-border [&_td]:p-3 [&_td]:align-top [&_ul]:my-3 [&_ol]:my-3 [&_li]:my-1 [&_p]:my-2">
+                <Markdown remarkPlugins={[remarkGfm]}>{result}</Markdown>
               </div>
             </div>
           ) : error ? (

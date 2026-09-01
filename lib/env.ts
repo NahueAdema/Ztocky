@@ -39,7 +39,7 @@ export function validateEnv(): boolean {
 export const env = {
   DATABASE_URL: process.env.DATABASE_URL!,
   GROQ_API_KEY: process.env.GROQ_API_KEY!,
-  GROQ_MODEL: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  GROQ_MODEL: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
   GMAIL_USER: process.env.GMAIL_USER || '',

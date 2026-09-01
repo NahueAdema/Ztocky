@@ -122,7 +122,7 @@ export default async function DashboardPage() {
           return (
             <Card key={kpi.title} className={`card-hover border ${kpi.accent} overflow-hidden`}>
               <CardContent className="p-0">
-                <div className="p-5">
+                <div className="p-5 pt-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{kpi.title}</p>
