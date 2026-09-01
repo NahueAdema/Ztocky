@@ -89,7 +89,6 @@
 - [x] **Undo** en acciones destructivas (toast con "Deshacer" al eliminar productos/proveedores)
 - [x] **Atajos de teclado** para acciones frecuentes
 - [x] **Guía de uso** dentro de la app (`/dashboard/guide`)
-- [x] **Onboarding interactivo** para nuevos usuarios (tour guiado al primer login en el dashboard)
 - [x] **Vista "explicación simplificada"** en el simulador y en las alertas (toggle "modo simple" que oculta números complejos y muestra texto/emojis claros)
 
 ---

@@ -116,7 +116,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="kpis">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
@@ -245,7 +245,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-        <Card className="card-hover" data-tour="agotamientos">
+        <Card className="card-hover">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -354,7 +354,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card className="card-hover" data-tour="acciones">
+      <Card className="card-hover">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowUpRight className="h-4 w-4 text-primary" />

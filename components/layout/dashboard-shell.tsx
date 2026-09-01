@@ -12,14 +12,12 @@ function getModifierKey() {
 }
 
 import { Sidebar } from "@/components/layout/sidebar";
-import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 
 type DashboardUser = {
   name: string;
   email: string;
   workspaceName?: string;
   globalRole?: string;
-  onboardedAt?: Date | null;
 };
 
 type AlertItem = {
@@ -456,8 +454,6 @@ export function DashboardShell({
 
         <main className="px-4 py-6 sm:px-6 lg:px-8 pt-[100px] lg:pt-6">{children}</main>
       </div>
-
-      {!user.onboardedAt && pathname === "/dashboard" && <OnboardingTour />}
     </div>
   );
 }
