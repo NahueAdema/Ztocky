@@ -50,19 +50,16 @@
 - [x] **Sistema de quejas y sugerencias** — formulario simple en el dashboard donde el usuario puede reportar problemas o pedir features
 - [x] **Panel admin de feedback** — listado de todos los mensajes con estado (nuevo / en revisión / resuelto / cerrado)
 - [x] **Categorías de feedback**: error / sugerencia / duda / solicitud de actualización / otro
-- [ ] **Notificaciones al admin** cuando llega un feedback nuevo (email y/o in-app)
+- [x] **Notificaciones al admin** cuando llega un feedback nuevo (email y/o in-app)
 - [x] **Respuesta del admin** al comercio desde el panel
 - [x] **Historial completo** de la conversación por ticket
 
 ### IA explicativa y accesible
 
-- [ ] **Tooltips informativos** en todo el dashboard explicando KPIs, métricas y acciones en lenguaje simple ("¿Qué significa esto?")
-- [ ] **Onboarding interactivo** para nuevos usuarios (tour guiado por el dashboard al primer login)
 - [x] **Consultas guiadas en la Consola IA** — botones predefinidos para preguntas comunes, el usuario no necesita saber qué preguntar
 - [x] **Mejora del prompt de sistema** de Groq para respuestas más claras, con ejemplos y unidades en contexto (ahora multi-proveedor Gemini + Groq)
-- [ ] **Glosario de términos** accesible desde cualquier página (stock crítico, burn rate, lead time, etc.)
-- [ ] **Vista "explicación simplificada"** en el simulador y en las alertas (ocultar números complejos, mostrar emojis/colores y texto claro)
-- [ ] **Modo "no técnico"** toggle en la Consola IA que da respuestas más coloquiales y menos tabulares
+
+> **Bloque C — posible futuro:** Modo "no técnico" toggle en la Consola IA · Tooltips informativos · Glosario de términos. No es prioritario ahora.
 
 ### POS — Sistema de ventas en linea
 
@@ -71,7 +68,7 @@
 - [x] **Interfaz tipo caja registradora** en `/dashboard/pos` con layout tactile para pantalla táctil
 - [x] **Carrito de compras** con agregar/scanner de productos, modificar cantidades y eliminar items
 - [x] **Cobro múltiple**: efectivo, tarjeta, transferencia, cuenta corriente (registra el método de pago)
-- [ ] **Ticket / comprobante** — vista previa del ticket antes de finalizar e impresión (PDF térmico 80mm)
+- [x] **Ticket / comprobante** — vista previa del ticket antes de finalizar e impresión (PDF térmico 80mm)
 - [x] **Apertura y cierre de caja** — control de efectivo inicial/final, diferencia del día
 - [x] **Cliente frecuente** vinculado a la venta (sin obligación de registrar cliente)
 - [x] **Descuentos por item y por total** con porcentaje o monto fijo
@@ -85,13 +82,15 @@
 
 ### Mejoras de UX/UI generales
 
-- [ ] **Página de ayuda / FAQ** dentro de la app
-- [ ] **Mensajes de error amigables** en formularios (sin códigos técnicos)
+- [x] **Página de ayuda / FAQ** dentro de la app
+- [x] **Mensajes de error amigables** en formularios (sin códigos técnicos)
 - [x] **Estado vacío** ilustrado en todas las secciones (cuando no hay datos, mostrar qué hacer)
 - [x] **Confirmaciones** en acciones destructivas (eliminar producto, etc.) via `ConfirmDialog`
-- [ ] **Undo** en acciones destructivas
+- [x] **Undo** en acciones destructivas (toast con "Deshacer" al eliminar productos/proveedores)
 - [x] **Atajos de teclado** para acciones frecuentes
 - [x] **Guía de uso** dentro de la app (`/dashboard/guide`)
+- [x] **Onboarding interactivo** para nuevos usuarios (tour guiado al primer login en el dashboard)
+- [x] **Vista "explicación simplificada"** en el simulador y en las alertas (toggle "modo simple" que oculta números complejos y muestra texto/emojis claros)
 
 ---
 

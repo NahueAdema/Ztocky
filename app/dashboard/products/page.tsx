@@ -151,13 +151,45 @@ export default function ProductsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar este producto?")) return;
+    const product = products.find((p) => p.id === id);
     try {
       const res = await fetch(`/api/dashboard/products/${id}`, { method: "DELETE" });
       if (res.ok) {
         fetchData();
-        toast("Producto eliminado", "success");
+        toast("Producto eliminado", "success", product
+          ? { label: "Deshacer", onClick: () => restoreProduct(product) }
+          : undefined);
       } else {
         toast("No se pudo eliminar el producto", "error");
+      }
+    } catch {
+      toast("Error de conexión", "error");
+    }
+  };
+
+  const restoreProduct = async (product: Product) => {
+    try {
+      const res = await fetch("/api/dashboard/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: product.name,
+          sku: product.sku,
+          description: product.description ?? "",
+          currentStock: product.currentStock,
+          minStock: product.minStock,
+          costPrice: product.costPrice,
+          sellingPrice: product.sellingPrice,
+          category: product.category ?? "",
+          isActive: product.isActive,
+        }),
+      });
+      if (res.ok) {
+        toast("Producto restaurado", "success");
+        fetchData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.error ?? "No se pudo restaurar el producto", "error");
       }
     } catch {
       toast("Error de conexión", "error");

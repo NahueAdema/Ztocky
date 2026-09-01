@@ -1,19 +1,25 @@
 "use client";
 
-import { useState, useCallback, createContext, useContext, useEffect } from "react";
+import { useState, useCallback, createContext, useContext } from "react";
 import { CheckCircle2, AlertTriangle, X, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ToastType = "success" | "error" | "info";
 
+type ToastAction = {
+  label: string;
+  onClick: () => void;
+};
+
 type Toast = {
   id: number;
   message: string;
   type: ToastType;
+  action?: ToastAction;
 };
 
 const ToastContext = createContext<{
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, type?: ToastType, action?: ToastAction) => void;
 }>({ toast: () => {} });
 
 export function useToast() {
@@ -25,12 +31,12 @@ let toastId = 0;
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const toast = useCallback((message: string, type: ToastType = "info") => {
+  const toast = useCallback((message: string, type: ToastType = "info", action?: ToastAction) => {
     const id = ++toastId;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, action }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 6000);
   }, []);
 
   const dismiss = useCallback((id: number) => {
@@ -73,6 +79,17 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     >
       <Icon className="h-4 w-4 shrink-0" />
       <p className="text-sm font-medium flex-1">{toast.message}</p>
+      {toast.action && (
+        <button
+          onClick={() => {
+            toast.action?.onClick();
+            onDismiss();
+          }}
+          className="shrink-0 rounded-lg bg-foreground/10 px-2.5 py-1 text-xs font-semibold transition hover:bg-foreground/20"
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button onClick={onDismiss} className="shrink-0 opacity-60 hover:opacity-100 transition">
         <X className="h-3.5 w-3.5" />
       </button>

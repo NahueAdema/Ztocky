@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, TrendingDown, TrendingUp, Clock, RefreshCw, CheckCircle2, Eye } from "lucide-react";
+import { SimpleToggle } from "@/components/ui/simple-toggle";
 
 type Alert = {
   id: string;
@@ -31,6 +32,7 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generateResult, setGenerateResult] = useState<string | null>(null);
+  const [simpleMode, setSimpleMode] = useState(false);
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
@@ -126,12 +128,19 @@ export default function AlertsPage() {
 
       <Card className="card-hover border-danger/20">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-danger text-white">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
-            Alertas activas
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-danger text-white">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              Alertas activas
+            </CardTitle>
+            <SimpleToggle
+              checked={simpleMode}
+              onChange={setSimpleMode}
+              label={simpleMode ? "Explicación simple" : "Modo simple"}
+            />
+          </div>
           <CardDescription>Productos que necesitan atención inmediata.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -182,11 +191,25 @@ export default function AlertsPage() {
                           </div>
                           <p className="text-sm text-muted-foreground mt-1">{alert.message}</p>
                           {alert.metadata && (
-                            <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
-                              {alert.metadata.burnRate !== undefined && <span>Venta: {String(alert.metadata.burnRate)}/dia</span>}
-                              {alert.metadata.daysRemaining !== undefined && <span>Días restantes: {String(alert.metadata.daysRemaining)}</span>}
-                              {alert.metadata.daysSinceLastSale !== undefined && <span>Sin ventas: {String(alert.metadata.daysSinceLastSale)} días</span>}
-                            </div>
+                            simpleMode ? (
+                              <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                                {alert.metadata.burnRate !== undefined && (
+                                  <p>📈 Vende unos <strong className="text-foreground">{String(alert.metadata.burnRate)} por día</strong></p>
+                                )}
+                                {alert.metadata.daysRemaining !== undefined && (
+                                  <p>⏳ Le quedan cerca de <strong className="text-foreground">{String(alert.metadata.daysRemaining)} días de stock</strong></p>
+                                )}
+                                {alert.metadata.daysSinceLastSale !== undefined && Number(alert.metadata.daysSinceLastSale) > 5 && (
+                                  <p>😴 Hace tiempo que no se vende este producto</p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                                {alert.metadata.burnRate !== undefined && <span>Venta: {String(alert.metadata.burnRate)}/dia</span>}
+                                {alert.metadata.daysRemaining !== undefined && <span>Días restantes: {String(alert.metadata.daysRemaining)}</span>}
+                                {alert.metadata.daysSinceLastSale !== undefined && <span>Sin ventas: {String(alert.metadata.daysSinceLastSale)} días</span>}
+                              </div>
+                            )
                           )}
                         </div>
                       </div>

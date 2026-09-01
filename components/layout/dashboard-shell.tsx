@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen, MessageSquare, Building2, HelpCircle, ShieldCheck } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -12,12 +12,14 @@ function getModifierKey() {
 }
 
 import { Sidebar } from "@/components/layout/sidebar";
+import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 
 type DashboardUser = {
   name: string;
   email: string;
   workspaceName?: string;
   globalRole?: string;
+  onboardedAt?: Date | null;
 };
 
 type AlertItem = {
@@ -38,6 +40,7 @@ export function DashboardShell({
   user: DashboardUser;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [searchInput, setSearchInput] = useState("");
   const [showNotif, setShowNotif] = useState(false);
@@ -453,6 +456,8 @@ export function DashboardShell({
 
         <main className="px-4 py-6 sm:px-6 lg:px-8 pt-[100px] lg:pt-6">{children}</main>
       </div>
+
+      {!user.onboardedAt && pathname === "/dashboard" && <OnboardingTour />}
     </div>
   );
 }

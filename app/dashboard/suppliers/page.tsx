@@ -208,15 +208,45 @@ export default function SuppliersPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar este proveedor?")) return;
+    const supplier = suppliers.find((s) => s.id === id);
     try {
       const res = await fetch(`/api/dashboard/suppliers/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
         fetchSuppliers();
-        toast("Proveedor eliminado", "success");
+        toast("Proveedor eliminado", "success", supplier
+          ? { label: "Deshacer", onClick: () => restoreSupplier(supplier) }
+          : undefined);
       } else {
         toast("No se pudo eliminar el proveedor", "error");
+      }
+    } catch {
+      toast("Error de conexión", "error");
+    }
+  };
+
+  const restoreSupplier = async (supplier: Supplier) => {
+    try {
+      const res = await fetch("/api/dashboard/suppliers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: supplier.name,
+          contactEmail: supplier.contactEmail ?? "",
+          contactPhone: supplier.contactPhone ?? "",
+          leadTime: supplier.leadTime,
+          shippingCost: supplier.shippingCost,
+          reliability: supplier.reliability,
+          notes: supplier.notes ?? "",
+        }),
+      });
+      if (res.ok) {
+        toast("Proveedor restaurado", "success");
+        fetchSuppliers();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.error ?? "No se pudo restaurar el proveedor", "error");
       }
     } catch {
       toast("Error de conexión", "error");

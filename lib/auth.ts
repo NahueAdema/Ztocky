@@ -140,6 +140,7 @@ export async function getCurrentUser() {
       workspaceId: membership?.workspaceId ?? null,
       workspaceName: membership?.workspace.name ?? "Sin nombre",
       role: membership?.role ?? "OWNER",
+      onboardedAt: session.user.onboardedAt,
     };
   } catch {
     return null;
