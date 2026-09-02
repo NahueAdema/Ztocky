@@ -7,6 +7,7 @@ import { CardSkeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SimpleToggle } from "@/components/ui/simple-toggle";
 
 type Product = {
   sku: string;
@@ -26,6 +27,7 @@ export default function SimulatorPage() {
   const [demandIncrease, setDemandIncrease] = useState(30);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [simpleMode, setSimpleMode] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -115,9 +117,16 @@ export default function SimulatorPage() {
               <CardTitle>Impacto proyectado</CardTitle>
               <CardDescription>Productos ordenados por riesgo de agotamiento bajo el escenario actual.</CardDescription>
             </div>
-            <div className="flex gap-2">
-              {collapseCount > 0 && <Badge tone="danger">{collapseCount} colapsan</Badge>}
-              {attentionCount > 0 && <Badge tone="warning">{attentionCount} atención</Badge>}
+            <div className="flex items-center gap-3">
+              <SimpleToggle
+                checked={simpleMode}
+                onChange={setSimpleMode}
+                label={simpleMode ? "Explicación simple" : "Modo simple"}
+              />
+              <div className="flex gap-2">
+                {collapseCount > 0 && <Badge tone="danger">{collapseCount} colapsan</Badge>}
+                {attentionCount > 0 && <Badge tone="warning">{attentionCount} atención</Badge>}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -135,6 +144,46 @@ export default function SimulatorPage() {
               </div>
               <p className="text-sm font-semibold">Sin productos</p>
               <p className="text-xs text-muted-foreground mt-1">Agrega productos para simular escenarios.</p>
+            </div>
+          ) : simpleMode ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {simulatedProducts.map((product) => {
+                const status =
+                  product.burnRate === 0
+                    ? { tone: "muted" as const, text: "Sin datos de ventas" }
+                    : product.willCollapse
+                      ? { tone: "danger" as const, text: `¡Atención! Se agotaría en ${product.projectedDays} días` }
+                      : product.projectedDays <= 14
+                        ? { tone: "warning" as const, text: `Le queda poco tiempo, unos ${product.projectedDays} días de stock` }
+                        : { tone: "success" as const, text: "Está tranquilo, hay stock bien cargado" };
+                const stockLeft = product.burnRate > 0 && product.projectedDays <= 14;
+                return (
+                  <div key={product.sku} className="rounded-xl border border-border p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{product.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
+                      </div>
+                      <Badge tone={status.tone}>{status.text}</Badge>
+                    </div>
+                    <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                      <p>
+                        Stock actual: <strong className="text-foreground">{product.currentStock} unidades</strong>
+                      </p>
+                      {product.burnRate > 0 && (
+                        <p>
+                          Vende unas <strong className="text-foreground">{product.projectedBurnRate.toFixed(1)} por día</strong>
+                        </p>
+                      )}
+                      {stockLeft && (
+                        <p className="text-danger">
+                          ⚠️ Conviene reponer pronto
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-border">

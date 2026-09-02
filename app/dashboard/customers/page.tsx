@@ -38,9 +38,9 @@ export default function CustomersPage() {
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
   const getBalance = (c: Customer) => {
-    const totalOwed = c.sales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-    const totalPaid = c._count.accountPayments;
-    return { totalOwed, saleCount: c._count.sales, paymentCount: totalPaid };
+    const totalOwed = (c.sales ?? []).reduce((sum, s) => sum + Number(s.totalAmount), 0);
+    const totalPaid = c._count?.accountPayments ?? 0;
+    return { totalOwed, saleCount: c._count?.sales ?? 0, paymentCount: totalPaid };
   };
 
   const filtered = customers.filter((c) =>
@@ -107,8 +107,8 @@ export default function CustomersPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge tone="muted" className="text-[10px]">{saleCount} venta{saleCount !== 1 ? "s" : ""}</Badge>
-                      <Badge tone={customer._count.accountPayments > 0 ? "success" : "default"} className="text-[10px]">
-                        {customer._count.accountPayments > 0 ? "Con pagos" : "Sin pagos"}
+                      <Badge tone={(customer._count?.accountPayments ?? 0) > 0 ? "success" : "default"} className="text-[10px]">
+                        {(customer._count?.accountPayments ?? 0) > 0 ? "Con pagos" : "Sin pagos"}
                       </Badge>
                     </div>
                   </CardContent>

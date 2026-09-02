@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { moneyFormatter } from "@/lib/format";
-import { ShoppingCart, ArrowLeft } from "lucide-react";
+import { ShoppingCart, ArrowLeft, AlertCircle, CloudUpload, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProductGrid } from "@/components/pos/ProductGrid";
 import { CartPanel } from "@/components/pos/CartPanel";
@@ -21,10 +21,22 @@ import {
   type Customer,
   type TodaySale,
 } from "@/components/pos/types";
-import { PAYMENT_METHODS } from "@/components/pos/constants";
+import { useOnline } from "@/hooks/useOnline";
+
+// Función estable a nivel de módulo: evita que `setLoadingRegister` cambie de
+// identidad en cada render y dispare un bucle infinito de refetch en el POS.
+const NOOP = () => {};
+import {
+  getPendingSales,
+  removePendingSale,
+  acquireSyncLock,
+  releaseSyncLock,
+  type PendingSale,
+} from "@/lib/offline";
 
 export default function POSPage() {
   const { toast } = useToast();
+  const online = useOnline();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
@@ -37,6 +49,7 @@ export default function POSPage() {
   const [openingAmount, setOpeningAmount] = useState("");
   const [closingAmount, setClosingAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
+  const [amountPaid, setAmountPaid] = useState("");
   const [dailySummary, setDailySummary] = useState<{ totalRevenue: number; transactionCount: number; cashTotal: number; cardTotal: number } | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -51,6 +64,8 @@ export default function POSPage() {
   const [editingQty, setEditingQty] = useState<string | null>(null);
   const [qtyValue, setQtyValue] = useState("");
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [pendingSales, setPendingSales] = useState<PendingSale[]>([]);
+  const [syncing, setSyncing] = useState(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
 
@@ -90,7 +105,7 @@ export default function POSPage() {
   } = usePosData({
     setProducts,
     setRegister,
-    setLoadingRegister: () => {},
+    setLoadingRegister: NOOP,
     setDailySummary,
     setTodaySales,
     setCustomers,
@@ -101,6 +116,73 @@ export default function POSPage() {
     fetchAll();
   }, [fetchAll]);
 
+  // Cargar ventas pendientes guardadas localmente
+  useEffect(() => {
+    setPendingSales(getPendingSales());
+  }, []);
+
+  // Sincronizar ventas offline cuando vuelve la conexión
+  useEffect(() => {
+    if (!online || syncing) return;
+    if (pendingSales.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      if (!acquireSyncLock()) return;
+      setSyncing(true);
+      try {
+        const queue = [...getPendingSales()];
+        for (const sale of queue) {
+          if (cancelled) break;
+          try {
+            const res = await fetch("/api/dashboard/pos/checkout", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                items: sale.cart.map((i) => ({
+                  productId: i.productId,
+                  quantity: i.quantity,
+                  unitPrice: i.unitPrice,
+                  discountAmount: i.discountAmount,
+                })),
+                paymentMethod: sale.paymentMethod,
+                discountAmount: sale.discountAmount,
+                cashRegisterId: sale.cashRegisterId,
+                customerId: sale.customerId,
+                amountPaid: sale.amountPaid,
+              }),
+            });
+            if (res.ok) {
+              removePendingSale(sale.localId);
+            } else {
+              const data = await res.json().catch(() => ({}));
+              removePendingSale(sale.localId);
+              toast(data.error ?? "Una venta offline no pudo sincronizarse", "error");
+            }
+          } catch {
+            break;
+          }
+        }
+      } finally {
+        releaseSyncLock();
+        if (!cancelled) {
+          setPendingSales(getPendingSales());
+          setSyncing(false);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [online, pendingSales.length, syncing, toast]);
+
+  const handleOfflineSale = useCallback((pending: PendingSale) => {
+    setPendingSales(getPendingSales());
+    setProducts((prev) =>
+      prev.map((p) => {
+        const item = pending.cart.find((i) => i.productId === p.id);
+        return item ? { ...p, currentStock: Math.max(0, p.currentStock - item.quantity) } : p;
+      }),
+    );
+  }, []);
+
   const { handleCheckout, handleVoidSale, handleOpenRegister, handleCloseRegister, handleExportDaily } =
     usePosHandlers({
       cart,
@@ -108,6 +190,7 @@ export default function POSPage() {
       paymentMethod,
       discount,
       cashReceived,
+      amountPaid,
       selectedCustomer,
       todaySales,
       openingAmount,
@@ -116,6 +199,7 @@ export default function POSPage() {
       clearCart,
       setDiscount,
       setCashReceived,
+      setAmountPaid,
       setSelectedCustomer,
       setShowMobileCart,
       setRegister,
@@ -127,6 +211,7 @@ export default function POSPage() {
       fetchProducts,
       fetchRegister,
       fetchDailySummary,
+      onOfflineSale: handleOfflineSale,
     });
 
   const setItemDiscount = (productId: string, amount: number) => {
@@ -166,6 +251,7 @@ export default function POSPage() {
   });
 
   const changeDue = paymentMethod === "CASH" && cashReceived ? Math.max(0, Number(cashReceived) - total) : 0;
+  const accountDue = paymentMethod === "ACCOUNT" && amountPaid ? Math.max(0, total - Number(amountPaid)) : total;
 
   const filteredCustomers = customers.filter((c) => {
     const q = customerSearch.toLowerCase();
@@ -210,6 +296,9 @@ export default function POSPage() {
     setDiscount,
     cashReceived,
     setCashReceived,
+    amountPaid,
+    setAmountPaid,
+    accountDue,
     selectedCustomer,
     setSelectedCustomer,
     customers,
@@ -249,16 +338,40 @@ export default function POSPage() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] -m-6 lg:-m-8">
-      {/* Desktop left panel */}
-      <div className="hidden lg:flex flex-1 flex-col border-r border-border bg-background overflow-hidden">
-        <ProductGrid {...productGridProps} mode="desktop" />
-      </div>
+    <div className="flex flex-col">
+      {!online && (
+        <div className="flex items-center gap-3 border-b border-warning/30 bg-warning-light/50 px-4 py-2.5 text-sm font-medium text-warning">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>
+            Sin conexión. Podés seguir vendiendo; se guardará en el dispositivo y se sincronizará cuando vuelvas a estar en línea
+            {pendingSales.length > 0 && ` (${pendingSales.length} venta${pendingSales.length > 1 ? "s" : ""} pendiente${pendingSales.length > 1 ? "s" : ""})`}.
+          </span>
+        </div>
+      )}
+      {online && pendingSales.length > 0 && !syncing && (
+        <div className="flex items-center gap-3 border-b border-primary/30 bg-primary-light/40 px-4 py-2.5 text-sm font-medium text-primary">
+          <CloudUpload className="h-4 w-4 shrink-0" />
+          <span>
+            Tenés {pendingSales.length} venta{pendingSales.length > 1 ? "s" : ""} guardada{pendingSales.length > 1 ? "s" : ""} sin sincronizar. Se enviarán automáticamente.
+          </span>
+        </div>
+      )}
+      {syncing && (
+        <div className="flex items-center gap-3 border-b border-primary/30 bg-primary-light/40 px-4 py-2.5 text-sm font-medium text-primary">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          <span>Sincronizando {pendingSales.length} venta{pendingSales.length > 1 ? "s" : ""} pendiente{pendingSales.length > 1 ? "s" : ""}...</span>
+        </div>
+      )}
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] -m-6 lg:-m-8">
+        {/* Desktop left panel */}
+        <div className="hidden lg:flex flex-1 flex-col border-r border-border bg-background overflow-hidden">
+          <ProductGrid {...productGridProps} mode="desktop" />
+        </div>
 
-      {/* Desktop right panel */}
-      <div className="hidden lg:flex w-[380px] flex-col bg-card border-l border-border">
-        <CartPanel {...cartPanelProps} />
-      </div>
+        {/* Desktop right panel */}
+        <div className="hidden lg:flex w-[380px] flex-col bg-card border-l border-border">
+          <CartPanel {...cartPanelProps} />
+        </div>
 
       {/* Mobile left panel */}
       <div className="flex lg:hidden flex-1 flex-col bg-background overflow-hidden">
@@ -327,6 +440,7 @@ export default function POSPage() {
         onOpenRegister={handleOpenRegister}
         onCloseRegister={handleCloseRegister}
       />
+      </div>
     </div>
   );
 }

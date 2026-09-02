@@ -91,6 +91,72 @@ export async function sendAlertNotification(
   await sendMail(email, `⚠️ Alerta: ${escapeHtml(alert.productName)} — Ztocky`, html);
 }
 
+export async function sendAlertDigestEmail(
+  email: string,
+  name: string,
+  digest: {
+    critical: { productName: string; message: string }[];
+    low: { productName: string; message: string }[];
+  },
+) {
+  const total = digest.critical.length + digest.low.length;
+  const title = total === 1
+    ? (digest.critical.length === 1 ? "1 alerta crítica de stock" : "1 alerta de stock")
+    : `${total} alertas de stock`;
+
+  const criticalRows = digest.critical
+    .map(
+      (a) => `<tr>
+        <td style="padding:10px 16px;border-bottom:1px solid #eee">
+          <p style="margin:0;font-size:13px;font-weight:600;color:#1a1a1a">${escapeHtml(a.productName)}</p>
+          <p style="margin:2px 0 0;font-size:12px;color:#666">${escapeHtml(a.message)}</p>
+        </td>
+        <td style="padding:10px 16px;text-align:center;white-space:nowrap"><span style="background:#dc262620;color:#dc2626;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">Crítico</span></td>
+      </tr>`,
+    )
+    .join("");
+
+  const lowRows = digest.low
+    .map(
+      (a) => `<tr>
+        <td style="padding:10px 16px;border-bottom:1px solid #eee">
+          <p style="margin:0;font-size:13px;font-weight:600;color:#1a1a1a">${escapeHtml(a.productName)}</p>
+          <p style="margin:2px 0 0;font-size:12px;color:#666">${escapeHtml(a.message)}</p>
+        </td>
+        <td style="padding:10px 16px;text-align:center;white-space:nowrap"><span style="background:#ca8a0420;color:#ca8a04;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">Stock bajo</span></td>
+      </tr>`,
+    )
+    .join("");
+
+  const criticalSection = digest.critical.length > 0
+    ? `<tr><td style="padding:20px 32px 4px;font-size:13px;font-weight:700;color:#1a1a1a">⚠️ Críticas</td></tr>
+       <tr><td style="padding:4px 0 0">${criticalRows}</td></tr>`
+    : "";
+
+  const lowSection = digest.low.length > 0
+    ? `<tr><td style="padding:20px 32px 4px;font-size:13px;font-weight:700;color:#1a1a1a">Bajo stock</td></tr>
+       <tr><td style="padding:4px 0 0">${lowRows}</td></tr>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html><body style="font-family:sans-serif;background:#f5f5f5;padding:40px 20px">
+<table align="center" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
+<tr><td style="padding:32px 32px 0;text-align:center">
+<p style="font-size:24px;font-weight:bold;color:#038786">Ztocky</p>
+<p style="margin-top:24px;font-size:16px;color:#1a1a1a"><strong>Hola ${escapeHtml(name)},</strong></p>
+<p style="margin-top:8px;font-size:14px;color:#666;line-height:1.5">El motor de reabastecimiento detectó ${title}. Detectamos los siguientes productos:</p>
+</td></tr>
+${criticalSection}
+${lowSection}
+<tr><td style="padding:20px 32px 32px;text-align:center">
+<a href="${env.NEXT_PUBLIC_APP_URL}/dashboard/alerts" style="display:inline-block;padding:12px 28px;background:#038786;color:#fff;border-radius:12px;text-decoration:none;font-size:14px;font-weight:600">Ver alertas</a>
+<p style="margin-top:16px;font-size:12px;color:#999">Las alertas de stock bajo también están esperándote en Ztocky.</p>
+</td></tr>
+</table></body></html>`;
+
+  await sendMail(email, `${total === 1 ? "⚠️" : "📋"} ${title} — Ztocky`, html);
+}
+
 export async function sendOrderNotification(
   email: string,
   name: string,

@@ -25,9 +25,20 @@ export async function GET() {
     return NextResponse.json({ register: null });
   }
 
-  const cashSales = openRegister.sales
-    .filter((s) => s.paymentMethod === "CASH")
-    .reduce((sum, s) => sum + Number(s.totalAmount), 0);
+  const señaPayments = await prisma.accountPayment.findMany({
+    where: {
+      workspaceId: user.workspaceId!,
+      createdAt: { gte: openRegister.openedAt },
+      note: { startsWith: "Seña venta" },
+    },
+    select: { amount: true },
+  });
+
+  const cashSales =
+    openRegister.sales
+      .filter((s) => s.paymentMethod === "CASH")
+      .reduce((sum, s) => sum + Number(s.totalAmount), 0) +
+    señaPayments.reduce((sum, s) => sum + Number(s.amount), 0);
 
   const totalSales = openRegister.sales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
 
@@ -128,8 +139,18 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Caja no encontrada o ya cerrada" }, { status: 404 });
   }
 
+  const señaPayments = await prisma.accountPayment.findMany({
+    where: {
+      workspaceId: user.workspaceId!,
+      createdAt: { gte: register.openedAt },
+      note: { startsWith: "Seña venta" },
+    },
+    select: { amount: true },
+  });
+
   const cashFromSales = register.sales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-  const expectedCash = Number(register.openingAmount) + cashFromSales;
+  const cashFromSeñas = señaPayments.reduce((sum, s) => sum + Number(s.amount), 0);
+  const expectedCash = Number(register.openingAmount) + cashFromSales + cashFromSeñas;
   const difference = closingAmount - expectedCash;
 
   const updated = await prisma.cashRegister.update({
@@ -144,6 +165,32 @@ export async function PATCH(request: NextRequest) {
       notes: notes || register.notes,
     },
   });
+
+  // Alerta in-app si hay discrepancia al cerrar la caja
+  if (Math.abs(difference) > 0.01 && user.workspaceId) {
+    try {
+      const money2 = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+      const deficit = difference < 0;
+      await prisma.alert.create({
+        data: {
+          workspaceId: user.workspaceId,
+          type: "REGISTER_DISCREPANCY",
+          title: deficit ? "Faltante en caja" : "Sobrante en caja",
+          message: `Cierre de caja con ${
+            deficit ? "faltante" : "sobrante"
+          } de ${money2.format(Math.abs(difference))}. Esperado: ${money2.format(expectedCash)}, contado: ${money2.format(closingAmount)}.`,
+          href: "/dashboard/pos",
+          metadata: {
+            registerId: register.id,
+            difference,
+            expectedCash,
+            closingAmount,
+            closedBy: user.id,
+          },
+        },
+      });
+    } catch { /* alert creation silent */ }
+  }
 
   return NextResponse.json({
     success: true,

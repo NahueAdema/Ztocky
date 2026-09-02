@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
-import { sendAlertNotification } from "@/lib/mail";
+import { sendAlertDigestEmail } from "@/lib/mail";
 import { sendPushToWorkspace } from "@/lib/push";
 
 type ProductWithAlerts = {
@@ -29,13 +29,15 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    alerts: alerts.map((a: { id: string; productId: string; product: { name: string; sku: string }; type: string; message: string; isRead: boolean; isResolved: boolean; metadata: unknown; createdAt: Date }) => ({
+    alerts: alerts.map((a: { id: string; productId: string | null; product: { name: string; sku: string } | null; type: string; title: string | null; message: string; href: string | null; isRead: boolean; isResolved: boolean; metadata: unknown; createdAt: Date }) => ({
       id: a.id,
       productId: a.productId,
-      productName: a.product.name,
-      productSku: a.product.sku,
+      productName: a.product?.name ?? "",
+      productSku: a.product?.sku ?? "",
       type: a.type,
+      title: a.title,
       message: a.message,
+      href: a.href,
       isRead: a.isRead,
       isResolved: a.isResolved,
       metadata: a.metadata,
@@ -74,6 +76,7 @@ export async function POST() {
   let generatedOrders = 0;
   const newAlerts: string[] = [];
   const newOrders: string[] = [];
+  const digest: { productName: string; message: string; type: string }[] = [];
 
   const productIds = products.map((p: { id: string }) => p.id);
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -98,7 +101,7 @@ export async function POST() {
     }),
   ]);
 
-  const alertSet = new Set(existingAlerts.map((a: { productId: string; type: string }) => `${a.productId}:${a.type}`));
+  const alertSet = new Set(existingAlerts.map((a: { productId: string | null; type: string }) => `${a.productId ?? ""}:${a.type}`));
   const poProductIds = new Set(pendingPOs.flatMap((po: { items: { productId: string }[] }) => po.items.map((i: { productId: string }) => i.productId)));
 
   for (const product of products as unknown as ProductWithAlerts[]) {
@@ -144,6 +147,7 @@ export async function POST() {
         alertSet.add(key);
         created++;
         newAlerts.push(product.name);
+        digest.push({ productName: product.name, message, type: alertType });
 
         if (alertType === "CRITICAL_STOCK" && product.catalogItems.length > 0 && !poProductIds.has(product.id)) {
           const bestCatalog = product.catalogItems[0];
@@ -223,7 +227,13 @@ export async function POST() {
     message += ` y ${generatedOrders} orden${generatedOrders > 1 ? "es" : ""} de compra generada${generatedOrders > 1 ? "s" : ""} automáticamente`;
   }
 
-  if (created > 0 && user.workspaceId) {
+  const criticalDigest = digest.filter((d) => d.type === "CRITICAL_STOCK");
+  const lowDigest = digest.filter((d) => d.type === "LOW_STOCK");
+
+  // Escalera de severidad (amigos, no enemigos):
+  //  - Críticas: email + push (no perderlas).
+  //  - Stock bajo: SOLO in-app (sin email ni push). Se suma al resumen si hay críticas.
+  if (criticalDigest.length > 0 && user.workspaceId) {
     try {
       const members = await prisma.workspaceMember.findMany({
         where: { workspaceId: user.workspaceId },
@@ -231,28 +241,22 @@ export async function POST() {
       });
       for (const member of members) {
         if (member.user.emailVerified) {
-          for (const alert of newAlerts) {
-            const product = (products as unknown as ProductWithAlerts[]).find((p: ProductWithAlerts) => p.name === alert);
-            if (product) {
-              sendAlertNotification(member.user.email, member.user.name, {
-                type: "CRITICAL_STOCK",
-                message: `Alerta generada para ${product.name}. Stock actual: ${product.currentStock}.`,
-                productName: product.name,
-              }).catch(() => {});
-            }
-          }
+          sendAlertDigestEmail(member.user.email, member.user.name, {
+            critical: criticalDigest,
+            low: lowDigest,
+          }).catch(() => {});
         }
       }
     } catch { /* email errors silent */ }
   }
 
-  if (created > 0 && user.workspaceId) {
+  if (criticalDigest.length > 0 && user.workspaceId) {
     const summary =
-      newAlerts.slice(0, 3).join(", ") + (created > 3 ? ` y ${created - 3} más` : "");
+      criticalDigest.slice(0, 3).map((d) => d.productName).join(", ") + (criticalDigest.length > 3 ? ` y ${criticalDigest.length - 3} más` : "");
     sendPushToWorkspace(
       user.workspaceId,
       {
-        title: `⚠️ ${created} nueva${created > 1 ? "s" : ""} alerta${created > 1 ? "s" : ""} de stock`,
+        title: `⚠️ ${criticalDigest.length} alerta${criticalDigest.length > 1 ? "s" : ""} crítica${criticalDigest.length > 1 ? "s" : ""} de stock`,
         body: summary,
         url: "/dashboard/alerts",
         tag: "stock-alerts",

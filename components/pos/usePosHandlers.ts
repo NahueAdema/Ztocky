@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { moneyFormatter } from "@/lib/format";
 import {
-  type Product,
   type CartItem,
   type CashRegister,
   type SaleResult,
@@ -12,6 +11,7 @@ import {
   type TodaySale,
 } from "./types";
 import { PAYMENT_METHODS } from "./constants";
+import { enqueueSale, updateCachedStock, type PendingSale } from "@/lib/offline";
 
 interface UsePosHandlersProps {
   cart: CartItem[];
@@ -19,6 +19,7 @@ interface UsePosHandlersProps {
   paymentMethod: string;
   discount: number;
   cashReceived: string;
+  amountPaid: string;
   selectedCustomer: Customer | null;
   todaySales: TodaySale[];
   openingAmount: string;
@@ -27,6 +28,7 @@ interface UsePosHandlersProps {
   clearCart: () => void;
   setDiscount: (v: number) => void;
   setCashReceived: (v: string) => void;
+  setAmountPaid: (v: string) => void;
   setSelectedCustomer: (v: Customer | null) => void;
   setShowMobileCart: (v: boolean) => void;
   setRegister: (v: CashRegister | null) => void;
@@ -38,6 +40,7 @@ interface UsePosHandlersProps {
   fetchProducts: () => void;
   fetchRegister: () => void;
   fetchDailySummary: () => void;
+  onOfflineSale?: (pending: PendingSale) => void;
 }
 
 export function usePosHandlers({
@@ -45,6 +48,7 @@ export function usePosHandlers({
   register,
   paymentMethod,
   discount,
+  amountPaid,
   selectedCustomer,
   todaySales,
   openingAmount,
@@ -53,6 +57,7 @@ export function usePosHandlers({
   clearCart,
   setDiscount,
   setCashReceived,
+  setAmountPaid,
   setSelectedCustomer,
   setShowMobileCart,
   setRegister,
@@ -64,6 +69,7 @@ export function usePosHandlers({
   fetchProducts,
   fetchRegister,
   fetchDailySummary,
+  onOfflineSale,
 }: UsePosHandlersProps) {
   const { toast } = useToast();
 
@@ -75,6 +81,19 @@ export function usePosHandlers({
     if (!register) {
       toast("Abrí la caja primero", "error");
       return;
+    }
+    if (paymentMethod === "ACCOUNT" && !selectedCustomer) {
+      toast("Para cobrar a cuenta corriente seleccioná un cliente", "error");
+      return;
+    }
+    const paid = Number(amountPaid) || 0;
+    if (paymentMethod === "ACCOUNT" && paid > 0) {
+      const cartTotal =
+        cart.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0) - discount;
+      if (paid > cartTotal) {
+        toast("La seña no puede superar el total de la venta", "error");
+        return;
+      }
     }
     setProcessing(true);
     try {
@@ -92,6 +111,7 @@ export function usePosHandlers({
           discountAmount: discount,
           cashRegisterId: register.id,
           customerId: selectedCustomer?.id || null,
+          amountPaid: Number(amountPaid) || 0,
         }),
       });
       const data = await res.json();
@@ -103,6 +123,7 @@ export function usePosHandlers({
       clearCart();
       setDiscount(0);
       setCashReceived("");
+      setAmountPaid("");
       setSelectedCustomer(null);
       setShowMobileCart(false);
       fetchProducts();
@@ -110,11 +131,27 @@ export function usePosHandlers({
       fetchDailySummary();
       toast("Venta registrada", "success");
     } catch {
-      toast("Error de conexión", "error");
+      const pending = enqueueSale({
+        cart,
+        paymentMethod,
+        discountAmount: discount,
+        cashRegisterId: register?.id ?? null,
+        customerId: selectedCustomer?.id || null,
+        amountPaid: Number(amountPaid) || 0,
+      });
+      cart.forEach((i) => updateCachedStock(i.productId, i.quantity));
+      onOfflineSale?.(pending);
+      clearCart();
+      setDiscount(0);
+      setCashReceived("");
+      setAmountPaid("");
+      setSelectedCustomer(null);
+      setShowMobileCart(false);
+      toast("Sin conexión: venta guardada para sincronizar", "info");
     } finally {
       setProcessing(false);
     }
-  }, [cart, register, paymentMethod, discount, selectedCustomer, toast, setShowReceipt, clearCart, setDiscount, setCashReceived, setSelectedCustomer, setShowMobileCart, fetchProducts, fetchRegister, fetchDailySummary, setProcessing]);
+  }, [cart, register, paymentMethod, discount, amountPaid, selectedCustomer, toast, setShowReceipt, clearCart, setDiscount, setCashReceived, setAmountPaid, setSelectedCustomer, setShowMobileCart, fetchProducts, fetchRegister, fetchDailySummary, setProcessing, onOfflineSale]);
 
   const handleVoidSale = useCallback(async (saleId: string) => {
     if (!confirm("Anular esta venta? Se restaurará el stock.")) return;
@@ -169,6 +206,13 @@ export function usePosHandlers({
       toast("Ingresá un monto válido", "error");
       return;
     }
+    if (cart.length > 0) {
+      const confirmed = confirm(
+        `Hay ${cart.length} producto${cart.length > 1 ? "s" : ""} en el carrito. ¿Cerrar la caja y vaciar el carrito?`
+      );
+      if (!confirmed) return;
+      clearCart();
+    }
     try {
       const res = await fetch("/api/dashboard/pos/session", {
         method: "PATCH",
@@ -188,7 +232,7 @@ export function usePosHandlers({
     } catch {
       toast("Error de conexión", "error");
     }
-  }, [closingAmount, register, toast, setRegister, setShowCloseModal, setClosingAmount, fetchDailySummary]);
+  }, [closingAmount, register, cart, toast, clearCart, setRegister, setShowCloseModal, setClosingAmount, fetchDailySummary]);
 
   const handleExportDaily = useCallback(() => {
     if (todaySales.length === 0) {

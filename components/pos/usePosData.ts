@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { type Product, type CashRegister, type Customer, type TodaySale } from "./types";
+import { saveProductsCache, getProductsCache } from "@/lib/offline";
 
 interface UsePosDataProps {
   setProducts: (v: Product[]) => void;
@@ -25,9 +26,17 @@ export function usePosData({
   const fetchProducts = useCallback(async () => {
     try {
       const res = await fetch("/api/dashboard/products");
+      if (!res.ok) throw new Error("bad status");
       const data = await res.json();
-      setProducts(data.products ?? []);
-    } catch { /* ignore */ }
+      const list = (data.products ?? []) as Product[];
+      setProducts(list);
+      saveProductsCache(list);
+    } catch {
+      const cached = getProductsCache();
+      if (cached && cached.length > 0) {
+        setProducts(cached);
+      }
+    }
   }, [setProducts]);
 
   const fetchRegister = useCallback(async () => {

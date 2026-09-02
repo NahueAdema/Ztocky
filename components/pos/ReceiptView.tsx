@@ -25,6 +25,7 @@ export function ReceiptView({ sale, selectedCustomer, workspaceName, onClose }: 
     items: sale.items,
     customerName: selectedCustomer?.name,
     storeName: workspaceName,
+    amountPaid: sale.amountPaid,
   };
 
   return (
@@ -41,6 +42,18 @@ export function ReceiptView({ sale, selectedCustomer, workspaceName, onClose }: 
           <div className="text-sm text-muted-foreground">
             {PAYMENT_METHODS.find((m) => m.value === sale.paymentMethod)?.label}
           </div>
+          {sale.paymentMethod === "ACCOUNT" && sale.amountPaid > 0 && (
+            <div className="text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Seña</span>
+                <span>{moneyFormatter.format(sale.amountPaid)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-warning">
+                <span>Saldo a cuenta</span>
+                <span>{moneyFormatter.format(sale.totalAmount - sale.amountPaid)}</span>
+              </div>
+            </div>
+          )}
           <div className="border-t pt-4 space-y-1 text-sm text-left">
             {sale.items.map((item, idx) => (
               <div key={idx} className="flex justify-between">

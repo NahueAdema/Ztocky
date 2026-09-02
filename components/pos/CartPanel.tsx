@@ -23,6 +23,9 @@ interface CartPanelProps {
   setDiscount: (v: number) => void;
   cashReceived: string;
   setCashReceived: (v: string) => void;
+  amountPaid: string;
+  setAmountPaid: (v: string) => void;
+  accountDue: number;
   selectedCustomer: Customer | null;
   setSelectedCustomer: (v: Customer | null) => void;
   customers: Customer[];
@@ -70,6 +73,9 @@ export function CartPanel({
   setDiscount,
   cashReceived,
   setCashReceived,
+  amountPaid,
+  setAmountPaid,
+  accountDue,
   selectedCustomer,
   setSelectedCustomer,
   customers,
@@ -357,17 +363,25 @@ export function CartPanel({
                     ))}
                     <button
                       onClick={async () => {
-                        const res = await fetch("/api/dashboard/customers", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ name: customerSearch }),
-                        });
-                        const data = await res.json();
-                        if (data.customer) {
-                          setSelectedCustomer(data.customer);
-                          setCustomerSearch("");
-                          setShowCustomerList(false);
-                          fetchCustomers();
+                        try {
+                          const res = await fetch("/api/dashboard/customers", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: customerSearch }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) {
+                            console.error("Error al crear cliente:", data.error || res.status);
+                            return;
+                          }
+                          if (data.id) {
+                            setSelectedCustomer(data);
+                            setCustomerSearch("");
+                            setShowCustomerList(false);
+                            fetchCustomers();
+                          }
+                        } catch (err) {
+                          console.error("Failed to create customer:", err);
                         }
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary/5 border-t border-border"
@@ -449,6 +463,32 @@ export function CartPanel({
                 </Badge>
               )}
             </div>
+          )}
+
+          {/* Cta Cte / seña */}
+          {paymentMethod === "ACCOUNT" && (
+            <>
+              {!selectedCustomer && (
+                <p className="text-xs text-muted-foreground">
+                  Seleccioná un cliente para cobrar a cuenta corriente.
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="number"
+                  placeholder="Monto recibido (seña)"
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(e.target.value)}
+                  className="h-9 text-sm w-40"
+                  min={0}
+                />
+                <Badge tone={accountDue > 0 ? "warning" : "success"} className="whitespace-nowrap">
+                  {accountDue > 0
+                    ? `Saldo a cuenta: ${moneyFormatter.format(accountDue)}`
+                    : "Cuenta saldada"}
+                </Badge>
+              </div>
+            </>
           )}
 
           {/* Checkout button */}

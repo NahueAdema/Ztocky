@@ -58,7 +58,7 @@ export async function sendPushToSubscription(
 export async function sendPushToWorkspace(
   workspaceId: string,
   payload: PushPayload,
-  opts: { skipUserId?: string } = {},
+  opts: { skipUserId?: string; roles?: string[] } = {},
 ) {
   ensureVapid();
   const prisma = getPrisma();
@@ -74,6 +74,7 @@ export async function sendPushToWorkspace(
   let sent = 0;
   for (const member of members) {
     if (opts.skipUserId && member.userId === opts.skipUserId) continue;
+    if (opts.roles && opts.roles.length > 0 && !opts.roles.includes(member.role)) continue;
     for (const sub of member.user.pushSubscriptions) {
       const result = await sendPushToSubscription(
         {

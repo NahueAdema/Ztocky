@@ -33,6 +33,7 @@ export type SaleResult = {
   totalAmount: number;
   discountAmount: number;
   paymentMethod: string;
+  amountPaid: number;
   saleDate: string;
   items: { name: string; sku: string; quantity: number; unitPrice: number; discountAmount: number; totalPrice: number }[];
 };

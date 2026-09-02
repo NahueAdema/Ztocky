@@ -43,50 +43,53 @@
 
 **Objetivo:** Dar herramientas al comercio para comunicarse con el admin, y hacer que la IA sea comprensible para cualquier usuario sin experiencia técnica.
 
+### Estado actual — mayormente funcional ✅
+
 ### Feedback del comercio → Admin
 
-- [ ] **Sistema de quejas y sugerencias** — formulario simple en el dashboard donde el usuario puede reportar problemas o pedir features
-- [ ] **Panel admin de feedback** — listado de todos los mensajes con estado (nuevo / en revisión / resuelto / cerrado)
-- [ ] **Categorías de feedback**: error / sugerencia / duda / solicitud de actualización / otro
-- [ ] **Notificaciones al admin** cuando llega un feedback nuevo (email y/o in-app)
-- [ ] **Respuesta del admin** al comercio desde el panel
-- [ ] **Historial completo** de la conversación por ticket
+- [x] **Sistema de quejas y sugerencias** — formulario simple en el dashboard donde el usuario puede reportar problemas o pedir features
+- [x] **Panel admin de feedback** — listado de todos los mensajes con estado (nuevo / en revisión / resuelto / cerrado)
+- [x] **Categorías de feedback**: error / sugerencia / duda / solicitud de actualización / otro
+- [x] **Notificaciones al admin** cuando llega un feedback nuevo (email y/o in-app)
+- [x] **Respuesta del admin** al comercio desde el panel
+- [x] **Historial completo** de la conversación por ticket
 
 ### IA explicativa y accesible
 
-- [ ] **Tooltips informativos** en todo el dashboard explicando KPIs, métricas y acciones en lenguaje simple ("¿Qué significa esto?")
-- [ ] **Onboarding interactivo** para nuevos usuarios (tour guiado por el dashboard al primer login)
-- [ ] **Consultas guiadas en la Consola IA** — botones predefinidos para preguntas comunes, el usuario no necesita saber qué preguntar
-- [ ] **Mejora del prompt de sistema** de Groq para respuestas más claras, con ejemplos y unidades en contexto
-- [ ] **Glosario de términos** accesible desde cualquier página (stock crítico, burn rate, lead time, etc.)
-- [ ] **Vista "explicación simplificada"** en el simulador y en las alertas (ocultar números complejos, mostrar emojis/colores y texto claro)
-- [ ] **Modo "no técnico"** toggle en la Consola IA que da respuestas más coloquiales y menos tabulares
+- [x] **Consultas guiadas en la Consola IA** — botones predefinidos para preguntas comunes, el usuario no necesita saber qué preguntar
+- [x] **Mejora del prompt de sistema** de Groq para respuestas más claras, con ejemplos y unidades en contexto (ahora multi-proveedor Gemini + Groq)
+
+> **Bloque C — posible futuro:** Modo "no técnico" toggle en la Consola IA · Tooltips informativos · Glosario de términos. No es prioritario ahora.
 
 ### POS — Sistema de ventas en linea
 
 > Convertir Ztocky en el sistema de caja (Point of Sale) del comercio, no solo en el gestor de stock. Esto elimina la carga manual de ventas y da datos en tiempo real.
 
-- [ ] **Interfaz tipo caja registradora** en `/dashboard/pos` con layout tactile para pantalla táctil
-- [ ] **Carrito de compras** con agregar/scanner de productos, modificar cantidades y eliminar items
-- [ ] **Cobro múltiple**: efectivo, tarjeta, transferencia, cuenta corriente (registra el método de pago)
-- [ ] **Ticket / comprobante** — vista previa del ticket antes de finalizar e impresión (PDF térmico 80mm)
-- [ ] **Apertura y cierre de caja** — control de efectivo inicial/final, diferencia del día
-- [ ] **Cliente frecuente** vinculado a la venta (sin obligación de registrar cliente)
-- [ ] **Descuentos por item y por total** con porcentaje o monto fijo
-- [ ] **Devolución** — seleccionar una venta y devolver items (restaura stock y anula el ingreso)
-- [ ] **Historial de ventas del día** en vivo con total acumulado
-- [ ] **Cobro parcial / seña** — registrar anticipos y saldar después
-- [ ] **Modo offline** — vender sin internet y sincronizar cuando vuelva la conexión (critical para ferias/mercados)
-- [ ] **Base de clientes** con historial de compras, deuda y datos de contacto
+- [x] **Interfaz tipo caja registradora** en `/dashboard/pos` con layout tactile para pantalla táctil
+- [x] **Carrito de compras** con agregar/scanner de productos, modificar cantidades y eliminar items
+- [x] **Cobro múltiple**: efectivo, tarjeta, transferencia, cuenta corriente (registra el método de pago)
+- [x] **Ticket / comprobante** — vista previa del ticket antes de finalizar e impresión (PDF térmico 80mm)
+- [x] **Apertura y cierre de caja** — control de efectivo inicial/final, diferencia del día
+- [x] **Cliente frecuente** vinculado a la venta (sin obligación de registrar cliente)
+- [x] **Descuentos por item y por total** con porcentaje o monto fijo
+- [x] **Devolución** — seleccionar una venta y devolver items (restaura stock y anula el ingreso)
+- [x] **Historial de ventas del día** en vivo con total acumulado
+- [x] **Cobro parcial / seña** — registrar un anticipo (seña) en la venta a Cta Cte; el saldo queda como deuda del cliente y la seña cuenta como efectivo en el cierre de caja
+- [x] **Modo offline** — vender sin internet y sincronizar cuando vuelva la conexión (cola de ventas + sync automático; catálogo cacheado en localStorage). MVP: requiere tener la app abierta (sin precacheo del Service Worker)
+- [x] **Base de clientes** con historial de compras, deuda y datos de contacto
 - [ ] **Múltiples puntos de venta** — una misma cuenta puede tener varias cajas abiertas simultáneamente
+- [x] **Escáner de cámara** compatible con Android e iOS (ZXing, reemplaza BarcodeDetector)
 
 ### Mejoras de UX/UI generales
 
-- [ ] **Página de ayuda / FAQ** dentro de la app
-- [ ] **Mensajes de error amigables** en formularios (sin códigos técnicos)
-- [ ] **Estado vacío** ilustrado en todas las secciones (cuando no hay datos, mostrar qué hacer)
-- [ ] **Confirmaciones con undo** en acciones destructivas (eliminar producto, etc.)
-- [ ] **Atajos de teclado** para acciones frecuentes
+- [x] **Página de ayuda / FAQ** dentro de la app
+- [x] **Mensajes de error amigables** en formularios (sin códigos técnicos)
+- [x] **Estado vacío** ilustrado en todas las secciones (cuando no hay datos, mostrar qué hacer)
+- [x] **Confirmaciones** en acciones destructivas (eliminar producto, etc.) via `ConfirmDialog`
+- [x] **Undo** en acciones destructivas (toast con "Deshacer" al eliminar productos/proveedores)
+- [x] **Atajos de teclado** para acciones frecuentes
+- [x] **Guía de uso** dentro de la app (`/dashboard/guide`)
+- [x] **Vista "explicación simplificada"** en el simulador y en las alertas (toggle "modo simple" que oculta números complejos y muestra texto/emojis claros)
 
 ---
 
@@ -195,6 +198,6 @@
 - [ ] Auditoría de seguridad
 - [ ] Optimización de performance (caching, queries N+1)
 - [ ] Documentación de API actualizada
-- [ ] Modo offline / PWA para mobile
+- [ ] Modo offline / PWA para mobile (POS listo con cola de ventas; falta precacheo del Service Worker y full app shell)
 - [ ] Infraestructura multi-región
 - [ ] Migración a cola de tareas (procesamiento async de imports pesados)

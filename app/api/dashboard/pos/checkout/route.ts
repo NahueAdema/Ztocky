@@ -7,13 +7,22 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { items, paymentMethod, discountAmount, cashRegisterId, notes, customerId } = body as {
+  const {
+    items,
+    paymentMethod,
+    discountAmount,
+    cashRegisterId,
+    notes,
+    customerId,
+    amountPaid,
+  } = body as {
     items: { productId: string; quantity: number; unitPrice: number; discountAmount?: number }[];
     paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ACCOUNT";
     discountAmount?: number;
     cashRegisterId?: string;
     notes?: string;
     customerId?: string;
+    amountPaid?: number;
   };
 
   if (!items || items.length === 0) {
@@ -22,6 +31,17 @@ export async function POST(request: NextRequest) {
 
   if (!paymentMethod) {
     return NextResponse.json({ error: "Método de pago requerido" }, { status: 400 });
+  }
+
+  if (paymentMethod === "ACCOUNT" && !customerId) {
+    return NextResponse.json(
+      { error: "Para cobrar a cuenta corriente debés seleccionar un cliente" },
+      { status: 400 },
+    );
+  }
+
+  if (amountPaid !== undefined && amountPaid < 0) {
+    return NextResponse.json({ error: "El monto recibido no puede ser negativo" }, { status: 400 });
   }
 
   const prisma = getPrisma();
@@ -35,6 +55,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
       }
     }
+
+    let amountPaidReported = 0;
 
     const result = await prisma.$transaction(async (tx) => {
       const productIds = items.map((i) => i.productId);
@@ -107,6 +129,21 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      const paidAmount = amountPaid && paymentMethod === "ACCOUNT" ? amountPaid : 0;
+      amountPaidReported = paidAmount;
+      if (paidAmount > 0 && customerId) {
+        const señaNote = `Seña venta #${receiptNumber}${notes ? ` · ${notes}` : ""}`;
+        await tx.accountPayment.create({
+          data: {
+            customerId,
+            workspaceId: user.workspaceId!,
+            userId: user.id,
+            amount: paidAmount,
+            note: señaNote,
+          },
+        });
+      }
+
       return sale;
     });
 
@@ -118,6 +155,7 @@ export async function POST(request: NextRequest) {
         totalAmount: Number(result.totalAmount),
         discountAmount: Number(result.discountAmount),
         paymentMethod: result.paymentMethod,
+        amountPaid: result.paymentMethod === "ACCOUNT" ? Number(amountPaidReported) : Number(result.totalAmount),
         saleDate: result.saleDate.toISOString(),
         items: result.items.map((item) => ({
           name: item.product.name,

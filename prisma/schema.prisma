@@ -97,6 +97,7 @@ model Workspace {
   suppliers     Supplier[]
   orders        PurchaseOrder[]
   alerts        Alert[]
+  alertRules    AlertRule[]
   invitations   WorkspaceInvitation[]
   sales         Sale[]
   cashRegisters CashRegister[]
@@ -409,9 +410,11 @@ model PurchaseOrderItem {
 model Alert {
   id          String    @id @default(cuid())
   workspaceId String?   @map("workspace_id")
-  productId   String    @map("product_id")
+  productId   String?   @map("product_id")
   type        AlertType
+  title       String?
   message     String
+  href        String?
   isRead      Boolean   @default(false)
   isResolved  Boolean   @default(false)
   metadata    Json? // Datos adicionales como burnRate, días hasta agotamiento, etc.
@@ -420,11 +423,30 @@ model Alert {
 
   // Relaciones
   workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
   @@index([productId, createdAt])
   @@map("alerts")
+}
+
+// ========== REGLAS DE ALERTAS (control del usuario) ==========
+model AlertRule {
+  id             String         @id @default(cuid())
+  workspaceId    String         @map("workspace_id")
+  name           String
+  type           RuleType
+  config         Json
+  channels       Json
+  enabled        Boolean        @default(true)
+  lastTriggeredAt DateTime?     @map("last_triggered_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("alert_rules")
 }
 
 // ========== DEVOLUCIONES ==========
@@ -494,6 +516,23 @@ enum AlertType {
   STAGNANT_STOCK
   PRICE_CHANGE
   SUPPLIER_RISK
+  ORDER_STATUS
+  REGISTER_DISCREPANCY
+  PAYMENT_RECEIVED
+  LOW_BALANCE
+}
+
+enum RuleType {
+  STOCK_STATE
+  EVENT
+  DIGEST
+}
+
+enum RuleFrequency {
+  DAILY
+  EVERY_3_DAYS
+  WEEKLY
+  MONTHLY
 }
 
 enum WorkspaceRole {

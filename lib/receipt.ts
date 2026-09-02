@@ -22,6 +22,7 @@ type ReceiptData = {
   storeCuit?: string;
   seller?: string;
   cashReceived?: number;
+  amountPaid?: number;
   customerName?: string;
 };
 
@@ -163,6 +164,16 @@ export function generateReceiptPDF(data: ReceiptData): jsPDF {
     const change = data.cashReceived - data.totalAmount;
     if (change > 0) {
       doc.text(`Vuelto: ${moneyFormatter.format(change)}`, MARGIN, y);
+      y += 3.5;
+    }
+  }
+
+  if (data.paymentMethod === "ACCOUNT" && data.amountPaid != null && data.amountPaid > 0) {
+    doc.text(`Seña: ${moneyFormatter.format(data.amountPaid)}`, MARGIN, y);
+    y += 3.5;
+    const saldo = data.totalAmount - data.amountPaid;
+    if (saldo > 0) {
+      doc.text(`Saldo a cuenta: ${moneyFormatter.format(saldo)}`, MARGIN, y);
       y += 3.5;
     }
   }
