@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/dashboard/rules/check",
+      "schedule": "30 8 * * *"
+    }
+  ]
+}

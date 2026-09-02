@@ -206,6 +206,13 @@ export function usePosHandlers({
       toast("Ingresá un monto válido", "error");
       return;
     }
+    if (cart.length > 0) {
+      const confirmed = confirm(
+        `Hay ${cart.length} producto${cart.length > 1 ? "s" : ""} en el carrito. ¿Cerrar la caja y vaciar el carrito?`
+      );
+      if (!confirmed) return;
+      clearCart();
+    }
     try {
       const res = await fetch("/api/dashboard/pos/session", {
         method: "PATCH",
@@ -225,7 +232,7 @@ export function usePosHandlers({
     } catch {
       toast("Error de conexión", "error");
     }
-  }, [closingAmount, register, toast, setRegister, setShowCloseModal, setClosingAmount, fetchDailySummary]);
+  }, [closingAmount, register, cart, toast, clearCart, setRegister, setShowCloseModal, setClosingAmount, fetchDailySummary]);
 
   const handleExportDaily = useCallback(() => {
     if (todaySales.length === 0) {

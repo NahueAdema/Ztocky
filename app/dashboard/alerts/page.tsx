@@ -11,6 +11,7 @@ import {
   Search, CheckCheck, Filter, Package, Wallet, Truck,
 } from "lucide-react";
 import { SimpleToggle } from "@/components/ui/simple-toggle";
+import { RulesManager } from "@/components/alerts/rules-manager";
 import { cn } from "@/lib/utils";
 
 type Alert = {
@@ -206,6 +207,8 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      <RulesManager />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="page-title text-3xl font-bold tracking-tight">Alertas</h1>

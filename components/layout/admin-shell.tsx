@@ -35,6 +35,9 @@ function AdminSidebarContent({
 }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   return (
     <div className="flex h-full flex-col">
@@ -105,7 +108,7 @@ function AdminSidebarContent({
         >
           <Sun className="h-4 w-4 shrink-0 hidden dark:block" />
           <Moon className="h-4 w-4 shrink-0 block dark:hidden" />
-          {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+          {mounted ? (theme === "dark" ? "Modo claro" : "Modo oscuro") : "Modo oscuro"}
         </button>
         <Link
           href="/dashboard"
