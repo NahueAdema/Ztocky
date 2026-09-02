@@ -177,7 +177,7 @@ export default function AlertsPage() {
   const resolvedAlerts = useMemo(() => sortedAlerts.filter((a) => a.isResolved), [sortedAlerts]);
   const unreadCount = alerts.filter((a) => !a.isRead && !a.isResolved).length;
 
-  const pool = view === "active" ? activeAlerts : resolvedAlerts;
+  const pool = useMemo(() => view === "active" ? activeAlerts : resolvedAlerts, [view, activeAlerts, resolvedAlerts]);
 
   const filteredAlerts = useMemo(() => {
     const q = search.toLowerCase();

@@ -37,7 +37,7 @@ function AdminSidebarContent({
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => setMounted(true), []); // eslint-disable-line react-hooks/set-state-in-effect
 
   return (
     <div className="flex h-full flex-col">
