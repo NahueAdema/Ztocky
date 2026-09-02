@@ -179,14 +179,14 @@ export default function AlertsPage() {
 
   const pool = useMemo(() => view === "active" ? activeAlerts : resolvedAlerts, [view, activeAlerts, resolvedAlerts]);
 
-  const filteredAlerts = useMemo(() => {
+  const filteredAlerts = (() => {
     const q = search.toLowerCase();
     return pool.filter((a) => {
       if (typeFilter !== "ALL" && a.type !== typeFilter) return false;
       if (q && !a.productName.toLowerCase().includes(q) && !a.productSku.toLowerCase().includes(q) && !(a.title ?? "").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [pool, typeFilter, search]);
+  })();
 
   const criticalCount = activeAlerts.filter((a) => a.type === "CRITICAL_STOCK").length;
   const lowCount = activeAlerts.filter((a) => a.type === "LOW_STOCK").length;
