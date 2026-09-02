@@ -8,31 +8,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import {
   AlertTriangle, TrendingDown, TrendingUp, Clock, RefreshCw, CheckCircle2, Eye,
-  Search, CheckCheck, Filter,
+  Search, CheckCheck, Filter, Package, Wallet, Truck,
 } from "lucide-react";
 import { SimpleToggle } from "@/components/ui/simple-toggle";
 import { cn } from "@/lib/utils";
 
 type Alert = {
   id: string;
-  productId: string;
+  productId: string | null;
   productName: string;
   productSku: string;
   type: string;
+  title: string | null;
   message: string;
+  href: string | null;
   isRead: boolean;
   isResolved: boolean;
   metadata: Record<string, unknown> | null;
   createdAt: string;
 };
 
-const typeConfig: Record<string, { label: string; tone: "danger" | "warning" | "muted"; icon: typeof AlertTriangle; priority: number }> = {
+const typeConfig: Record<string, { label: string; tone: "danger" | "warning" | "muted" | "success"; icon: typeof AlertTriangle; priority: number }> = {
   CRITICAL_STOCK: { label: "Critico", tone: "danger", icon: AlertTriangle, priority: 0 },
   LOW_STOCK: { label: "Stock bajo", tone: "warning", icon: Clock, priority: 1 },
   STAGNANT_STOCK: { label: "Estancado", tone: "muted", icon: TrendingDown, priority: 2 },
+  PRICE_CHANGE: { label: "Precio", tone: "muted", icon: TrendingUp, priority: 3 },
+  SUPPLIER_RISK: { label: "Proveedor", tone: "warning", icon: Package, priority: 4 },
+  ORDER_STATUS: { label: "Orden de compra", tone: "muted", icon: Package, priority: 5 },
+  REGISTER_DISCREPANCY: { label: "Caja", tone: "danger", icon: AlertTriangle, priority: 4 },
+  PAYMENT_RECEIVED: { label: "Pago", tone: "success", icon: Wallet, priority: 6 },
+  LOW_BALANCE: { label: "Cliente", tone: "warning", icon: AlertTriangle, priority: 5 },
 };
 
-const TYPE_ORDER: Record<string, number> = { CRITICAL_STOCK: 0, LOW_STOCK: 1, STAGNANT_STOCK: 2 };
+const TYPE_ORDER: Record<string, number> = {
+  CRITICAL_STOCK: 0, LOW_STOCK: 1, STAGNANT_STOCK: 2,
+  REGISTER_DISCREPANCY: 4, SUPPLIER_RISK: 4, PRICE_CHANGE: 3,
+  ORDER_STATUS: 5, LOW_BALANCE: 5, PAYMENT_RECEIVED: 6,
+};
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -170,7 +182,7 @@ export default function AlertsPage() {
     const q = search.toLowerCase();
     return pool.filter((a) => {
       if (typeFilter !== "ALL" && a.type !== typeFilter) return false;
-      if (q && !a.productName.toLowerCase().includes(q) && !a.productSku.toLowerCase().includes(q)) return false;
+      if (q && !a.productName.toLowerCase().includes(q) && !a.productSku.toLowerCase().includes(q) && !(a.title ?? "").toLowerCase().includes(q)) return false;
       return true;
     });
   }, [pool, typeFilter, search]);
@@ -178,12 +190,18 @@ export default function AlertsPage() {
   const criticalCount = activeAlerts.filter((a) => a.type === "CRITICAL_STOCK").length;
   const lowCount = activeAlerts.filter((a) => a.type === "LOW_STOCK").length;
   const stagnantCount = activeAlerts.filter((a) => a.type === "STAGNANT_STOCK").length;
+  const orderCount = activeAlerts.filter((a) => a.type === "ORDER_STATUS").length;
+  const registerCount = activeAlerts.filter((a) => a.type === "REGISTER_DISCREPANCY").length;
+  const paymentCount = activeAlerts.filter((a) => a.type === "PAYMENT_RECEIVED").length;
 
   const typeTabs = [
     { value: "ALL", label: "Todas", count: view === "active" ? activeAlerts.length : resolvedAlerts.length },
     { value: "CRITICAL_STOCK", label: "Critico", count: criticalCount },
     { value: "LOW_STOCK", label: "Stock bajo", count: lowCount },
     { value: "STAGNANT_STOCK", label: "Estancado", count: stagnantCount },
+    { value: "ORDER_STATUS", label: "Órdenes", count: orderCount },
+    { value: "REGISTER_DISCREPANCY", label: "Caja", count: registerCount },
+    { value: "PAYMENT_RECEIVED", label: "Pagos", count: paymentCount },
   ];
 
   return (
@@ -352,13 +370,15 @@ export default function AlertsPage() {
                             ? "bg-danger text-white"
                             : config.tone === "warning"
                               ? "bg-warning text-black"
-                              : "bg-muted text-muted-foreground",
+                              : config.tone === "success"
+                                ? "bg-success text-white"
+                                : "bg-muted text-muted-foreground",
                         )}>
                           <Icon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold">{alert.productName}</p>
+                            <p className="font-semibold">{alert.title ?? alert.productName}</p>
                             <Badge tone={config.tone}>{config.label}</Badge>
                             {currentStock !== null && (
                               <Badge tone={currentStock <= (minStock ?? 0) ? "danger" : "muted"}>

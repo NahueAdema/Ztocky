@@ -66,6 +66,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       },
     });
 
+    try {
+      const money = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+      await prisma.alert.create({
+        data: {
+          workspaceId: user.workspaceId,
+          type: "PAYMENT_RECEIVED",
+          title: "Pago recibido",
+          message: `${customer.name} realizo un pago de ${money.format(numAmount)}${payment.note ? ` — ${payment.note}` : ""}.`,
+          href: `/dashboard/customers/${id}`,
+          metadata: {
+            customerId: id,
+            amount: numAmount,
+            userId: user.id,
+            note: payment.note,
+          },
+        },
+      });
+    } catch { /* alert creation silent */ }
+
     return NextResponse.json({
       id: payment.id,
       amount: Number(payment.amount),

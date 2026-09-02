@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen, MessageSquare, Building2, HelpCircle, ShieldCheck } from "lucide-react";
+import { Bell, Command, LogOut, Search, Settings, ChevronDown, Package, AlertTriangle, Clock, CheckCircle2, Sun, Moon, BookOpen, MessageSquare, Building2, HelpCircle, ShieldCheck, TrendingUp, Truck, Wallet } from "lucide-react";
 import { useTheme } from "next-themes";
 
 function getModifierKey() {
@@ -23,8 +23,10 @@ type DashboardUser = {
 type AlertItem = {
   id: string;
   type: string;
+  title: string | null;
   message: string;
   productName: string;
+  href: string | null;
   isRead: boolean;
   isResolved: boolean;
   createdAt: string;
@@ -106,7 +108,8 @@ export function DashboardShell({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const unread = alerts.filter((a) => !a.isResolved);
+  const unread = alerts.filter((a) => !a.isRead && !a.isResolved);
+  const unresolved = alerts.filter((a) => !a.isResolved);
   const recentAlerts = alerts.slice(0, 5);
 
   const alertIcon = (type: string) => {
@@ -114,6 +117,12 @@ export function DashboardShell({
       case "CRITICAL_STOCK": return { icon: AlertTriangle, color: "bg-danger-light text-danger" };
       case "LOW_STOCK": return { icon: Clock, color: "bg-warning-light text-warning" };
       case "STAGNANT_STOCK": return { icon: Package, color: "bg-accent-soft text-accent" };
+      case "PRICE_CHANGE": return { icon: TrendingUp, color: "bg-accent-soft text-accent" };
+      case "SUPPLIER_RISK": return { icon: Truck, color: "bg-warning-light text-warning" };
+      case "ORDER_STATUS": return { icon: Package, color: "bg-accent-soft text-accent" };
+      case "REGISTER_DISCREPANCY": return { icon: AlertTriangle, color: "bg-danger-light text-danger" };
+      case "PAYMENT_RECEIVED": return { icon: CheckCircle2, color: "bg-success-light text-success" };
+      case "LOW_BALANCE": return { icon: AlertTriangle, color: "bg-warning-light text-warning" };
       default: return { icon: Bell, color: "bg-muted text-muted-foreground" };
     }
   };
@@ -179,7 +188,7 @@ export function DashboardShell({
                   <div className="p-4 border-b border-border flex items-center justify-between">
                     <p className="text-sm font-semibold">Notificaciones</p>
                     {unread.length > 0 && (
-                      <span className="text-xs text-muted-foreground">{unread.length} sin resolver</span>
+                      <span className="text-xs text-muted-foreground">{unresolved.length} sin resolver</span>
                     )}
                   </div>
                   <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
@@ -199,7 +208,7 @@ export function DashboardShell({
                         return (
                           <Link
                             key={alert.id}
-                            href="/dashboard/alerts"
+                            href={alert.href ?? "/dashboard/alerts"}
                             className={`flex items-start gap-3 rounded-lg p-2 transition ${alert.isResolved ? "opacity-50" : "hover:bg-muted/50"}`}
                             onClick={() => setShowNotif(false)}
                           >
@@ -207,7 +216,7 @@ export function DashboardShell({
                               <Icon className="h-3.5 w-3.5" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{alert.productName}</p>
+                              <p className="text-sm font-medium truncate">{alert.title ?? alert.productName}</p>
                               <p className="text-xs text-muted-foreground line-clamp-2">{alert.message}</p>
                             </div>
                           </Link>
@@ -332,7 +341,7 @@ export function DashboardShell({
                 <div className="p-4 border-b border-border flex items-center justify-between">
                   <p className="text-sm font-semibold">Notificaciones</p>
                   {unread.length > 0 && (
-                    <span className="text-xs text-muted-foreground">{unread.length} sin resolver</span>
+                    <span className="text-xs text-muted-foreground">{unresolved.length} sin resolver</span>
                   )}
                 </div>
                 <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
@@ -352,7 +361,7 @@ export function DashboardShell({
                       return (
                         <Link
                           key={alert.id}
-                          href="/dashboard/alerts"
+                          href={alert.href ?? "/dashboard/alerts"}
                           className={`flex items-start gap-3 rounded-lg p-2 transition ${alert.isResolved ? "opacity-50" : "hover:bg-muted/50"}`}
                           onClick={() => setShowNotif(false)}
                         >
@@ -360,7 +369,7 @@ export function DashboardShell({
                             <Icon className="h-3.5 w-3.5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{alert.productName}</p>
+                            <p className="text-sm font-medium truncate">{alert.title ?? alert.productName}</p>
                             <p className="text-xs text-muted-foreground line-clamp-2">{alert.message}</p>
                           </div>
                         </Link>

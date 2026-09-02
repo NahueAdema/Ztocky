@@ -29,13 +29,15 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    alerts: alerts.map((a: { id: string; productId: string; product: { name: string; sku: string }; type: string; message: string; isRead: boolean; isResolved: boolean; metadata: unknown; createdAt: Date }) => ({
+    alerts: alerts.map((a: { id: string; productId: string | null; product: { name: string; sku: string } | null; type: string; title: string | null; message: string; href: string | null; isRead: boolean; isResolved: boolean; metadata: unknown; createdAt: Date }) => ({
       id: a.id,
       productId: a.productId,
-      productName: a.product.name,
-      productSku: a.product.sku,
+      productName: a.product?.name ?? "",
+      productSku: a.product?.sku ?? "",
       type: a.type,
+      title: a.title,
       message: a.message,
+      href: a.href,
       isRead: a.isRead,
       isResolved: a.isResolved,
       metadata: a.metadata,
@@ -99,7 +101,7 @@ export async function POST() {
     }),
   ]);
 
-  const alertSet = new Set(existingAlerts.map((a: { productId: string; type: string }) => `${a.productId}:${a.type}`));
+  const alertSet = new Set(existingAlerts.map((a: { productId: string | null; type: string }) => `${a.productId ?? ""}:${a.type}`));
   const poProductIds = new Set(pendingPOs.flatMap((po: { items: { productId: string }[] }) => po.items.map((i: { productId: string }) => i.productId)));
 
   for (const product of products as unknown as ProductWithAlerts[]) {

@@ -166,6 +166,32 @@ export async function PATCH(request: NextRequest) {
     },
   });
 
+  // Alerta in-app si hay discrepancia al cerrar la caja
+  if (Math.abs(difference) > 0.01 && user.workspaceId) {
+    try {
+      const money2 = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+      const deficit = difference < 0;
+      await prisma.alert.create({
+        data: {
+          workspaceId: user.workspaceId,
+          type: "REGISTER_DISCREPANCY",
+          title: deficit ? "Faltante en caja" : "Sobrante en caja",
+          message: `Cierre de caja con ${
+            deficit ? "faltante" : "sobrante"
+          } de ${money2.format(Math.abs(difference))}. Esperado: ${money2.format(expectedCash)}, contado: ${money2.format(closingAmount)}.`,
+          href: "/dashboard/pos",
+          metadata: {
+            registerId: register.id,
+            difference,
+            expectedCash,
+            closingAmount,
+            closedBy: user.id,
+          },
+        },
+      });
+    } catch { /* alert creation silent */ }
+  }
+
   return NextResponse.json({
     success: true,
     register: {

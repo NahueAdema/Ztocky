@@ -409,9 +409,11 @@ model PurchaseOrderItem {
 model Alert {
   id          String    @id @default(cuid())
   workspaceId String?   @map("workspace_id")
-  productId   String    @map("product_id")
+  productId   String?   @map("product_id")
   type        AlertType
+  title       String?
   message     String
+  href        String?
   isRead      Boolean   @default(false)
   isResolved  Boolean   @default(false)
   metadata    Json? // Datos adicionales como burnRate, días hasta agotamiento, etc.
@@ -420,7 +422,7 @@ model Alert {
 
   // Relaciones
   workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
   @@index([productId, createdAt])
@@ -494,6 +496,10 @@ enum AlertType {
   STAGNANT_STOCK
   PRICE_CHANGE
   SUPPLIER_RISK
+  ORDER_STATUS
+  REGISTER_DISCREPANCY
+  PAYMENT_RECEIVED
+  LOW_BALANCE
 }
 
 enum WorkspaceRole {

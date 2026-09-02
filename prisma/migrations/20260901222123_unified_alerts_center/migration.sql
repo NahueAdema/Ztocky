@@ -1,0 +1,16 @@
+-- AlterEnum
+ALTER TYPE "AlertType" ADD VALUE IF NOT EXISTS 'ORDER_STATUS';
+ALTER TYPE "AlertType" ADD VALUE IF NOT EXISTS 'REGISTER_DISCREPANCY';
+ALTER TYPE "AlertType" ADD VALUE IF NOT EXISTS 'PAYMENT_RECEIVED';
+ALTER TYPE "AlertType" ADD VALUE IF NOT EXISTS 'LOW_BALANCE';
+
+-- DropForeignKey
+ALTER TABLE "alerts" DROP CONSTRAINT "alerts_product_id_fkey";
+
+-- AlterTable
+ALTER TABLE "alerts" ADD COLUMN     "href" TEXT,
+ADD COLUMN     "title" TEXT,
+ALTER COLUMN "product_id" DROP NOT NULL;
+
+-- AddForeignKey
+ALTER TABLE "alerts" ADD CONSTRAINT "alerts_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE SET NULL ON UPDATE CASCADE;

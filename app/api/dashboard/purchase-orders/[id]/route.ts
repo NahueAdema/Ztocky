@@ -93,6 +93,29 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
+    // Alerta in-app cuando cambia a un estado accionable
+    if (body.status && body.status !== order.status && ["SENT", "CONFIRMED", "SHIPPED", "RECEIVED"].includes(body.status)) {
+      try {
+        const productNames = order.items.map((i) => i.product.name).join(", ");
+        await prisma.alert.create({
+          data: {
+            workspaceId: user.workspaceId,
+            type: "ORDER_STATUS",
+            title: `Orden ${body.status === "SENT" ? "enviada" : body.status === "CONFIRMED" ? "confirmada" : body.status === "SHIPPED" ? "en camino" : "recibida"}`,
+            message: `${productNames} — Orden ${body.status === "SENT" ? "enviada al proveedor" : body.status === "CONFIRMED" ? "confirmada por el proveedor" : body.status === "SHIPPED" ? "enviada, en camino" : "recibida, stock actualizado"}.`,
+            href: "/dashboard/purchase-orders",
+            metadata: {
+              orderId: id,
+              status: body.status,
+              supplier: order.supplier.name,
+              totalAmount: Number(updated.totalAmount),
+            },
+            isResolved: false,
+          },
+        });
+      } catch { /* alert creation silent */ }
+    }
+
     if (body.items && Array.isArray(body.items) && body.items.length > 0) {
       if (order.status !== "DRAFT") {
         return NextResponse.json({ error: "Solo se pueden editar items en órdenes borrador." }, { status: 400 });
