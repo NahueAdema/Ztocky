@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const deviceId = searchParams.get("deviceId");
 
   const prisma = getPrisma();
 
@@ -13,6 +16,9 @@ export async function GET() {
       workspaceId: user.workspaceId!,
       openedBy: user.id,
       status: "OPEN",
+      // Si llega deviceId, sólo vemos la caja abierta en ese dispositivo.
+      // Si no llega, mantenemos el comportamiento anterior (cualquier caja del usuario).
+      ...(deviceId ? { deviceId } : {}),
     },
     include: {
       sales: {
@@ -60,7 +66,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { openingAmount, notes } = body as { openingAmount: number; notes?: string };
+  const { openingAmount, notes, deviceId } = body as { openingAmount: number; notes?: string; deviceId?: string };
 
   if (openingAmount === undefined || openingAmount < 0) {
     return NextResponse.json({ error: "Monto de apertura requerido" }, { status: 400 });
@@ -68,22 +74,26 @@ export async function POST(request: NextRequest) {
 
   const prisma = getPrisma();
 
-  const existingOpen = await prisma.cashRegister.findFirst({
-    where: {
-      workspaceId: user.workspaceId!,
-      openedBy: user.id,
-      status: "OPEN",
-    },
-  });
-
-  if (existingOpen) {
-    return NextResponse.json({ error: "Ya tenés una caja abierta" }, { status: 400 });
+  // Si el mismo dispositivo ya tiene una caja abierta, no abrir otra.
+  // Un mismo usuario puede abrir cajas distintas en dispositivos distintos (múltiples puntos de venta).
+  if (deviceId) {
+    const deviceOpen = await prisma.cashRegister.findFirst({
+      where: {
+        workspaceId: user.workspaceId!,
+        deviceId,
+        status: "OPEN",
+      },
+    });
+    if (deviceOpen) {
+      return NextResponse.json({ error: "Este punto de venta ya tiene una caja abierta" }, { status: 400 });
+    }
   }
 
   const register = await prisma.cashRegister.create({
     data: {
       workspaceId: user.workspaceId!,
       openedBy: user.id,
+      deviceId: deviceId || null,
       openingAmount,
       notes: notes || null,
     },

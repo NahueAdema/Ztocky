@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { can, permissionError } from "@/lib/permissions";
 
 async function getProductAndVerify(id: string, workspaceId: string | null) {
   const prisma = getPrisma();
@@ -37,6 +38,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!can("product:edit", user.role)) {
+    return NextResponse.json(permissionError().json, { status: permissionError().status });
+  }
 
   const { id } = await params;
   const product = await getProductAndVerify(id, user.workspaceId);
@@ -78,15 +82,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!can("product:edit", user.role)) {
+    return NextResponse.json(permissionError("No tenés permiso para eliminar productos").json, { status: permissionError().status });
+  }
 
   const prisma = getPrisma();
-
-  const member = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id, workspaceId: user.workspaceId },
-  });
-  if (!member || (member.role !== "OWNER" && member.role !== "ADMIN")) {
-    return NextResponse.json({ error: "No tenés permiso para eliminar productos" }, { status: 403 });
-  }
 
   const { id } = await params;
   const product = await getProductAndVerify(id, user.workspaceId);

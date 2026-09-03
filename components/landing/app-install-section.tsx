@@ -73,6 +73,7 @@ function QrModal({ onClose }: { onClose: () => void }) {
 
         <div className="mx-auto mt-5 flex h-64 w-64 items-center justify-center rounded-2xl border border-border bg-background p-3">
           {dataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={dataUrl} alt="Código QR para abrir Ztocky en tu celular" className="h-full w-full" />
           ) : (
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

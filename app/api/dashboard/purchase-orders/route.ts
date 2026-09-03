@@ -29,6 +29,7 @@ export async function GET() {
       totalAmount: Number(o.totalAmount),
       notes: o.notes,
       generatedByAI: o.generatedByAI,
+      expectedAt: o.expectedAt?.toISOString() ?? null,
       emailSentAt: o.emailSentAt?.toISOString() ?? null,
       items: o.items.map((i) => ({
         id: i.id,
@@ -36,6 +37,7 @@ export async function GET() {
         productName: i.product.name,
         productSku: i.product.sku,
         quantity: i.quantity,
+        receivedQty: i.receivedQty,
         unitPrice: Number(i.unitPrice),
         totalPrice: Number(i.totalPrice),
       })),
@@ -50,7 +52,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { supplierId, status, notes, items } = body;
+  const { supplierId, status, notes, items, expectedAt } = body;
 
   if (!supplierId || !items || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: "Proveedor y al menos un item son obligatorios" }, { status: 400 });
@@ -79,6 +81,7 @@ export async function POST(request: NextRequest) {
         status: status ?? "DRAFT",
         totalAmount,
         notes: notes ?? null,
+        expectedAt: expectedAt ? new Date(expectedAt) : undefined,
         workspaceId: user.workspaceId,
         items: {
           create: items.map((item: { productId: string; quantity: number; unitPrice: number }) => ({

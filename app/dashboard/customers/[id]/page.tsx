@@ -4,13 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { moneyFormatter } from "@/lib/format";
 import { downloadReceiptPDF, printReceipt } from "@/lib/receipt";
 import {
-  ArrowLeft, User, Phone, Mail, DollarSign, Loader2, History, CreditCard, Receipt, X,
+  ArrowLeft, Phone, Mail, DollarSign, Loader2, History, CreditCard, Receipt, X,
 } from "lucide-react";
 
 type CustomerInfo = {

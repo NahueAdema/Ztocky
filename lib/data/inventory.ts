@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getPrisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
@@ -11,7 +12,7 @@ function scopedWhere(workspaceId?: string | null) {
     : {};
 }
 
-export async function getProductsForDashboard(workspaceId?: string | null) {
+export const getProductsForDashboard = cache(async (workspaceId?: string | null) => {
   try {
     const prisma = getPrisma();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -68,7 +69,7 @@ export async function getProductsForDashboard(workspaceId?: string | null) {
     logger.error("DB query failed", e);
     return [];
   }
-}
+});
 
 export async function getSuppliersForDashboard(workspaceId?: string | null) {
   try {
@@ -160,7 +161,7 @@ export async function getPotentialSavings(workspaceId?: string | null) {
   }
 }
 
-export async function getReorderRisksForDashboard(workspaceId?: string | null) {
+export const getReorderRisksForDashboard = cache(async (workspaceId?: string | null) => {
   try {
     const prisma = getPrisma();
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -225,9 +226,9 @@ export async function getReorderRisksForDashboard(workspaceId?: string | null) {
     logger.error("DB query failed", e);
     return [];
   }
-}
+});
 
-export async function getTodayStats(workspaceId?: string | null) {
+export const getTodayStats = cache(async (workspaceId?: string | null) => {
   try {
     const prisma = getPrisma();
 
@@ -306,9 +307,9 @@ export async function getTodayStats(workspaceId?: string | null) {
     logger.error("getTodayStats failed", e);
     return { revenue: 0, revenueChange: 0, units: 0, unitsChange: 0, transactions: 0, recentSales: [] };
   }
-}
+});
 
-export async function getTopProducts(workspaceId?: string | null) {
+export const getTopProducts = cache(async (workspaceId?: string | null) => {
   try {
     const prisma = getPrisma();
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -359,7 +360,7 @@ export async function getTopProducts(workspaceId?: string | null) {
     logger.error("getTopProducts failed", e);
     return [];
   }
-}
+});
 
 export async function getWeeklySales(workspaceId?: string | null) {
   try {

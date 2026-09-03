@@ -3,12 +3,9 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Boxes,
-  Building2,
   ClipboardList,
   Factory,
-  Siren,
   ShoppingCart,
-  Users,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";

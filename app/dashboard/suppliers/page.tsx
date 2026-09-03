@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
   Star,
   Package,
   X,
+  Eye,
   FileSpreadsheet,
   FileText,
 } from "lucide-react";
@@ -118,7 +120,7 @@ export default function SuppliersPage() {
     total: number;
     errors?: string[];
   } | null>(null);
-  const [importType, setImportType] = useState<"csv" | "excel">("csv");
+  const [_importType, setImportType] = useState<"csv" | "excel">("csv");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -643,7 +645,9 @@ export default function SuppliersPage() {
                     {paginatedSuppliers.map((supplier) => (
                       <tr key={supplier.id}>
                         <td>
-                          <p className="font-semibold">{supplier.name}</p>
+                          <Link href={`/dashboard/suppliers/${supplier.id}`} className="font-semibold hover:text-primary transition-colors">
+                            {supplier.name}
+                          </Link>
                           {supplier.notes && (
                             <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                               {supplier.notes}
@@ -703,6 +707,7 @@ export default function SuppliersPage() {
                         </td>
                         <td>
                           <div className="flex items-center gap-1">
+                            <Link href={`/dashboard/suppliers/${supplier.id}`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver detalle"><Eye className="h-4 w-4" /></Link>
                             <button onClick={() => openCatalog(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver catálogo"><Package className="h-4 w-4" /></button>
                             <button onClick={() => openEdit(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
                             <button onClick={() => handleDelete(supplier.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>
@@ -723,7 +728,9 @@ export default function SuppliersPage() {
                   >
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div>
-                        <p className="font-semibold text-sm">{supplier.name}</p>
+                        <Link href={`/dashboard/suppliers/${supplier.id}`} className="font-semibold text-sm hover:text-primary transition-colors">
+                          {supplier.name}
+                        </Link>
                         {supplier.notes && (
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {supplier.notes}
@@ -731,6 +738,7 @@ export default function SuppliersPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <Link href={`/dashboard/suppliers/${supplier.id}`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver detalle"><Eye className="h-4 w-4" /></Link>
                         <button onClick={() => openCatalog(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent-light hover:text-accent-foreground" title="Ver catálogo"><Package className="h-4 w-4" /></button>
                         <button onClick={() => openEdit(supplier)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"><Pencil className="h-4 w-4" /></button>
                         <button onClick={() => handleDelete(supplier.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger-light hover:text-danger"><Trash2 className="h-4 w-4" /></button>

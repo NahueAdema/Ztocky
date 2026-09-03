@@ -33,6 +33,7 @@ model User {
   returns            Return[]
   pushSubscriptions  PushSubscription[]
   feedback           Feedback[]
+  stockReceipts      StockReceipt[]
 
   @@map("users")
 }
@@ -101,10 +102,95 @@ model Workspace {
   invitations   WorkspaceInvitation[]
   sales         Sale[]
   cashRegisters CashRegister[]
+  stockReceipts StockReceipt[]
    customers     Customer[]
    feedback      Feedback[]
+  storeSettings StoreSettings?
+  expenses      Expense[]
+  monthlyCloses MonthlyClose[]
 
   @@map("workspaces")
+}
+
+// ========== CONFIGURACIÓN DE LA TIENDA ==========
+model StoreSettings {
+  workspaceId String       @id @map("workspace_id")
+  businessName String?     @map("business_name") // Razón social para comprobantes
+  cuit         String?     @map("cuit")
+  address      String?     @map("address")
+  city         String?     @map("city")
+  phone        String?     @map("phone")
+  contactEmail String?     @map("contact_email")
+  taxRegime    TaxRegime?  @map("tax_regime")
+  saleConditions String?   @map("sale_conditions") // Condiciones de venta para comprobantes
+  maxDiscountPct Int       @default(0) @map("max_discount_pct") // 0 = sin límite
+  voidPermission VoidPermission @default(ONLY_OWNER) @map("void_permission")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("store_settings")
+}
+
+// ========== CIERRE MENSUAL ==========
+model MonthlyClose {
+  id             String   @id @default(cuid())
+  workspaceId    String   @map("workspace_id")
+  month          String               // "YYYY-MM"
+  revenue        Decimal  @db.Decimal(14, 2)
+  manualExpenses Decimal  @db.Decimal(14, 2)
+  purchases      Decimal  @db.Decimal(14, 2)
+  netProfit      Decimal  @db.Decimal(14, 2)
+  closedById     String   @map("closed_by_id")
+  closedAt       DateTime @default(now()) @map("closed_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, month])
+  @@index([workspaceId])
+  @@map("monthly_closes")
+}
+
+// ========== GASTOS DEL NEGOCIO ==========
+model Expense {
+  id            String                @id @default(cuid())
+  workspaceId   String                @map("workspace_id")
+  amount        Decimal               @db.Decimal(12, 2)
+  category      ExpenseCategory       @map("category")
+  description   String                @map("description")
+  date          DateTime              @map("date") @db.Date
+  recurring     Boolean               @default(false) @map("recurring")
+  paymentMethod ExpensePaymentMethod  @default(CASH) @map("payment_method")
+  taxRate       Float                 @default(0) @map("tax_rate")
+  notes         String?               @map("notes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, date])
+  @@map("expenses")
+}
+
+enum ExpenseCategory {
+  RENT
+  PAYROLL
+  SERVICES
+  SUPPLIES
+  MARKETING
+  TRANSPORT
+  TAXES
+  OTHER
+}
+
+enum ExpensePaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
 }
 
 model WorkspaceMember {
@@ -145,6 +231,7 @@ model Product {
   purchaseOrders PurchaseOrderItem[]
   alerts         Alert[]
   catalogItems   CatalogItems[]
+  stockReceiptItems StockReceiptItem[]
 
   @@index([workspaceId])
   @@map("products")
@@ -311,6 +398,7 @@ model CashRegister {
   id            String             @id @default(cuid())
   workspaceId   String             @map("workspace_id")
   openedBy      String             @map("opened_by")
+  deviceId      String?            @map("device_id") // Identifica el dispositivo/punto de venta que abrio la caja
   closedBy      String?            @map("closed_by")
   openingAmount Decimal            @map("opening_amount") @db.Decimal(10, 2)
   closingAmount Decimal?           @map("closing_amount") @db.Decimal(10, 2)
@@ -328,6 +416,7 @@ model CashRegister {
 
   @@index([workspaceId, status])
   @@index([openedBy])
+  @@index([deviceId])
   @@map("cash_registers")
 }
 
@@ -377,6 +466,7 @@ model PurchaseOrder {
   totalAmount   Decimal     @default(0) @map("total_amount")
   notes         String?
   generatedByAI Boolean     @default(true) @map("generated_by_ai")
+  expectedAt    DateTime?   @map("expected_at") // Fecha estimada de llegada de la mercadería
   emailSentAt   DateTime?   @map("email_sent_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -386,8 +476,10 @@ model PurchaseOrder {
   workspace Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   supplier  Supplier            @relation(fields: [supplierId], references: [id])
   items     PurchaseOrderItem[]
+  receipts  StockReceipt[]
 
   @@index([workspaceId])
+  @@index([expectedAt])
   @@map("purchase_orders")
 }
 
@@ -396,6 +488,7 @@ model PurchaseOrderItem {
   purchaseOrderId String  @map("purchase_order_id")
   productId       String  @map("product_id")
   quantity        Int
+  receivedQty     Int     @default(0) @map("received_qty") // Cantidad efectivamente recibida (recepción parcial)
   unitPrice       Decimal @map("unit_price")
   totalPrice      Decimal @map("total_price")
 
@@ -404,6 +497,42 @@ model PurchaseOrderItem {
   product       Product       @relation(fields: [productId], references: [id])
 
   @@map("purchase_order_items")
+}
+
+// ========== RECEPCIONES DE MERCADERÍA ==========
+model StockReceipt {
+  id          String   @id @default(cuid())
+  workspaceId String   @map("workspace_id")
+  purchaseOrderId String @map("purchase_order_id")
+  userId      String   @map("user_id")
+  totalAmount Decimal  @default(0) @map("total_amount") @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id])
+  items       StockReceiptItem[]
+
+  @@index([workspaceId, createdAt])
+  @@index([purchaseOrderId])
+  @@map("stock_receipts")
+}
+
+model StockReceiptItem {
+  id          String  @id @default(cuid())
+  receiptId   String  @map("receipt_id")
+  productId   String  @map("product_id")
+  productName String  @map("product_name")
+  quantity    Int
+  unitCost    Decimal @map("unit_cost") @db.Decimal(10, 2)
+  difference  Int     @default(0) // Faltante/suma respecto a lo pedido (negativo = faltó)
+  receivedAt  DateTime @default(now()) @map("received_at")
+
+  receipt StockReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product Product      @relation(fields: [productId], references: [id])
+
+  @@map("stock_receipt_items")
 }
 
 // ========== ALERTAS ==========
@@ -520,6 +649,7 @@ enum AlertType {
   REGISTER_DISCREPANCY
   PAYMENT_RECEIVED
   LOW_BALANCE
+  RECURRING_EXPENSE_DUE
 }
 
 enum RuleType {
@@ -549,6 +679,18 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   SUSPENDED
+}
+
+enum TaxRegime {
+  MONOTRIBUTO
+  RESPONSABLE_INSCRIPTO
+  EXENTO
+}
+
+enum VoidPermission {
+  ONLY_OWNER
+  OWNER_ADMIN
+  ALL
 }
 
 model Feedback {

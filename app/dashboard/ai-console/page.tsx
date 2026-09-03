@@ -10,9 +10,7 @@ import {
   AlertCircle,
   Package,
   TrendingDown,
-  ShoppingCart,
   Factory,
-  BarChart3,
   Zap,
   ChevronDown,
 } from "lucide-react";
@@ -20,6 +18,23 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-sm font-medium text-primary">
+        <Sparkles className="h-4 w-4 animate-pulse" />
+        Analizando tus datos...
+      </div>
+      <div className="space-y-2">
+        <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+      </div>
+    </div>
+  );
+}
 
 const QUICK_QUERIES = [
   {
@@ -92,21 +107,6 @@ export default function AiConsolePage() {
       setIsLoading(false);
     }
   };
-
-  const LoadingSkeleton = () => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-sm font-medium text-primary">
-        <Sparkles className="h-4 w-4 animate-pulse" />
-        Analizando tus datos...
-      </div>
-      <div className="space-y-2">
-        <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">

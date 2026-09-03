@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { moneyFormatter } from "@/lib/format";
 import { Search, Users, ExternalLink, Phone, Mail } from "lucide-react";
 
 type Customer = {

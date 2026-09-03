@@ -20,8 +20,10 @@ import {
   type SaleResult,
   type Customer,
   type TodaySale,
+  type StoreSettings,
 } from "@/components/pos/types";
 import { useOnline } from "@/hooks/useOnline";
+import { getDeviceId } from "@/lib/pos-device";
 
 // Función estable a nivel de módulo: evita que `setLoadingRegister` cambie de
 // identidad en cada render y dispare un bucle infinito de refetch en el POS.
@@ -60,6 +62,7 @@ export default function POSPage() {
   const [editingItemDiscount, setEditingItemDiscount] = useState<string | null>(null);
   const [itemDiscountValue, setItemDiscountValue] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [barcodeInput, setBarcodeInput] = useState("");
   const [editingQty, setEditingQty] = useState<string | null>(null);
   const [qtyValue, setQtyValue] = useState("");
@@ -68,6 +71,10 @@ export default function POSPage() {
   const [syncing, setSyncing] = useState(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
+
+  // Identificador del dispositivo: estable por navegador, permite abrir cajas
+  // simultáneas en distintos puntos de venta para el mismo usuario.
+  const [deviceId] = useState(() => getDeviceId());
 
   const { cart, addToCart, updateQuantity, setQuantityDirect, removeFromCart, setItemDiscount: applyItemDiscount, clearCart, subtotal, itemDiscounts } = useCart(products);
 
@@ -103,6 +110,7 @@ export default function POSPage() {
     fetchCustomers,
     fetchAll,
   } = usePosData({
+    deviceId,
     setProducts,
     setRegister,
     setLoadingRegister: NOOP,
@@ -110,6 +118,7 @@ export default function POSPage() {
     setTodaySales,
     setCustomers,
     setWorkspaceName,
+    setStoreSettings,
   });
 
   useEffect(() => {
@@ -187,6 +196,7 @@ export default function POSPage() {
     usePosHandlers({
       cart,
       register,
+      deviceId,
       paymentMethod,
       discount,
       cashReceived,
@@ -224,7 +234,6 @@ export default function POSPage() {
 
   useKeyboardShortcuts({
     barcodeRef,
-    onBarcodeFocus: () => barcodeRef.current?.focus(),
     onSearchFocus: () => {
       const searchInput = document.querySelector<HTMLInputElement>('[placeholder*="Buscar por nombre"]');
       searchInput?.focus();
@@ -264,6 +273,7 @@ export default function POSPage() {
         sale={showReceipt}
         selectedCustomer={selectedCustomer}
         workspaceName={workspaceName}
+        storeSettings={storeSettings}
         onClose={() => setShowReceipt(null)}
       />
     );

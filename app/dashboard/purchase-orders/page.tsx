@@ -10,6 +10,7 @@ import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { Download, Plus, Search, ClipboardList, Trash2, FileText, Package, Calendar, Send, Truck, CheckCircle, XCircle, ArrowRight, Pencil } from "lucide-react";
+import { PurchaseSuggestionsCard } from "@/components/purchase-suggestions/purchase-suggestions-card";
 
 type OrderItem = {
   id: string;
@@ -17,6 +18,7 @@ type OrderItem = {
   productName: string;
   productSku: string;
   quantity: number;
+  receivedQty: number;
   unitPrice: number;
   totalPrice: number;
 };
@@ -28,6 +30,7 @@ type Order = {
   status: string;
   totalAmount: number;
   notes: string | null;
+  expectedAt: string | null;
   items: OrderItem[];
   createdAt: string;
 };
@@ -123,12 +126,15 @@ export default function PurchaseOrdersPage() {
   const [orderItems, setOrderItems] = useState<OrderItemForm[]>([{ productId: "", quantity: "1", unitPrice: "0" }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [orderExpectedAt, setOrderExpectedAt] = useState("");
+  const [receiveOrder, setReceiveOrder] = useState<Order | null>(null);
+  const [receiveItems, setReceiveItems] = useState<{ productId: string; productName: string; purchasedQty: number; receivedQty: string; unitCost: string; pending: number }[]>([]);
+  const [receiveNotes, setReceiveNotes] = useState("");
+  const [receiveSaving, setReceiveSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [catalogMap, setCatalogMap] = useState<Map<string, { unitPrice: number; minOrderQty: number }>>(new Map());
-  const [emailSending, setEmailSending] = useState<string | null>(null);
-  const [pdfId, setPdfId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSupplier, setFilterSupplier] = useState("all");
 
@@ -156,6 +162,7 @@ export default function PurchaseOrdersPage() {
     setEditingOrder(null);
     setSelectedSupplier(""); setOrderNotes("");
     setOrderItems([{ productId: "", quantity: "1", unitPrice: "0" }]);
+    setOrderExpectedAt("");
     setError(null); setShowModal(true);
   };
 
@@ -163,8 +170,66 @@ export default function PurchaseOrdersPage() {
     setEditingOrder(order);
     setSelectedSupplier(order.supplierId);
     setOrderNotes(order.notes ?? "");
+    setOrderExpectedAt(order.expectedAt ? order.expectedAt.slice(0, 10) : "");
     setOrderItems(order.items.map((i) => ({ productId: i.productId, quantity: String(i.quantity), unitPrice: String(i.unitPrice) })));
     setError(null); setShowModal(true);
+  };
+
+  const openReceive = (order: Order) => {
+    setReceiveOrder(order);
+    setReceiveItems(
+      order.items
+        .filter((i) => i.receivedQty < i.quantity)
+        .map((i) => ({
+          productId: i.productId,
+          productName: i.productName,
+          purchasedQty: i.quantity,
+          pending: i.quantity - i.receivedQty,
+          receivedQty: String(i.quantity - i.receivedQty),
+          unitCost: String(i.unitPrice),
+        })),
+    );
+    setReceiveNotes("");
+    setError(null);
+  };
+
+  const updateReceiveItem = (index: number, field: "receivedQty" | "unitCost", value: string) => {
+    const updated = [...receiveItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setReceiveItems(updated);
+  };
+
+  const submitReceive = async () => {
+    if (!receiveOrder) return;
+    const payloadItems = receiveItems.map((r) => ({
+      productId: r.productId,
+      receivedQty: Number(r.receivedQty),
+      unitCost: Number(r.unitCost),
+    }));
+    if (payloadItems.some((i) => i.receivedQty <= 0)) {
+      setError("Cada producto debe tener una cantidad recibida mayor a 0");
+      return;
+    }
+    setReceiveSaving(true); setError(null);
+    try {
+      const res = await fetch(`/api/dashboard/purchase-orders/${receiveOrder.id}/receive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: payloadItems, notes: receiveNotes }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Error al recibir"); toast(data.error ?? "Error al recibir", "error");
+        return;
+      }
+      setReceiveOrder(null);
+      fetchData();
+      toast(data.status === "RECEIVED" ? "Orden recibida por completo" : "Recepción parcial registrada", "success");
+    } catch {
+      setError("Error de conexión"); toast("Error de conexión", "error");
+    } finally {
+      setReceiveSaving(false);
+    }
   };
 
   const handleSaveOrder = async () => {
@@ -180,6 +245,7 @@ export default function PurchaseOrdersPage() {
         body: JSON.stringify({
           ...(isEdit ? {} : { supplierId: selectedSupplier }),
           notes: orderNotes,
+          expectedAt: orderExpectedAt || null,
           items: validItems.map((i) => ({ productId: i.productId, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) })),
         }),
       });
@@ -315,6 +381,8 @@ export default function PurchaseOrdersPage() {
         </div>
       </div>
 
+      <PurchaseSuggestionsCard onOrdersCreated={fetchData} />
+
       <Card className="card-hover">
         <CardHeader className="pb-4">
           <CardTitle>Órdenes</CardTitle>
@@ -405,6 +473,15 @@ export default function PurchaseOrdersPage() {
                                 <Calendar className="h-3 w-3 inline mr-0.5" />
                                 {order.createdAt.slice(0, 10)}
                               </span>
+                              {order.expectedAt && ["DRAFT", "SENT", "CONFIRMED", "SHIPPED"].includes(order.status) && (
+                                <span className="text-xs text-muted-foreground">
+                                  <Truck className="h-3 w-3 inline mr-0.5" />
+                                  entrega: {order.expectedAt.slice(0, 10)}
+                                </span>
+                              )}
+                              {order.expectedAt && ["SENT", "CONFIRMED", "SHIPPED"].includes(order.status) && new Date(order.expectedAt) < new Date() && (
+                                <Badge tone="danger">Atrasada</Badge>
+                              )}
                               <span className="text-xs font-bold">{money.format(order.totalAmount)}</span>
                             </div>
                           </div>
@@ -427,6 +504,17 @@ export default function PurchaseOrdersPage() {
                               {t.label}
                             </Button>
                           ))}
+                          {["SENT", "CONFIRMED", "SHIPPED"].includes(order.status) && order.items.some((i) => i.receivedQty < i.quantity) && (
+                            <Button
+                              variant="secondary"
+                              className="h-8 px-3 text-xs"
+                              onClick={() => openReceive(order)}
+                              disabled={saving}
+                            >
+                              <Package className="h-3.5 w-3.5" />
+                              Recibir
+                            </Button>
+                          )}
                           <button
                             onClick={() => {
                               const w = window.open("", "_blank");
@@ -479,6 +567,7 @@ ${order.notes ? `<p class="notes"><strong>Notas:</strong> ${order.notes}</p>` : 
                             <tr className="text-muted-foreground border-b border-border">
                               <th className="text-left pb-2 font-medium">Producto</th>
                               <th className="text-right pb-2 font-medium">Cant.</th>
+                              <th className="text-right pb-2 font-medium">Recibido</th>
                               <th className="text-right pb-2 font-medium">Precio</th>
                               <th className="text-right pb-2 font-medium">Subtotal</th>
                             </tr>
@@ -491,6 +580,15 @@ ${order.notes ? `<p class="notes"><strong>Notas:</strong> ${order.notes}</p>` : 
                                   <p className="text-muted-foreground">{item.productSku}</p>
                                 </td>
                                 <td className="text-right py-1.5">{item.quantity}</td>
+                                <td className="text-right py-1.5">
+                                  {item.receivedQty > 0 ? (
+                                    <span className={item.receivedQty >= item.quantity ? "text-success" : "text-warning"}>
+                                      {item.receivedQty}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </td>
                                 <td className="text-right py-1.5">{money.format(item.unitPrice)}</td>
                                 <td className="text-right py-1.5 font-medium">{money.format(item.totalPrice)}</td>
                               </tr>
@@ -536,6 +634,10 @@ ${order.notes ? `<p class="notes"><strong>Notas:</strong> ${order.notes}</p>` : 
               <div>
                 <label className="text-sm font-medium">Notas</label>
                 <Input value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Notas opcionales..." />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Fecha estimada de entrega</label>
+                <Input type="date" value={orderExpectedAt} onChange={(e) => setOrderExpectedAt(e.target.value)} className="w-full sm:max-w-xs" />
               </div>
               <div>
                 <label className="text-sm font-medium">Productos</label>
@@ -644,6 +746,81 @@ ${order.notes ? `<p class="notes"><strong>Notas:</strong> ${order.notes}</p>` : 
             <div className="flex justify-end gap-2 mt-6">
               <Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button>
               <Button onClick={handleSaveOrder} disabled={saving}>{saving ? "Creando..." : "Crear orden"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {receiveOrder && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl bg-card p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-1">Recibir mercadería</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Orden <span className="font-mono">{receiveOrder.id.slice(0, 8).toUpperCase()}</span> · {receiveOrder.supplierName}
+            </p>
+            {error && <div className="mb-4 rounded-lg bg-danger-light p-3 text-sm text-danger">{error}</div>}
+
+            <div className="mb-4">
+              <label className="text-sm font-medium block mb-1">Notas de recepción</label>
+              <Input value={receiveNotes} onChange={(e) => setReceiveNotes(e.target.value)} placeholder="Pendientes, faltantes, observaciones..." />
+            </div>
+
+            <div className="space-y-3">
+              {receiveItems.map((item, index) => {
+                const diff = Number(item.receivedQty) - item.purchasedQty;
+                return (
+                  <div key={item.productId} className="rounded-lg border border-border p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate">{item.productName}</p>
+                      <Badge tone="muted">{item.pending} pendiente</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Recibido</label>
+                        <Input
+                          type="number"
+                          className="h-9 text-center"
+                          min={0}
+                          max={item.pending}
+                          value={item.receivedQty}
+                          onChange={(e) => updateReceiveItem(index, "receivedQty", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Costo unitario</label>
+                        <Input
+                          type="number"
+                          className="h-9 text-center"
+                          step="0.01"
+                          min={0}
+                          value={item.unitCost}
+                          onChange={(e) => updateReceiveItem(index, "unitCost", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    {diff !== 0 && (
+                      <p className={`text-[11px] ${diff < 0 ? "text-danger" : "text-warning"}`}>
+                        {diff < 0 ? `Faltan ${Math.abs(diff)} respecto a lo pedido` : `Llegan ${diff} más de lo pedido`}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 rounded-lg bg-muted/50 p-3 text-sm flex items-center justify-between">
+              <span className="text-muted-foreground">Costo total de esta recepción</span>
+              <span className="font-bold text-primary">
+                {money.format(receiveItems.reduce((sum, r) => sum + Number(r.receivedQty || 0) * Number(r.unitCost || 0), 0))}
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-5">
+              <Button variant="ghost" onClick={() => setReceiveOrder(null)}>Cancelar</Button>
+              <Button onClick={submitReceive} disabled={receiveSaving}>
+                <Package className="h-4 w-4" />
+                {receiveSaving ? "Registrando..." : "Confirmar recepción"}
+              </Button>
             </div>
           </div>
         </div>

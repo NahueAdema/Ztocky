@@ -1,6 +1,7 @@
 import { getPrisma } from "@/lib/prisma";
 import { sendPushToWorkspace } from "@/lib/push";
 import { sendRuleDigestEmail } from "@/lib/rules/mail";
+import { generateRecurringExpenseAlerts } from "@/lib/finance";
 import type { $Enums } from "@prisma/client";
 
 type Channels = { email?: boolean; inApp?: boolean; push?: boolean };
@@ -36,7 +37,13 @@ export async function runRulesForWorkspace(workspaceId: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  const summary = { stock: 0, events: 0, digests: 0 };
+  const summary = { stock: 0, events: 0, digests: 0, recurringExpenses: 0 };
+
+  try {
+    summary.recurringExpenses = await generateRecurringExpenseAlerts(workspaceId);
+  } catch {
+    // no romper la corrida si el módulo de gastos falla
+  }
 
   for (const rule of rules) {
     const channels = (rule.channels ?? {}) as Channels;

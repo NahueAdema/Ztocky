@@ -5,17 +5,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { moneyFormatter } from "@/lib/format";
 import { downloadReceiptPDF, printReceipt } from "@/lib/receipt";
 import { CheckCircle2, Receipt } from "lucide-react";
-import { type SaleResult, type Customer } from "./types";
+import { type SaleResult, type Customer, type StoreSettings } from "./types";
 import { PAYMENT_METHODS } from "./constants";
 
 interface ReceiptViewProps {
   sale: SaleResult;
   selectedCustomer: Customer | null;
   workspaceName: string;
+  storeSettings: StoreSettings | null;
   onClose: () => void;
 }
 
-export function ReceiptView({ sale, selectedCustomer, workspaceName, onClose }: ReceiptViewProps) {
+export function ReceiptView({ sale, selectedCustomer, workspaceName, storeSettings, onClose }: ReceiptViewProps) {
   const receiptData = {
     receiptNumber: sale.receiptNumber,
     totalAmount: sale.totalAmount,
@@ -24,7 +25,9 @@ export function ReceiptView({ sale, selectedCustomer, workspaceName, onClose }: 
     saleDate: sale.saleDate,
     items: sale.items,
     customerName: selectedCustomer?.name,
-    storeName: workspaceName,
+    storeName: storeSettings?.businessName || workspaceName,
+    storeCuit: storeSettings?.cuit ?? undefined,
+    storeAddress: storeSettings?.address ?? undefined,
     amountPaid: sale.amountPaid,
   };
 

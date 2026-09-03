@@ -2,9 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 
+function canVoid(role: string | undefined, voidPermission: string | null | undefined) {
+  if (!role) return false;
+  if (voidPermission === "ALL") return ["OWNER", "ADMIN", "MEMBER"].includes(role);
+  if (voidPermission === "ONLY_OWNER") return role === "OWNER";
+  return ["OWNER", "ADMIN"].includes(role); // default: OWNER_ADMIN
+}
+
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!user.workspaceId) return NextResponse.json({ error: "Sin workspace" }, { status: 400 });
+
+  const prisma = getPrisma();
+
+  const settings = await prisma.storeSettings.findUnique({
+    where: { workspaceId: user.workspaceId },
+    select: { voidPermission: true },
+  });
+
+  if (!canVoid(user.role, settings?.voidPermission)) {
+    return NextResponse.json({ error: "No tenés permiso para anular ventas" }, { status: 403 });
+  }
 
   const body = await request.json();
   const { saleId, reason } = body as { saleId: string; reason?: string };
@@ -13,21 +32,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "saleId requerido" }, { status: 400 });
   }
 
-  const prisma = getPrisma();
-
-  const member = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id, workspaceId: user.workspaceId },
-  });
-  if (!member || (member.role !== "OWNER" && member.role !== "ADMIN")) {
-    return NextResponse.json({ error: "No tenés permiso para anular ventas" }, { status: 403 });
-  }
-
   try {
     const result = await prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findFirst({
         where: {
           id: saleId,
-          workspaceId: user.workspaceId!,
+          workspaceId: user.workspaceId,
           status: "COMPLETED",
         },
         include: { items: true },

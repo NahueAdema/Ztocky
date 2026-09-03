@@ -19,8 +19,6 @@ import {
   Send,
   XCircle,
   RefreshCw,
-  Check,
-  Building2,
 } from "lucide-react";
 
 type Member = {

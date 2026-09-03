@@ -1,5 +1,3 @@
-import { Search } from "lucide-react";
-
 import { getAdminUsers } from "@/lib/data/admin";
 import { AdminUsersClient } from "@/components/admin/admin-users-client";
 
