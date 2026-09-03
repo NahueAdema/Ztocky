@@ -25,6 +25,7 @@ export type CashRegister = {
   totalSales: number;
   cashSales: number;
   transactionCount: number;
+  deviceId?: string;
 };
 
 export type SaleResult = {
@@ -54,4 +55,17 @@ export type TodaySale = {
   seller: string;
   customer?: string;
   createdAt: string;
+};
+
+export type StoreSettings = {
+  businessName: string | null;
+  cuit: string | null;
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  contactEmail: string | null;
+  taxRegime: string | null;
+  saleConditions: string | null;
+  maxDiscountPct: number;
+  voidPermission: string;
 };

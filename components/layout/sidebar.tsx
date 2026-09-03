@@ -18,31 +18,55 @@ import {
   Siren,
   Undo2,
   Wallet,
+  ReceiptText,
+  Landmark,
   X,
   Bell,
   Settings,
   Users,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 
-const navigation = [
-  { href: "/dashboard", label: "Resumen", icon: Gauge },
-  { href: "/dashboard/pos", label: "Punto de Venta", icon: Wallet },
-  { href: "/dashboard/alerts", label: "Alertas", icon: Siren },
-  { href: "/dashboard/products", label: "Productos", icon: Boxes },
-  { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
-  { href: "/dashboard/customers", label: "Clientes", icon: Users },
-  { href: "/dashboard/returns", label: "Devoluciones", icon: Undo2 },
-  { href: "/dashboard/scan", label: "Escanear", icon: ScanLine },
-  { href: "/dashboard/suppliers", label: "Proveedores", icon: Factory },
-  { href: "/dashboard/supplier-notifications", label: "Notif. Proveedores", icon: Bell },
-  { href: "/dashboard/purchase-orders", label: "Órdenes", icon: ClipboardList },
+const sections = [
   {
-    href: "/dashboard/simulator",
-    label: "Simulador",
-    icon: ChartNoAxesCombined,
+    label: "Resumen",
+    items: [
+      { href: "/dashboard", label: "Resumen", icon: Gauge },
+      { href: "/dashboard/alerts", label: "Alertas", icon: Siren },
+    ],
   },
+  {
+    label: "Vender",
+    items: [
+      { href: "/dashboard/pos", label: "Punto de Venta", icon: Wallet },
+      { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+      { href: "/dashboard/customers", label: "Clientes", icon: Users },
+      { href: "/dashboard/returns", label: "Devoluciones", icon: Undo2 },
+    ],
+  },
+  {
+    label: "Comprar",
+    items: [
+      { href: "/dashboard/purchase-orders", label: "Órdenes", icon: ClipboardList },
+      { href: "/dashboard/suppliers", label: "Proveedores", icon: Factory },
+      { href: "/dashboard/supplier-notifications", label: "Notif. Proveedores", icon: Bell },
+    ],
+  },
+  {
+    label: "Administrar",
+    items: [
+      { href: "/dashboard/products", label: "Productos", icon: Boxes },
+      { href: "/dashboard/expenses", label: "Gastos", icon: ReceiptText },
+      { href: "/dashboard/finanzas", label: "Finanzas", icon: Landmark },
+      { href: "/dashboard/scan", label: "Escanear", icon: ScanLine },
+    ],
+  },
+];
+
+const tools = [
+  { href: "/dashboard/simulator", label: "Simulador", icon: ChartNoAxesCombined },
   { href: "/dashboard/ai-console", label: "Consola IA", icon: Bot },
 ];
 
@@ -52,6 +76,7 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   return (
     <div className="flex h-full flex-col">
@@ -77,42 +102,91 @@ function SidebarContent({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto p-2 mt-1">
-        <p className="mb-1 px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-          Menu principal
-        </p>
-        <div className="space-y-[1px]">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(item.href));
+      <nav className="flex-1 overflow-y-auto p-2 mt-2 space-y-3">
+        {sections.map((section) => (
+          <div key={section.label}>
+            <p className="mb-1 px-2 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              {section.label}
+            </p>
+            <div className="space-y-[1px]">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onNavigate}
-                className={cn(
-                  "flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-all relative",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                )}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] rounded-full bg-primary" />
-                )}
-                <Icon
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    isActive ? "text-primary" : "text-muted-foreground/50",
-                  )}
-                />
-                {item.label}
-              </Link>
-            );
-          })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-all relative",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                    )}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] rounded-full bg-primary" />
+                    )}
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        isActive ? "text-primary" : "text-muted-foreground/50",
+                      )}
+                    />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Herramientas colapsable */}
+        <div>
+          <button
+            onClick={() => setToolsOpen((o) => !o)}
+            className="mb-1 flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 transition-colors hover:text-foreground"
+          >
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 text-muted-foreground/50 transition-transform",
+                toolsOpen && "rotate-180",
+              )}
+            />
+            Herramientas
+          </button>
+          {toolsOpen && (
+            <div className="space-y-[1px]">
+              {tools.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-all relative",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        isActive ? "text-primary" : "text-muted-foreground/50",
+                      )}
+                    />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       </nav>
 

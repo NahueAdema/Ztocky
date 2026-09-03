@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
       let totalAmount = 0;
       const saleItemsData = items.map((item) => {
-        const product = productMap.get(item.productId)!;
+        productMap.get(item.productId)!;
         const itemDiscount = item.discountAmount ?? 0;
         const itemTotal = item.quantity * item.unitPrice - itemDiscount;
         totalAmount += itemTotal;

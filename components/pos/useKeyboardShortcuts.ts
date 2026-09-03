@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 interface UseKeyboardShortcutsProps {
   barcodeRef: React.RefObject<HTMLInputElement | null>;
-  onBarcodeFocus: () => void;
   onSearchFocus: () => void;
   onCheckout: () => void;
   cartLength: number;
@@ -22,7 +21,6 @@ interface UseKeyboardShortcutsProps {
 
 export function useKeyboardShortcuts({
   barcodeRef,
-  onBarcodeFocus,
   onSearchFocus,
   onCheckout,
   cartLength,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, ArrowDownRight, Boxes, ClipboardList, Siren, TrendingUp, ShoppingCart, Clock, Package, Zap, ChevronRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Boxes, ClipboardList, Siren, TrendingUp, ShoppingCart, Clock, Package, Zap, ChevronRight, CalendarClock } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/data/inventory";
 import { getCurrentUser } from "@/lib/auth";
 import { moneyFormatter } from "@/lib/format";
+import { getUpcomingRecurringExpenses } from "@/lib/finance";
 
 function TrendBadge({ value }: { value: number }) {
   if (value === 0) return null;
@@ -42,7 +43,7 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   const workspaceId = user?.workspaceId ?? null;
 
-  const [, purchaseOrders, reorderRisks, , todayStats, topProducts, weeklySales] = await Promise.all([
+  const [, purchaseOrders, reorderRisks, , todayStats, topProducts, weeklySales, recurringExpenses] = await Promise.all([
     getProductsForDashboard(workspaceId),
     getPurchaseOrdersForDashboard(workspaceId),
     getReorderRisksForDashboard(workspaceId),
@@ -50,6 +51,7 @@ export default async function DashboardPage() {
     getTodayStats(workspaceId),
     getTopProducts(workspaceId),
     getWeeklySales(workspaceId),
+    getUpcomingRecurringExpenses(workspaceId ?? "", 7),
   ]);
 
   const stagnantSince = new Date();
@@ -353,6 +355,55 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="card-hover">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-warning" />
+              Próximos vencimientos recurrentes
+            </CardTitle>
+            {recurringExpenses.length > 0 && (
+              <Badge tone="warning">{recurringExpenses.length} este mes</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {recurringExpenses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+                <CalendarClock className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">Sin vencimientos próximos</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Marcá un gasto como recurrente para recibir avisos de vencimiento.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {recurringExpenses.map((expense) => (
+                <div key={expense.id} className="flex items-center gap-3 rounded-lg border border-border p-3 transition hover:bg-muted/30">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning-light">
+                    <CalendarClock className="h-5 w-5 text-warning" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">{expense.description || "Gasto recurrente"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Vence el día {expense.date.getDate()} · {moneyFormatter.format(Number(expense.amount))}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <Link
+                href="/dashboard/expenses"
+                className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-border p-3 text-xs text-primary transition hover:border-primary/40 hover:bg-primary-light/20"
+              >
+                Ver gastos <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="card-hover">
         <CardHeader>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
-import { type Product, type CashRegister, type Customer, type TodaySale } from "./types";
+import { type Product, type CashRegister, type Customer, type TodaySale, type StoreSettings } from "./types";
 import { saveProductsCache, getProductsCache } from "@/lib/offline";
 
 interface UsePosDataProps {
+  deviceId?: string;
   setProducts: (v: Product[]) => void;
   setRegister: (v: CashRegister | null) => void;
   setLoadingRegister: (v: boolean) => void;
@@ -12,9 +13,11 @@ interface UsePosDataProps {
   setTodaySales: (v: TodaySale[]) => void;
   setCustomers: (v: Customer[]) => void;
   setWorkspaceName: (v: string) => void;
+  setStoreSettings: (v: StoreSettings | null) => void;
 }
 
 export function usePosData({
+  deviceId,
   setProducts,
   setRegister,
   setLoadingRegister,
@@ -22,6 +25,7 @@ export function usePosData({
   setTodaySales,
   setCustomers,
   setWorkspaceName,
+  setStoreSettings,
 }: UsePosDataProps) {
   const fetchProducts = useCallback(async () => {
     try {
@@ -42,12 +46,13 @@ export function usePosData({
   const fetchRegister = useCallback(async () => {
     try {
       setLoadingRegister(true);
-      const res = await fetch("/api/dashboard/pos/session");
+      const params = deviceId ? `?deviceId=${encodeURIComponent(deviceId)}` : "";
+      const res = await fetch(`/api/dashboard/pos/session${params}`);
       const data = await res.json();
       setRegister(data.register);
     } catch { /* ignore */ }
     finally { setLoadingRegister(false); }
-  }, [setRegister, setLoadingRegister]);
+  }, [deviceId, setRegister, setLoadingRegister]);
 
   const fetchDailySummary = useCallback(async () => {
     try {
@@ -74,13 +79,24 @@ export function usePosData({
     } catch { /* ignore */ }
   }, [setWorkspaceName]);
 
+  const fetchStoreSettings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/dashboard/workspace/store-settings");
+      if (res.ok) {
+        const data = await res.json();
+        setStoreSettings(data);
+      }
+    } catch { /* ignore */ }
+  }, [setStoreSettings]);
+
   const fetchAll = useCallback(() => {
     fetchProducts();
     fetchRegister();
     fetchDailySummary();
     fetchCustomers();
     fetchWorkspaceName();
-  }, [fetchProducts, fetchRegister, fetchDailySummary, fetchCustomers, fetchWorkspaceName]);
+    fetchStoreSettings();
+  }, [fetchProducts, fetchRegister, fetchDailySummary, fetchCustomers, fetchWorkspaceName, fetchStoreSettings]);
 
   return {
     fetchProducts,
@@ -88,6 +104,7 @@ export function usePosData({
     fetchDailySummary,
     fetchCustomers,
     fetchWorkspaceName,
+    fetchStoreSettings,
     fetchAll,
   };
 }

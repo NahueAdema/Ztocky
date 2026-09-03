@@ -14,9 +14,7 @@ import {
   Plus,
   Search,
   Loader2,
-  AlertTriangle,
   Package,
-  DollarSign,
 } from "lucide-react";
 
 type ReturnItem = {

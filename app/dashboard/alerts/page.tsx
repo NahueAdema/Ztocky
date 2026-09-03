@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import {
   AlertTriangle, TrendingDown, TrendingUp, Clock, RefreshCw, CheckCircle2, Eye,
-  Search, CheckCheck, Filter, Package, Wallet, Truck,
+  Search, CheckCheck, Filter, Package, Wallet,
 } from "lucide-react";
 import { SimpleToggle } from "@/components/ui/simple-toggle";
 import { RulesManager } from "@/components/alerts/rules-manager";
@@ -39,12 +39,14 @@ const typeConfig: Record<string, { label: string; tone: "danger" | "warning" | "
   REGISTER_DISCREPANCY: { label: "Caja", tone: "danger", icon: AlertTriangle, priority: 4 },
   PAYMENT_RECEIVED: { label: "Pago", tone: "success", icon: Wallet, priority: 6 },
   LOW_BALANCE: { label: "Cliente", tone: "warning", icon: AlertTriangle, priority: 5 },
+  RECURRING_EXPENSE_DUE: { label: "Gasto recurrente", tone: "warning", icon: Wallet, priority: 4 },
 };
 
 const TYPE_ORDER: Record<string, number> = {
   CRITICAL_STOCK: 0, LOW_STOCK: 1, STAGNANT_STOCK: 2,
   REGISTER_DISCREPANCY: 4, SUPPLIER_RISK: 4, PRICE_CHANGE: 3,
   ORDER_STATUS: 5, LOW_BALANCE: 5, PAYMENT_RECEIVED: 6,
+  RECURRING_EXPENSE_DUE: 4,
 };
 
 function relativeTime(iso: string): string {

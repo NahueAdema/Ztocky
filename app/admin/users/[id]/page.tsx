@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, KeyRound, Mail, ShoppingBag, Undo2, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Calendar, KeyRound, ShoppingBag, Undo2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ChevronDown,
   MailCheck,
-  PackageCheck,
   ShieldCheck,
   Store,
   TrendingDown,
@@ -135,10 +134,6 @@ export default async function Home() {
   const mainHref = user
     ? user.globalRole === "SUPER_ADMIN" ? "/admin" : "/dashboard"
     : "/login";
-
-  const mainLabel = user
-    ? user.globalRole === "SUPER_ADMIN" ? "Admin" : "Dashboard"
-    : "Ingresar";
 
   return (
     <main className="min-h-screen bg-background text-foreground antialiased">

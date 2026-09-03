@@ -38,11 +38,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     status: order.status,
     totalAmount: Number(order.totalAmount),
     notes: order.notes,
+    expectedAt: order.expectedAt?.toISOString() ?? null,
     items: order.items.map((i) => ({
       id: i.id,
       productId: i.productId,
       productName: i.product.name,
       quantity: i.quantity,
+      receivedQty: i.receivedQty,
       unitPrice: Number(i.unitPrice),
       totalPrice: Number(i.totalPrice),
     })),
@@ -74,22 +76,36 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         ...(body.status !== undefined && { status: body.status }),
         ...(body.notes !== undefined && { notes: body.notes }),
         ...(body.supplierId !== undefined && { supplierId: body.supplierId }),
+        ...(body.expectedAt !== undefined && { expectedAt: body.expectedAt ? new Date(body.expectedAt) : null }),
       },
     });
 
     if (isBecomingReceived) {
+      // Sumar solo lo pendiente (respetando recepciones parciales ya registradas vía /receive)
       for (const item of order.items) {
-        await prisma.product.update({
-          where: { id: item.productId },
-          data: { currentStock: { increment: item.quantity } },
-        });
+        const pending = item.quantity - item.receivedQty;
+        if (pending > 0) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: { currentStock: { increment: pending } },
+          });
+          await prisma.purchaseOrderItem.update({
+            where: { id: item.id },
+            data: { receivedQty: item.quantity },
+          });
+        }
       }
     } else if (wasReceived) {
-      for (const item of order.items) {
-        await prisma.product.update({
-          where: { id: item.productId },
-          data: { currentStock: { decrement: item.quantity } },
-        });
+      // Solo deshacer cuando la orden vino RECEIVED sin recepciones previas
+      // (flujo antiguo). Si hubo recepciones vía /receive, no tocar stock.
+      const hadReceipts = order.items.some((i) => i.receivedQty > 0);
+      if (!hadReceipts) {
+        for (const item of order.items) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: { currentStock: { decrement: item.quantity } },
+          });
+        }
       }
     }
 

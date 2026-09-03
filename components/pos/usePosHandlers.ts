@@ -16,6 +16,7 @@ import { enqueueSale, updateCachedStock, type PendingSale } from "@/lib/offline"
 interface UsePosHandlersProps {
   cart: CartItem[];
   register: CashRegister | null;
+  deviceId?: string;
   paymentMethod: string;
   discount: number;
   cashReceived: string;
@@ -46,6 +47,7 @@ interface UsePosHandlersProps {
 export function usePosHandlers({
   cart,
   register,
+  deviceId,
   paymentMethod,
   discount,
   amountPaid,
@@ -184,7 +186,7 @@ export function usePosHandlers({
       const res = await fetch("/api/dashboard/pos/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ openingAmount: amount }),
+        body: JSON.stringify({ openingAmount: amount, deviceId: deviceId || null }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -198,7 +200,7 @@ export function usePosHandlers({
     } catch {
       toast("Error de conexión", "error");
     }
-  }, [openingAmount, toast, setRegister, setShowOpenModal, setOpeningAmount]);
+  }, [openingAmount, deviceId, toast, setRegister, setShowOpenModal, setOpeningAmount]);
 
   const handleCloseRegister = useCallback(async () => {
     const amount = Number(closingAmount);
