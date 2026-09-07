@@ -245,6 +245,33 @@ async function evaluateStockRule(
         tag: `rule-stock-${ruleId}`,
       }).catch(() => {});
     }
+
+    if (channels.email) {
+      const members = await prisma.workspaceMember.findMany({
+        where: { workspaceId },
+        include: { user: { select: { email: true, name: true, emailVerified: true } } },
+      });
+      const digest = {
+        critical: candidates
+          .filter((c) => c.state === "CRITICAL_STOCK")
+          .map((c) => ({ productName: c.product.name, message: `${c.product.name} se agotará en ${c.daysRemaining} días.` })),
+        low: candidates
+          .filter((c) => c.state === "LOW_STOCK")
+          .map((c) => ({ productName: c.product.name, message: `${c.product.name} tiene ${c.product.currentStock} unidades (mínimo: ${c.product.minStock}).` })),
+      };
+      const other = candidates
+        .filter((c) => c.state === "STAGNANT_STOCK")
+        .map((c) => ({
+          title: "Stock estancado",
+          message: `${c.product.name} sin ventas hace ${c.daysSinceLastSale} días. ${c.product.currentStock} unidades en stock.`,
+          type: "STAGNANT_STOCK",
+        }));
+      for (const member of members) {
+        if (member.user.emailVerified) {
+          sendRuleDigestEmail(member.user.email, member.user.name, { digest, other }).catch(() => {});
+        }
+      }
+    }
   }
 
   await prisma.alertRule.update({

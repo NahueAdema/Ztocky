@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
 async function getCustomerAndVerify(id: string, workspaceId: string) {
   const prisma = getPrisma();
@@ -40,6 +41,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Workspace no encontrado" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
 
   const { id } = await params;
   const customer = await getCustomerAndVerify(id, user.workspaceId);

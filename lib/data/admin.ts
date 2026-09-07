@@ -125,6 +125,10 @@ export async function getAdminOverview() {
     products,
     suppliers,
     purchaseOrders,
+    totalSubscriptions,
+    activeSubscriptions,
+    trialSubscriptions,
+    problematicSubscriptions,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -135,6 +139,12 @@ export async function getAdminOverview() {
     prisma.product.count(),
     prisma.supplier.count(),
     prisma.purchaseOrder.count(),
+    prisma.subscription.count(),
+    prisma.subscription.count({ where: { status: "ACTIVE" } }),
+    prisma.subscription.count({ where: { status: "TRIAL" } }),
+    prisma.subscription.count({
+      where: { status: { in: ["PAST_DUE", "EXPIRED", "CANCELED"] } },
+    }),
   ]);
 
   return {
@@ -147,6 +157,10 @@ export async function getAdminOverview() {
     products,
     suppliers,
     purchaseOrders,
+    totalSubscriptions,
+    activeSubscriptions,
+    trialSubscriptions,
+    problematicSubscriptions,
   };
 }
 
@@ -288,6 +302,60 @@ export async function getAdminSessions(params: SessionsParams = {}) {
   ]);
 
   return { items: items as AdminSession[], total, page, totalPages: Math.ceil(total / PAGE_SIZE) };
+}
+
+export type AdminSubscription = {
+  id: string;
+  planId: string;
+  status: string;
+  trialStartedAt: Date | null;
+  trialEndsAt: Date | null;
+  currentPeriodStart: Date | null;
+  currentPeriodEnd: Date | null;
+  provider: string | null;
+  providerSubscriptionId: string | null;
+  billingEmail: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  workspace: { id: string; name: string; slug: string; _count: { members: number } };
+  plan: { id: string; name: string; tier: string; priceUsd: number; isActive: boolean };
+};
+
+export async function getAdminSubscriptions(params: WorkspacesParams = {}) {
+  const prisma = getPrisma();
+  const page = Math.max(1, params.page || 1);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {};
+
+  if (params.search) {
+    const q = params.search;
+    where.workspace = {
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { slug: { contains: q, mode: "insensitive" } },
+      ],
+    };
+  }
+
+  const [rows, total] = await Promise.all([
+    prisma.subscription.findMany({
+      where,
+      include: {
+        workspace: { include: { _count: { select: { members: true } } } },
+        plan: { select: { id: true, name: true, tier: true, priceUsd: true, isActive: true } },
+      },
+      orderBy: { updatedAt: "desc" as const },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.subscription.count({ where }),
+  ]);
+  const items = rows.map((row) => ({
+    ...row,
+    plan: { ...row.plan, priceUsd: Number(row.plan.priceUsd) },
+  })) as unknown as AdminSubscription[];
+
+  return { items, total, page, totalPages: Math.ceil(total / PAGE_SIZE) };
 }
 
 export async function getUserDetail(id: string): Promise<UserDetail | null> {

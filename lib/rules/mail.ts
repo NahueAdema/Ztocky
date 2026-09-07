@@ -1,31 +1,5 @@
-import nodemailer from "nodemailer";
 import { env } from "@/lib/env";
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function getTransporter() {
-  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) return null;
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
-  });
-}
-
-function sendMail(to: string, subject: string, html: string) {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.log(`[DEV] Email to ${to}: ${subject}`);
-    return;
-  }
-  return transporter.sendMail({ from: `Ztocky <${env.GMAIL_USER}>`, to, subject, html });
-}
+import { escapeHtml, sendEmail } from "@/lib/mail/send";
 
 function row(label: string, message: string, tone: { bg: string; fg: string; text: string }) {
   return `<tr>
@@ -92,5 +66,5 @@ ${section}
 </td></tr>
 </table></body></html>`;
 
-  await sendMail(email, `📋 ${titleText} — Ztocky`, html);
+  await sendEmail(email, `📋 ${titleText} — Ztocky`, html);
 }

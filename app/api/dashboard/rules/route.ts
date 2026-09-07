@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
 const VALID_TYPES = ["STOCK_STATE", "EVENT", "DIGEST"];
 const VALID_FREQUENCIES = ["DAILY", "EVERY_3_DAYS", "WEEKLY", "MONTHLY"];
@@ -106,6 +107,9 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Workspace no encontrado" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
 
   const body = await request.json();
   const { name, type, config, channels } = body;
@@ -154,6 +158,9 @@ export async function PATCH(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Workspace no encontrado" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
 
   const body = await request.json();
   const { id, name, config, channels, enabled, type } = body;
@@ -207,6 +214,9 @@ export async function DELETE(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Workspace no encontrado" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
 
   const body = await request.json();
   const { id } = body;

@@ -108,8 +108,77 @@ model Workspace {
   storeSettings StoreSettings?
   expenses      Expense[]
   monthlyCloses MonthlyClose[]
+  subscription  Subscription?
 
   @@map("workspaces")
+}
+
+// ========== PLANES Y SUSCRIPCIONES ==========
+model Plan {
+  id          String   @id @default(cuid())
+  tier        PlanTier @unique
+  name        String // "Básica", "Pro", "Unlimited"
+  description String?
+  priceUsd    Decimal  @default(0) @db.Decimal(8, 2)
+  priceArs    Decimal? @db.Decimal(10, 2)
+  limits      Json // límites editables del plan (maxProducts, maxUsers, aiEnabled, etc.)
+  features    Json // lista de features habilitadas
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@index([isActive, sortOrder])
+  @@map("plans")
+}
+
+model Subscription {
+  id          String     @id @default(cuid())
+  workspaceId String     @unique @map("workspace_id")
+  planId      String     @map("plan_id")
+  status      PlanStatus @default(TRIAL)
+
+  trialStartedAt DateTime? @map("trial_started_at")
+  trialEndsAt    DateTime? @map("trial_ends_at")
+
+  currentPeriodStart DateTime? @map("current_period_start")
+  currentPeriodEnd   DateTime? @map("current_period_end")
+
+  // Campos preparados para el proveedor de pagos (Mercado Pago / Stripe)
+  provider                  String? @map("provider")
+  providerCustomerId        String? @map("provider_customer_id")
+  providerSubscriptionId    String? @map("provider_subscription_id")
+  billingEmail              String? @map("billing_email")
+
+  canceledAt DateTime? @map("canceled_at")
+  notes      String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  plan      Plan      @relation(fields: [planId], references: [id])
+
+  @@index([status])
+  @@index([planId])
+  @@map("subscriptions")
+}
+
+enum PlanTier {
+  BASIC
+  PRO
+  UNLIMITED
+}
+
+enum PlanStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
 }
 
 // ========== CONFIGURACIÓN DE LA TIENDA ==========

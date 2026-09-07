@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
 
   const body = await request.json();
   const prisma = getPrisma();

@@ -3,10 +3,14 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { recordBulkPriceChanges } from "@/lib/price-history";
 import { sendPriceChangesToSupplier } from "@/lib/mail";
+import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
 
   const body = await request.json();
   const { supplierId, rows, apply } = body;

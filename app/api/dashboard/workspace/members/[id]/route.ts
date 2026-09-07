@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { can, permissionError } from "@/lib/permissions";
+import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Sin workspace" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
   if (!can("workspace:members", user.role)) {
     return NextResponse.json(permissionError().json, { status: permissionError().status });
   }
@@ -41,6 +45,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Sin workspace" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
   if (!can("workspace:members", user.role)) {
     return NextResponse.json(permissionError().json, { status: permissionError().status });
   }

@@ -22,6 +22,102 @@ function hashPassword(password: string) {
   return `${salt}:${hash}`;
 }
 
+const planDefs = [
+  {
+    tier: "BASIC",
+    name: "Básica",
+    description: "Para negocios chicos que arrancan.",
+    priceUsd: 5,
+    sortOrder: 1,
+    limits: {
+      maxProducts: 300,
+      maxUsers: 1,
+      aiEnabled: false,
+      pushEnabled: false,
+      exportEnabled: true,
+      suppliersEnabled: false,
+      finanzasEnabled: false,
+      multiWorkspace: false,
+    },
+    features: ["inventory", "pos", "customers", "reports-basic"],
+  },
+  {
+    tier: "PRO",
+    name: "Pro",
+    description: "Para el comercio que crece: AI, proveedores y finanzas.",
+    priceUsd: 12,
+    sortOrder: 2,
+    limits: {
+      maxProducts: 2000,
+      maxUsers: 5,
+      aiEnabled: true,
+      pushEnabled: true,
+      exportEnabled: true,
+      suppliersEnabled: true,
+      finanzasEnabled: true,
+      multiWorkspace: false,
+    },
+    features: [
+      "inventory",
+      "pos",
+      "customers",
+      "account-payments",
+      "suppliers",
+      "purchase-orders",
+      "ai-assistant",
+      "finanzas",
+      "push-notifications",
+      "import-export",
+    ],
+  },
+  {
+    tier: "UNLIMITED",
+    name: "Unlimited",
+    description: "Sin límites. AI sin tope, usuarios ilimitados y multi-negocio.",
+    priceUsd: 25,
+    sortOrder: 3,
+    limits: {
+      maxProducts: null,
+      maxUsers: null,
+      aiEnabled: true,
+      pushEnabled: true,
+      exportEnabled: true,
+      suppliersEnabled: true,
+      finanzasEnabled: true,
+      multiWorkspace: true,
+    },
+    features: ["all"],
+  },
+];
+
+async function seedPlans() {
+  for (const def of planDefs) {
+    await prisma.plan.upsert({
+      where: { tier: def.tier as never },
+      update: {
+        name: def.name,
+        description: def.description,
+        priceUsd: def.priceUsd,
+        limits: def.limits,
+        features: def.features,
+        isActive: true,
+        sortOrder: def.sortOrder,
+      },
+      create: {
+        tier: def.tier as never,
+        name: def.name,
+        description: def.description,
+        priceUsd: def.priceUsd,
+        limits: def.limits,
+        features: def.features,
+        isActive: true,
+        sortOrder: def.sortOrder,
+      },
+    });
+    console.log(`  ✅ Plan: ${def.name} (${def.tier})`);
+  }
+}
+
 const productDefs = [
   { name: "Cafe Brasil 1kg", sku: "CAF-001", description: "Cafe molido premium", currentStock: 18, minStock: 24, costPrice: 7400, sellingPrice: 11800, category: "Almacen", dailySales: 5.6 },
   { name: "Yerba organica 500g", sku: "YER-014", description: "Yerba mate sin palo", currentStock: 42, minStock: 20, costPrice: 2100, sellingPrice: 3900, category: "Almacen", dailySales: 2.1 },
@@ -62,6 +158,9 @@ async function main() {
     });
     console.log(`✅ Super admin: ${superAdminEmail}`);
   }
+
+  console.log("💳 Sembrando planes de suscripción...");
+  await seedPlans();
 
   const workspace = await prisma.workspace.findFirst({
     orderBy: { createdAt: "asc" },

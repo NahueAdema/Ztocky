@@ -1,31 +1,7 @@
-import nodemailer from "nodemailer";
 import { env } from "@/lib/env";
+import { escapeHtml, sendEmail } from "@/lib/mail/send";
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function getTransporter() {
-  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) return null;
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
-  });
-}
-
-function sendMail(to: string, subject: string, html: string) {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.log(`[DEV] Email to ${to}: ${subject}`);
-    return;
-  }
-  return transporter.sendMail({ from: `Ztocky <${env.GMAIL_USER}>`, to, subject, html });
-}
+export { sendEmail };
 
 export async function sendPasswordResetEmail(
   email: string,
@@ -47,7 +23,7 @@ export async function sendPasswordResetEmail(
 <p style="margin-top:20px;font-size:12px;color:#999">Si no solicitaste esto, ignorá este correo. El link expira en 1 hora.</p>
 </td></tr></table></body></html>`;
 
-  await sendMail(email, "Restablecé tu contraseña — Ztocky", html);
+  await sendEmail(email, "Restablecé tu contraseña — Ztocky", html);
 }
 
 export async function sendVerificationEmail(email: string, token: string, name: string, baseUrl?: string) {
@@ -65,7 +41,7 @@ export async function sendVerificationEmail(email: string, token: string, name: 
 <p style="margin-top:20px;font-size:12px;color:#999">Este link expira en 24 horas.</p>
 </td></tr></table></body></html>`;
 
-  await sendMail(email, "Verificá tu email — Ztocky", html);
+  await sendEmail(email, "Verificá tu email — Ztocky", html);
 }
 
 export async function sendAlertNotification(
@@ -88,7 +64,7 @@ export async function sendAlertNotification(
 <p style="margin-top:16px;font-size:12px;color:#999">Ingresá a Ztocky para ver los detalles y tomar acción.</p>
 </td></tr></table></body></html>`;
 
-  await sendMail(email, `⚠️ Alerta: ${escapeHtml(alert.productName)} — Ztocky`, html);
+  await sendEmail(email, `⚠️ Alerta: ${escapeHtml(alert.productName)} — Ztocky`, html);
 }
 
 export async function sendAlertDigestEmail(
@@ -154,7 +130,7 @@ ${lowSection}
 </td></tr>
 </table></body></html>`;
 
-  await sendMail(email, `${total === 1 ? "⚠️" : "📋"} ${title} — Ztocky`, html);
+  await sendEmail(email, `${total === 1 ? "⚠️" : "📋"} ${title} — Ztocky`, html);
 }
 
 export async function sendOrderNotification(
@@ -184,7 +160,7 @@ export async function sendOrderNotification(
 <p style="margin-top:16px;font-size:12px;color:#999">Ingresá a Ztocky para ver el seguimiento completo.</p>
 </td></tr></table></body></html>`;
 
-  await sendMail(email, `📦 Orden ${label} — Ztocky`, html);
+  await sendEmail(email, `📦 Orden ${label} — Ztocky`, html);
 }
 
 export async function sendOrderToSupplier(
@@ -236,7 +212,7 @@ ${order.notes ? `<tr><td style="padding:0 32px 16px;font-size:13px;color:#666"><
 </td></tr>
 </table></body></html>`;
 
-  await sendMail(supplierEmail, `🧾 Nueva orden #${order.id.slice(0, 8).toUpperCase()} — Ztocky`, html);
+  await sendEmail(supplierEmail, `🧾 Nueva orden #${order.id.slice(0, 8).toUpperCase()} — Ztocky`, html);
 }
 
 export async function sendPriceChangesToSupplier(
@@ -299,7 +275,7 @@ export async function sendPriceChangesToSupplier(
 </td></tr>
 </table></body></html>`;
 
-  await sendMail(supplierEmail, `💰 ${escapeHtml(storeName)} actualizó precios — Ztocky`, html);
+  await sendEmail(supplierEmail, `💰 ${escapeHtml(storeName)} actualizó precios — Ztocky`, html);
 }
 
 export async function sendInvitationEmail(
@@ -323,5 +299,5 @@ export async function sendInvitationEmail(
 <p style="margin-top:20px;font-size:12px;color:#999">Si no conoces a esta persona, ignorá este correo.</p>
 </td></tr></table></body></html>`;
 
-  await sendMail(email, `Te invitaron a "${escapeHtml(workspaceName)}" — Ztocky`, html);
+  await sendEmail(email, `Te invitaron a "${escapeHtml(workspaceName)}" — Ztocky`, html);
 }

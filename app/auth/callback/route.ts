@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { exchangeCode, decodeIdToken } from "@/lib/auth0";
 import { createSession } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { ensureWorkspaceTrial } from "@/lib/subscription";
 
 function slugify(value: string) {
   const slug = value
@@ -200,6 +201,8 @@ export async function GET(req: NextRequest) {
       });
     }
   }
+
+  await ensureWorkspaceTrial(user.id);
 
   await createSession(user.id);
 

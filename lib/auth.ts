@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 import { getPrisma } from "@/lib/prisma";
+import { ensureWorkspaceTrial } from "@/lib/subscription";
 
 const SESSION_COOKIE = "ztocky_session";
 const SESSION_DAYS = 30;
@@ -171,7 +172,7 @@ export async function registerUser(input: {
     where: { role: "SUPER_ADMIN" },
   });
 
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       name: input.name.trim(),
       email,
@@ -191,6 +192,10 @@ export async function registerUser(input: {
       },
     },
   });
+
+  await ensureWorkspaceTrial(user.id);
+
+  return user;
 }
 
 export async function authenticateUser(emailInput: string, password: string) {

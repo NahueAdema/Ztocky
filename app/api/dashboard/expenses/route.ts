@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { can, permissionError } from "@/lib/permissions";
 import { isMonthClosed } from "@/lib/finance";
+import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
 const CATEGORIES = ["RENT", "PAYROLL", "SERVICES", "SUPPLIES", "MARKETING", "TRANSPORT", "TAXES", "OTHER"] as const;
 const PAYMENT_METHODS = ["CASH", "CARD", "TRANSFER", "OTHER"] as const;
@@ -43,6 +44,9 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Sin workspace" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
   if (!can("expense:create", user.role)) {
     return NextResponse.json(permissionError().json, { status: permissionError().status });
   }
