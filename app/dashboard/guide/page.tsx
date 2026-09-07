@@ -18,6 +18,15 @@ import {
   ChevronRight,
   ChevronDown,
   SearchIcon,
+  Users,
+  Undo2,
+  ReceiptText,
+  Landmark,
+  ScanLine,
+  CreditCard,
+  Store,
+  UserCog,
+  Smartphone,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +46,24 @@ const sections = [
     color: "bg-primary/10 text-primary",
   },
   {
+    id: "expenses",
+    title: "Gastos",
+    icon: ReceiptText,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "finanzas",
+    title: "Finanzas",
+    icon: Landmark,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "scan",
+    title: "Escanear",
+    icon: ScanLine,
+    color: "bg-primary/10 text-primary",
+  },
+  {
     id: "pos",
     title: "Punto de Venta",
     icon: ShoppingCart,
@@ -46,6 +73,18 @@ const sections = [
     id: "sales",
     title: "Ventas",
     icon: ShoppingCart,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "customers",
+    title: "Clientes",
+    icon: Users,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "returns",
+    title: "Devoluciones",
+    icon: Undo2,
     color: "bg-primary/10 text-primary",
   },
   {
@@ -88,6 +127,30 @@ const sections = [
     id: "global-search",
     title: "Busqueda Global",
     icon: Search,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "my-business",
+    title: "Mi Negocio",
+    icon: Store,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "team",
+    title: "Equipo",
+    icon: UserCog,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "app",
+    title: "App y Notificaciones",
+    icon: Smartphone,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "subscription",
+    title: "Suscripcion y Planes",
+    icon: CreditCard,
     color: "bg-primary/10 text-primary",
   },
   {
@@ -398,6 +461,80 @@ export default function GuidePage() {
             </InfoBlock>
           </GuideSection>
 
+          {/* Gastos */}
+          <GuideSection
+            id="expenses"
+            title="Gastos"
+            icon={ReceiptText}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Registrar gastos">
+              <p>
+                Usa el boton <Badge tone="accent">Nuevo gasto</Badge> para cargar gastos
+                manuales con descripcion, monto, categoria (sueldos, alquiler,
+                servicios, etc.) y metodo de pago.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Cerrar mes">
+              <p>
+                El boton <Badge tone="accent">Cerrar mes</Badge> congela el resultado
+                del mes y bloquea la edicion de sus gastos. Es ideal al cierre
+                contable para dejar un registro fijo.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Reporte y exportacion">
+              <p>
+                El reporte mensual cruza ingresos, gastos manuales y compras a
+                proveedores. Puedes exportar los gastos en CSV o Excel (.xlsx).
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
+          {/* Finanzas */}
+          <GuideSection
+            id="finanzas"
+            title="Finanzas"
+            icon={Landmark}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Panel financiero">
+              <p>
+                Es la vista financiera del negocio: ingresos por ventas, gastos
+                manuales y compras a proveedores, con el resultado mensual
+                (ingresos - egresos).
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Analisis">
+              <p>
+                Compara mes a mes, visualiza los gastos por metodo de pago y los
+                totales acumulados. Los graficos muestran la evolucion de ingresos
+                vs. egresos.
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
+          {/* Escanear */}
+          <GuideSection
+            id="scan"
+            title="Escanear"
+            icon={ScanLine}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Escaneo con camara">
+              <p>
+                Usa la camara del celular o un lector USB para escanear codigos de
+                barras. Al detectar un producto, se abre su ficha para consultar
+                stock, precios y editar datos.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Requisitos">
+              <p>
+                Necesitas conexion HTTPS y aceptar el permiso de camara. En iOS usa
+                Safari; en Android funciona Chrome o la app instalada (PWA).
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
           {/* Punto de Venta */}
           <GuideSection
             id="pos"
@@ -489,6 +626,13 @@ export default function GuidePage() {
                 exportar el resumen a CSV.
               </p>
             </InfoBlock>
+            <InfoBlock title="Ventas sin conexion">
+              <p>
+                Si perdes la conexion, las ventas quedan en una cola de
+                <strong> pendientes</strong> y se sincronizan automaticamente cuando
+                vuelve el internet. La pantalla te avisa el estado de cada venta.
+              </p>
+            </InfoBlock>
           </GuideSection>
 
           {/* Ventas */}
@@ -524,6 +668,70 @@ export default function GuidePage() {
             </InfoBlock>
           </GuideSection>
 
+          {/* Clientes */}
+          <GuideSection
+            id="customers"
+            title="Clientes"
+            icon={Users}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Como se crean">
+              <p>
+                Los clientes se crean automaticamente cuando vendes a cuenta corriente
+                (Cta Cte) desde el Punto de Venta. Tambien puedes registrarlos
+                manualmente con nombre, telefono y email.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Ficha del cliente">
+              <p>
+                Cada cliente tiene su historial de ventas, saldo pendiente, pagos
+                registrados y comprobantes. Puedes imprimir o descargar el ticket
+                (PDF) de cada venta.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Cuenta corriente">
+              <p>
+                Al vender a Cta Cte la deuda queda registrada en la ficha. Puedes
+                cargar pagos (efectivo, tarjeta, transferencia) para ir saldando el
+                saldo.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Exportar">
+              <p>
+                Usa el boton <Badge tone="accent">Exportar</Badge> para descargar el
+                listado de clientes en CSV o Excel (.xlsx).
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
+          {/* Devoluciones */}
+          <GuideSection
+            id="returns"
+            title="Devoluciones"
+            icon={Undo2}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Crear una devolucion">
+              <p>
+                Desde la seccion Devoluciones usa el boton <Badge tone="accent">Nueva devolucion</Badge>,
+                selecciona la venta, los productos a devolver y el motivo. El stock se
+                restaura automaticamente.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Metodos y saldos">
+              <p>
+                Si la venta original fue a Cta Cte o con tarjeta, la devolucion queda
+                vinculada al cliente y a su cuenta. Las devoluciones registradas se
+                muestran en el historial.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Exportar">
+              <p>
+                Puedes exportar el registro de devoluciones en CSV o Excel (.xlsx).
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
           {/* Proveedores */}
           <GuideSection
             id="suppliers"
@@ -548,6 +756,14 @@ export default function GuidePage() {
                 Asocia productos a sus proveedores con precio de compra y cantidad
                 minima de pedido. Esto permite generar ordenes de compra
                 automaticamente.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Detalle del proveedor">
+              <p>
+                Al entrar en un proveedor ves su tablero con: catalogo de productos,
+                comparador de precios (indica cual proveedor es el mas barato por
+                producto), aumentos de precios recientes, ordenes de compra vinculadas
+                y un resumen generado con IA.
               </p>
             </InfoBlock>
           </GuideSection>
@@ -592,6 +808,15 @@ export default function GuidePage() {
                 Filtra ordenes por <strong>estado</strong> y <strong>proveedor</strong>.
               </p>
             </InfoBlock>
+            <InfoBlock title="Compra sugerida">
+              <p>
+                El panel de <strong>sugerencias de compra</strong> calcula cuanto reponer
+                por proveedor segun la velocidad de venta (burn rate) y el tiempo de
+                entrega (lead time). Los productos urgentes se marcan con una etiqueta.
+                Con <Badge tone="accent">Generar compra sugerida</Badge> creas todas las
+                ordenes recomendadas de una sola vez.
+              </p>
+            </InfoBlock>
           </GuideSection>
 
           {/* Alertas */}
@@ -626,6 +851,32 @@ export default function GuidePage() {
             <InfoBlock title="Descartar alertas">
               <p>
                 Marca una alerta como resuelta para ocultarla del listado activo.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Reglas de alerta (automatizacion)">
+              <p>
+                Desde la pestana <strong>Reglas</strong> puedes automatizar las
+                notificaciones. Cada regla vigila algo <em>y usa los canales que
+                elijas</em>:
+              </p>
+              <ul className="mt-2 list-disc list-inside space-y-1">
+                <li><strong>Estado de stock:</strong> avisa cuando un producto queda critico, bajo o estancado.</li>
+                <li><strong>Eventos:</strong> avisa de eventos del feed (ordenes, pagos, registros, etc.).</li>
+                <li><strong>Resumen (digest):</strong> envia un resumen periodico diario, cada 3 dias, semanal o mensual.</li>
+              </ul>
+            </InfoBlock>
+            <InfoBlock title="Canales de notificacion">
+              <p>
+                Cada regla puede notificar por <strong>email</strong>, <strong>in-app</strong>
+                (campana en la app) y <strong>push</strong> (pantalla del celular). Elegi
+                uno o varios segun la importancia.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Ejecutar ahora">
+              <p>
+                El boton <Badge tone="accent">Ejecutar ahora</Badge> corre las reglas al
+                instante y te informa cuantos productos, eventos y resumenes se
+                generaron. Tambien se ejecutan automaticamente todos los dias via cron.
               </p>
             </InfoBlock>
           </GuideSection>
@@ -728,6 +979,154 @@ export default function GuidePage() {
             </InfoBlock>
           </GuideSection>
 
+          {/* Mi Negocio */}
+          <GuideSection
+            id="my-business"
+            title="Mi Negocio"
+            icon={Store}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Datos del negocio">
+              <p>
+                Configura la <strong>razon social</strong>, <strong>CUIT</strong> (o CUIL),
+                direccion, localidad, telefono y email de contacto de tu comercio. La
+                razon social y el CUIT aparecen en los tickets y comprobantes.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Regimen fiscal">
+              <p>
+                Selecciona tu condicion impositiva: <strong>Monotributo</strong>,
+                <strong> Responsable Inscripto</strong> o <strong>Exento</strong>. Define
+                como se emiten los comprobantes.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Condiciones de venta">
+              <p>
+                Escibe el texto que se muestra al pie de los comprobantes (ej. medios de
+                pago aceptados, plazo de cuenta corriente).
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Reglas de venta">
+              <p>
+                Controla el <strong>tope de descuento</strong> permitido en el Punto de
+                Venta (0 = sin limite) y quien puede <strong>anular ventas</strong>:
+                solo el propietario, propietario y administrador, o todos los miembros.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Acceso">
+              <p>
+                Mi Negocio esta disponible desde el icono de comercio en el header del
+                dashboard.
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
+          {/* Equipo */}
+          <GuideSection
+            id="team"
+            title="Equipo"
+            icon={UserCog}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Roles">
+              <ul className="mt-2 list-disc list-inside space-y-1">
+                <li><Badge tone="default">Propietario</Badge> Control total. No se puede quitar.</li>
+                <li><Badge tone="accent">Administrador</Badge> Gestiona miembros y la configuracion.</li>
+                <li><Badge tone="muted">Miembro</Badge> Operaciones basicas y acceso de lectura.</li>
+              </ul>
+            </InfoBlock>
+            <InfoBlock title="Invitar miembros">
+              <p>
+                Desde <strong>Equipo</strong> (menu de usuario) o desde
+                <strong> Configuracion → Equipo</strong>, envia una invitacion por email
+                y elige el rol. El invitado recibe un link para unirse al workspace.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Gestionar miembros">
+              <p>
+                Puedes <strong>cambiar el rol</strong> de un miembro,<strong> reenviar
+                invitaciones</strong> pendientes o <strong>eliminar un miembro</strong> del
+                equipo. Las invitaciones tienen vencimiento.
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
+          {/* App y Notificaciones */}
+          <GuideSection
+            id="app"
+            title="App y Notificaciones"
+            icon={Smartphone}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Instalar como app (PWA)">
+              <p>
+                Ztocky es una app web progresiva: desde el menu del navegador puedes
+                agregarla a la pantalla de inicio del celular y usarla como una app
+                instalada. En iOS usa Safari; en Android Chrome o la app.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Notificaciones push">
+              <p>
+                Al activar las notificaciones, recibis avisos en la pantalla del
+                celular/escritorio (por ejemplo alertas de stock). Al tocar una
+                notificacion, la app te lleva directo a las alertas.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Modo claro / oscuro">
+              <p>
+                Alterna el tema desde el icono de sol/luna en el menu de usuario o en el
+                header. La preferencia se guarda.
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
+          {/* Suscripcion */}
+          <GuideSection
+            id="subscription"
+            title="Suscripcion y Planes"
+            icon={CreditCard}
+            color="bg-primary/10 text-primary"
+          >
+            <InfoBlock title="Prueba gratis">
+              <p>
+                Cada nuevo workspace incluye <strong>30 dias de prueba gratuita</strong>.
+                Durante la prueba accedes al plan completo sin costo.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Planes disponibles">
+              <ul className="mt-2 list-disc list-inside space-y-1">
+                <li><Badge tone="accent">Basica</Badge> - Para negocios chicos comenzando.</li>
+                <li><Badge tone="accent">Pro</Badge> - Para negocios en crecimiento con mas productos y equipo.</li>
+                <li><Badge tone="accent">Unlimited</Badge> - Sin limites de productos, con IA, push y finanzas avanzadas.</li>
+              </ul>
+              <p className="mt-2">
+                Los precios y limites de cada plan se administran desde el panel de
+                Admin y pueden ajustarse sin tocar codigo.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Donde veo mi plan">
+              <p>
+                En <strong>Configuracion</strong> podes ver el plan actual, los dias
+                restantes de prueba, el estado de la suscripcion y acceder a la
+                informacion de facturacion.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Cuenta vencida (solo lectura)">
+              <p>
+                Si tu plan se vence, la cuenta pasa a <strong>modo solo lectura</strong>:
+                podes ver tus datos y exportarlos (CSV/Excel), pero no crear, editar
+                ni borrar nada. Tus datos quedan intactos.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Administracion">
+              <p>
+                Si tu cuenta tiene rol <strong>SUPER_ADMIN</strong>, en el menu de
+                usuario aparece el <strong>Panel de administracion</strong>: gestion de
+                usuarios, estados de suscripcion, metricas y feedback.
+              </p>
+            </InfoBlock>
+          </GuideSection>
+
           {/* Configuracion */}
           <GuideSection
             id="settings"
@@ -740,6 +1139,20 @@ export default function GuidePage() {
                 Renombra tu workspace para identificarlo facilmente.
               </p>
             </InfoBlock>
+            <InfoBlock title="Perfil">
+              <p>
+                Actualiza tu <strong>nombre</strong> y tu <strong>CUIT/CUIL</strong>. El
+                email no se puede cambiar.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Cuenta y verificacion">
+              <p>
+                En la tarjeta <strong>Cuenta</strong> ves tu rol global, el rol en el
+                comercio y el estado de tu email. Si el email esta pendiente, usa
+                <Badge tone="accent">Reenviar</Badge> para mandar el link de
+                verificacion.
+              </p>
+            </InfoBlock>
             <InfoBlock title="Equipo">
               <p>
                 Invita miembros por email y asigna roles:
@@ -750,10 +1163,31 @@ export default function GuidePage() {
                 <li><Badge tone="muted">Member</Badge> Acceso de lectura y operaciones basicas.</li>
               </ul>
             </InfoBlock>
+            <InfoBlock title="Suscripcion">
+              <p>
+                La tarjeta <strong>Mi plan</strong> muestra tu plan actual, los dias que
+                quedan de prueba gratuita y el estado de la cuenta. Ver seccion
+                <strong> Suscripcion y Planes</strong> para mas detalle.
+              </p>
+            </InfoBlock>
             <InfoBlock title="Tema">
               <p>
                 Alterna entre modo oscuro y claro desde el icono de sol/luna en el
                 header, o desde el menu de usuario.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Cambiar contraseña">
+              <p>
+                En la <strong>Zona de peligro</strong> puedes cambiar tu contraseña
+                ingresando la actual y la nueva. La contraseña no se puede recuperar,
+                solo restablecer con el link de &ldquo;olvide mi contraseña&rdquo;.
+              </p>
+            </InfoBlock>
+            <InfoBlock title="Eliminar cuenta">
+              <p>
+                La <strong>Zona de peligro</strong> tambien permite eliminar tu cuenta.
+                Es una accion <strong>irreversible</strong>: se pide escribirlo para
+                confirmar y no se puede deshacer.
               </p>
             </InfoBlock>
           </GuideSection>

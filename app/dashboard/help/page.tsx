@@ -14,6 +14,7 @@ import {
   CreditCard,
   ShieldCheck,
   Users,
+  Siren,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +89,40 @@ const faqs = [
     ],
   },
   {
+    category: "Alertas y notificaciones",
+    questions: [
+      {
+        q: "¿Cómo creo una regla de alerta?",
+        a: "Andá a Alertas → pestaña Reglas → \"Nueva regla\". Elegí qué vigilar (estado de stock, eventos o un resumen periódico), activá los canales que quieras (email, in-app o push) y guardá. Después podés usar \"Ejecutar ahora\" para probarla al instante.",
+      },
+      {
+        q: "¿Por qué no me llegan los emails de las alertas?",
+        a: "Chequeá dos cosas: que tu email esté verificado (lo confirmás en el link que te llega al registrarte) y que la regla tenga el canal \"email\" activado. Las notificaciones push e in-app no dependen del email.",
+      },
+      {
+        q: "¿Qué significa cada tipo de regla?",
+        a: "\"Estado de stock\" te avisa cuando un producto queda crítico, bajo o estancado. \"Eventos\" sigue actividades del feed como órdenes, pagos o registros. \"Resumen\" te envía un digest por email con la frecuencia que elijas (diario, cada 3 días, semanal o mensual).",
+      },
+    ],
+  },
+  {
+    category: "Suscripción y planes",
+    questions: [
+      {
+        q: "¿Cuánto cuesta Ztocky?",
+        a: "Cada workspace nuevo arranca con 30 días de prueba gratis. Después podés continuar con un plan de pago: Básica, Pro o Unlimited. Los precios y límites de cada plan los podés consultar desde la app y se administran centralmente.",
+      },
+      {
+        q: "¿Dónde veo mi plan y los días que me quedan de prueba?",
+        a: "Abrí el menú de tu usuario → Configuración. Ahí vas a ver la tarjeta \"Mi plan\" con el plan actual, los días restantes de prueba y el estado de la suscripción.",
+      },
+      {
+        q: "¿Qué pasa si se me vence la prueba o el plan?",
+        a: "Tu cuenta pasa a modo solo lectura: podés ver toda tu información y exportarla (CSV/Excel), pero no crear, editar ni borrar nada. Tus datos quedan intactos y no se pierde nada.",
+      },
+    ],
+  },
+  {
     category: "Cuenta y seguridad",
     questions: [
       {
@@ -131,6 +166,8 @@ const categoryIcon: Record<string, typeof Package> = {
   "Punto de venta (POS)": ShoppingCart,
   "Inventario y stock": Package,
   "Facturación y pagos": CreditCard,
+  "Alertas y notificaciones": Siren,
+  "Suscripción y planes": CreditCard,
   "Cuenta y seguridad": ShieldCheck,
 };
 

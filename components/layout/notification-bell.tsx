@@ -84,7 +84,7 @@ export function NotificationBell() {
         )}
       </button>
       {showNotif && (
-        <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-border bg-card shadow-xl animate-slide-down">
+        <div className="absolute left-0 top-12 z-50 w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-card shadow-xl animate-slide-down lg:left-auto lg:right-0">
           <div className="p-4 border-b border-border flex items-center justify-between">
             <p className="text-sm font-semibold">Notificaciones</p>
             {unread.length > 0 && (
