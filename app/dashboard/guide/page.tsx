@@ -1180,7 +1180,7 @@ export default function GuidePage() {
               <p>
                 En la <strong>Zona de peligro</strong> puedes cambiar tu contraseña
                 ingresando la actual y la nueva. La contraseña no se puede recuperar,
-                solo restablecer con el link de "olvide mi contraseña".
+                solo restablecer con el link de &ldquo;olvide mi contraseña&rdquo;.
               </p>
             </InfoBlock>
             <InfoBlock title="Eliminar cuenta">
