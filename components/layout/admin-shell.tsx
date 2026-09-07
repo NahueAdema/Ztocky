@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   X,
   MessageSquare,
+  CreditCard,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ const adminNav = [
   { href: "/admin", label: "Resumen", icon: LayoutDashboard },
   { href: "/admin/users", label: "Usuarios", icon: Users },
   { href: "/admin/workspaces", label: "Workspaces", icon: Building2 },
+  { href: "/admin/subscriptions", label: "Suscripciones", icon: CreditCard },
   { href: "/admin/sessions", label: "Sesiones", icon: KeyRound },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
 ];

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MembersPanel } from "@/components/dashboard/members-panel";
+import { SubscriptionStatus } from "@/components/dashboard/subscription-status";
 import { useToast } from "@/components/ui/toast";
 
 export default function SettingsPage() {
@@ -270,6 +271,8 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <SubscriptionStatus />
 
       <MembersPanel />
 

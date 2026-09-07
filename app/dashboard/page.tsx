@@ -146,7 +146,7 @@ export default async function DashboardPage() {
         })}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[1.2fr_1fr]">
         <Card className="card-hover">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -246,7 +246,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[1.5fr_1fr]">
         <Card className="card-hover">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -271,7 +271,7 @@ export default async function DashboardPage() {
                 <p className="text-xs text-muted-foreground mt-1">No hay productos en riesgo de agotamiento.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 overflow-y-auto max-h-[320px] sm:max-h-[440px] pr-1 -mr-1">
                 {reorderRisks.slice(0, 5).map((item) => (
                   <div key={item.sku} className="flex items-center justify-between rounded-lg border border-border p-3 transition hover:bg-muted/30">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -293,7 +293,7 @@ export default async function DashboardPage() {
                       </Badge>
                       <Link
                         href="/dashboard/purchase-orders"
-                        className="inline-flex h-8 items-center gap-1 rounded-lg bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary/90"
+                        className="hidden sm:inline-flex h-8 items-center gap-1 rounded-lg bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary/90"
                       >
                         Comprar
                       </Link>
@@ -327,7 +327,7 @@ export default async function DashboardPage() {
                 <p className="text-xs text-muted-foreground mt-1">Las ventas registradas aparecerán aquí.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 overflow-y-auto max-h-[260px] sm:max-h-[380px] pr-1 -mr-1">
                 {todayStats.recentSales.map((sale) => (
                   <div key={sale.id} className="flex items-center justify-between rounded-lg border border-border p-3 transition hover:bg-muted/30">
                     <div className="flex items-center gap-3 flex-1 min-w-0">

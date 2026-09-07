@@ -3,12 +3,16 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { sendInvitationEmail } from "@/lib/mail";
 import { can, permissionError } from "@/lib/permissions";
+import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "No perteneces a un workspace" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
   if (!can("workspace:invite", user.role)) {
     return NextResponse.json(permissionError("No tienes permiso para invitar miembros").json, { status: permissionError().status });
   }

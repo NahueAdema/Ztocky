@@ -1,4 +1,4 @@
-import { Activity, Building2, ClipboardList, Package, Shield, Truck, Users } from "lucide-react";
+import { Activity, Building2, ClipboardList, CreditCard, Package, Shield, Truck, Users } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminOverview } from "@/lib/data/admin";
@@ -11,6 +11,13 @@ const metricConfig = [
   { key: "products", label: "Productos", icon: Package },
   { key: "suppliers", label: "Proveedores", icon: Truck },
   { key: "purchaseOrders", label: "Órdenes", icon: ClipboardList },
+] as const;
+
+const subscriptionMetrics = [
+  { key: "totalSubscriptions", label: "Suscripciones", icon: CreditCard },
+  { key: "activeSubscriptions", label: "Pagando", icon: CreditCard },
+  { key: "trialSubscriptions", label: "En trial", icon: CreditCard },
+  { key: "problematicSubscriptions", label: "Con problema", icon: CreditCard },
 ] as const;
 
 export default async function AdminPage() {
@@ -26,6 +33,32 @@ export default async function AdminPage() {
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metricConfig.map((metric) => {
+          const Icon = metric.icon;
+
+          return (
+            <Card key={metric.key}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>{metric.label}</CardTitle>
+                <Icon className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-semibold">{overview[metric.key]}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Suscripciones</h2>
+          <p className="text-sm text-muted-foreground">
+            Estado de planes por workspace.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {subscriptionMetrics.map((metric) => {
           const Icon = metric.icon;
 
           return (

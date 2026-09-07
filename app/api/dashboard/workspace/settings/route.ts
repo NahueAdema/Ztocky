@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
 export async function PATCH(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Sin workspace" }, { status: 400 });
+  if (!(await assertCanWrite(user))) {
+    return NextResponse.json({ error: READ_ONLY_ERROR }, { status: 403 });
+  }
   if (user.role !== "OWNER") {
     return NextResponse.json({ error: "Solo el propietario puede editar el nombre" }, { status: 403 });
   }

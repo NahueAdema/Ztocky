@@ -44,6 +44,8 @@ export const env = {
   GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
   GMAIL_USER: process.env.GMAIL_USER || '',
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD || '',
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL || '',
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'ztocky',
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',

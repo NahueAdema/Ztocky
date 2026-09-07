@@ -7,6 +7,7 @@ import { Search, Store } from "lucide-react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { UserMenu } from "@/components/layout/user-menu";
+import { SubscriptionGate } from "@/components/dashboard/subscription-gate";
 import { cn } from "@/lib/utils";
 
 type DashboardUser = {
@@ -127,7 +128,10 @@ export function DashboardShell({
           </div>
         </div>
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8 pt-[100px] lg:pt-6">{children}</main>
+        <main className="px-4 py-6 sm:px-6 lg:px-8 pt-[100px] lg:pt-6">
+          <SubscriptionGate />
+          {children}
+        </main>
       </div>
     </div>
   );
