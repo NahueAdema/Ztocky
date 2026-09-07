@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LogOut, Settings, ShieldCheck, Search, BookOpen, MessageSquare, Building2, HelpCircle, Sun, Moon, ChevronDown } from "lucide-react";
+import { LogOut, Settings, ShieldCheck, Search, BookOpen, MessageSquare, Building2, HelpCircle, Sun, Moon, ChevronDown, Store } from "lucide-react";
 import { useTheme } from "next-themes";
 
 type DashboardUser = {
@@ -65,6 +65,10 @@ export function UserMenu({ user, isMobile = false }: { user: DashboardUser; isMo
             <Link href="/dashboard/team" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
               <Building2 className="h-4 w-4 text-muted-foreground" />
               Equipo
+            </Link>
+            <Link href="/dashboard/my-business" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
+              <Store className="h-4 w-4 text-muted-foreground" />
+              Mi negocio
             </Link>
             <Link href="/dashboard/settings" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-muted" onClick={() => setShowUserMenu(false)}>
               <Settings className="h-4 w-4 text-muted-foreground" />
