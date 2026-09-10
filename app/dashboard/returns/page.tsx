@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { TableSkeleton } from "@/components/ui/skeleton";
+import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { moneyFormatter } from "@/lib/format";
 import {
   Undo2,
@@ -72,13 +73,30 @@ export default function ReturnsPage() {
   const [returnItems, setReturnItems] = useState<ReturnItemForm[]>([]);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalServer, setTotalServer] = useState(0);
+  const loadedCountRef = useRef(0);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const fetchReturns = useCallback(async () => {
+  const BATCH_SIZE = 50;
+
+  const fetchReturns = useCallback(async (searchTerm?: string, offset?: number, append = false) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard/returns");
+      const params = new URLSearchParams({ limit: String(BATCH_SIZE) });
+      if (searchTerm) params.set("search", searchTerm);
+      if (offset !== undefined) params.set("offset", String(offset));
+      const res = await fetch(`/api/dashboard/returns?${params.toString()}`);
       if (res.ok) {
-        setReturns((await res.json()).returns);
+        const data = await res.json();
+        const list = data.returns ?? [];
+        if (append) {
+          setReturns((prev) => [...prev, ...list]);
+        } else {
+          setReturns(list);
+        }
+        loadedCountRef.current = append ? loadedCountRef.current + list.length : list.length;
+        setTotalServer(data.total ?? 0);
       }
     } catch {
     } finally {
@@ -90,13 +108,24 @@ export default function ReturnsPage() {
     fetchReturns();
   }, [fetchReturns]);
 
+  // Búsqueda server-side con debounce
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setPage(1);
+      loadedCountRef.current = 0;
+      fetchReturns(search);
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search, fetchReturns]);
+
   const openCreate = async () => {
     setSelectedSaleId("");
     setReturnItems([]);
     setReason("");
     setShowModal(true);
     try {
-      const res = await fetch("/api/dashboard/sales");
+      const res = await fetch("/api/dashboard/sales?limit=100&offset=0");
       if (res.ok) {
         setSales((await res.json()).sales);
       }
@@ -168,15 +197,17 @@ export default function ReturnsPage() {
     }
   };
 
-  const filtered = returns.filter(
-    (r) =>
-      String(r.receiptNumber).includes(search) ||
-      r.items.some(
-        (item) =>
-          item.productName.toLowerCase().includes(search.toLowerCase()) ||
-          item.productSku.toLowerCase().includes(search.toLowerCase())
-      )
-  );
+  const totalPages = Math.ceil(totalServer / ITEMS_PER_PAGE);
+  const paginatedReturns = returns.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  // Cuando el usuario cambia de página y faltan datos, cargar más devoluciones
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    const neededIndex = newPage * ITEMS_PER_PAGE;
+    if (neededIndex > loadedCountRef.current && loadedCountRef.current < totalServer) {
+      fetchReturns(search, loadedCountRef.current, true);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -256,7 +287,7 @@ export default function ReturnsPage() {
             <div className="p-6">
               <TableSkeleton rows={5} cols={5} />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : paginatedReturns.length === 0 ? (
             <EmptyState
               icon={Undo2}
               title={search ? "Sin resultados." : "No hay devoluciones"}
@@ -277,7 +308,7 @@ export default function ReturnsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((ret) => (
+                    {paginatedReturns.map((ret) => (
                       <tr key={ret.id}>
                         <td className="text-sm text-muted-foreground">
                           {ret.createdAt.slice(0, 10)}
@@ -316,7 +347,7 @@ export default function ReturnsPage() {
               </div>
 
               <div className="flex flex-col gap-3 sm:hidden">
-                {filtered.map((ret) => (
+                {paginatedReturns.map((ret) => (
                   <div
                     key={ret.id}
                     className="rounded-xl border border-border bg-card p-4"
@@ -360,6 +391,11 @@ export default function ReturnsPage() {
                   </div>
                 ))}
               </div>
+              {totalPages > 1 && (
+                <div className="mt-4 flex justify-center">
+                  <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+                </div>
+              )}
             </>
           )}
         </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -39,6 +39,7 @@ type Sale = {
   unitPrice: number;
   totalAmount: number;
   paymentMethod?: string;
+  sellerName?: string;
   status?: string;
   createdAt?: string;
 };
@@ -66,6 +67,68 @@ async function importBatch(url: string, batch: Record<string, string>[], type: s
   return { created: data.created ?? 0, errors: data.errors ?? [] };
 }
 
+type RawSaleItem = {
+  productId: string;
+  productName?: string;
+  productSku?: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice?: number;
+};
+
+type RawSale = {
+  id: string;
+  receiptNumber?: number;
+  items?: RawSaleItem[] | null;
+  sellerName?: string;
+  totalAmount: number;
+  paymentMethod?: string;
+  status?: string;
+  saleDate: string;
+  createdAt: string;
+};
+
+const flattenSales = (raw: RawSale[]): Sale[] => {
+  const flat: Sale[] = [];
+  for (const s of raw) {
+    for (const item of s.items ?? []) {
+      flat.push({
+        id: s.id,
+        receiptNumber: s.receiptNumber,
+        productId: item.productId,
+        productName: item.productName ?? "—",
+        productSku: item.productSku ?? "—",
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalAmount: item.totalPrice ?? item.unitPrice * item.quantity,
+        saleDate: s.saleDate,
+        paymentMethod: s.paymentMethod,
+        sellerName: s.sellerName,
+        status: s.status,
+        createdAt: s.createdAt,
+      });
+    }
+    if (!s.items || s.items.length === 0) {
+      flat.push({
+        id: s.id,
+        receiptNumber: s.receiptNumber,
+        productId: "",
+        productName: "—",
+        productSku: "—",
+        quantity: 0,
+        unitPrice: 0,
+        totalAmount: Number(s.totalAmount),
+        saleDate: s.saleDate,
+        paymentMethod: s.paymentMethod,
+        sellerName: s.sellerName,
+        status: s.status,
+        createdAt: s.createdAt,
+      });
+    }
+  }
+  return flat;
+};
+
 export default function SalesPage() {
   const { toast } = useToast();
   const [sales, setSales] = useState<Sale[]>([]);
@@ -88,59 +151,76 @@ export default function SalesPage() {
   const [undoing, setUndoing] = useState(false);
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [filterProduct, setFilterProduct] = useState("all");
+  const [totalServer, setTotalServer] = useState(0);
+  const [totalRows, setTotalRows] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalUnits, setTotalUnits] = useState(0);
+  const loadedSalesRef = useRef(0);
+  const loadedRowsRef = useRef(0);
+  const loadingPageRef = useRef(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const fetchData = useCallback(async () => {
+  const SALES_BATCH = 100;
+
+  const fetchData = useCallback(async (append = false) => {
     setLoading(true);
     try {
+      const offset = append ? loadedSalesRef.current : 0;
+      const params = new URLSearchParams({ limit: String(SALES_BATCH), offset: String(offset) });
+      if (search) params.set("search", search);
+      if (filterPeriod !== "all") params.set("period", filterPeriod);
+      if (filterProduct !== "all") params.set("product", filterProduct);
       const [salesRes, productsRes] = await Promise.all([
-        fetch("/api/dashboard/sales"),
-        fetch("/api/dashboard/products"),
+        fetch(`/api/dashboard/sales?${params.toString()}`),
+        append ? Promise.resolve(null) : fetch("/api/dashboard/products?limit=500&offset=0"),
       ]);
       if (salesRes.ok) {
-        const raw = (await salesRes.json()).sales;
-        const flat: Sale[] = [];
-        for (const s of raw) {
-          for (const item of s.items ?? []) {
-            flat.push({
-              id: s.id,
-              receiptNumber: s.receiptNumber,
-              productId: item.productId,
-              productName: item.productName ?? "—",
-              productSku: item.productSku ?? "—",
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalAmount: item.totalPrice ?? item.unitPrice * item.quantity,
-              saleDate: s.saleDate,
-              paymentMethod: s.paymentMethod,
-              status: s.status,
-              createdAt: s.createdAt,
-            });
-          }
-          if (!s.items || s.items.length === 0) {
-            flat.push({
-              id: s.id,
-              receiptNumber: s.receiptNumber,
-              productId: "",
-              productName: "—",
-              productSku: "—",
-              quantity: 0,
-              unitPrice: 0,
-              totalAmount: Number(s.totalAmount),
-              saleDate: s.saleDate,
-              paymentMethod: s.paymentMethod,
-              status: s.status,
-              createdAt: s.createdAt,
-            });
-          }
-        }
-        setSales(flat);
+        const data = await salesRes.json();
+        const raw = (data.sales ?? []) as RawSale[];
+        setTotalServer(data.total ?? 0);
+        setTotalRows(data.totalItems ?? data.total ?? 0);
+        setTotalRevenue(data.totalRevenue ?? 0);
+        setTotalUnits(data.totalUnits ?? 0);
+        loadedSalesRef.current = offset + raw.length;
+        const flat = flattenSales(raw);
+        loadedRowsRef.current = append ? loadedRowsRef.current + flat.length : flat.length;
+        setSales((prev) => (append ? [...prev, ...flat] : flat));
       }
-      if (productsRes.ok) setProducts((await productsRes.json()).products);
+      if (!append && productsRes?.ok) setProducts((await productsRes.json()).products);
     } catch {
     } finally { setLoading(false); }
-  }, []);
+  }, [search, filterPeriod, filterProduct]);
+
+  const appendBatch = useCallback(async (offset: number) => {
+    const params = new URLSearchParams({ limit: String(SALES_BATCH), offset: String(offset) });
+    if (search) params.set("search", search);
+    if (filterPeriod !== "all") params.set("period", filterPeriod);
+    if (filterProduct !== "all") params.set("product", filterProduct);
+    const salesRes = await fetch(`/api/dashboard/sales?${params.toString()}`);
+    if (!salesRes.ok) return { rows: [] as Sale[], nextOffset: offset, totalServer: 0, totalRows: 0 };
+    const data = await salesRes.json();
+    const raw = (data.sales ?? []) as RawSale[];
+    return {
+      rows: flattenSales(raw),
+      nextOffset: offset + raw.length,
+      totalServer: data.total ?? 0,
+      totalRows: data.totalItems ?? data.total ?? 0,
+    };
+  }, [search, filterPeriod, filterProduct]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Búsqueda server-side con debounce
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setPage(1);
+      loadedSalesRef.current = 0;
+      loadedRowsRef.current = 0;
+      fetchData();
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search, fetchData]);
 
   const openCreate = () => { setEditingSale(null); setForm(emptyForm); setError(null); setShowModal(true); };
   const openEdit = (s: Sale) => {
@@ -189,24 +269,53 @@ export default function SalesPage() {
   };
 
   const handleExport = async (format: "csv" | "excel") => {
-    const headers = ["Producto", "SKU", "Cantidad", "Fecha", "Precio Unitario", "Total"];
-    const rows = sales.map((s) => [s.productName, s.productSku, s.quantity, s.saleDate, s.unitPrice, s.totalAmount]);
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: "500", offset: "0" });
+      if (search) params.set("search", search);
+      if (filterPeriod !== "all") params.set("period", filterPeriod);
+      if (filterProduct !== "all") params.set("product", filterProduct);
 
-    if (format === "excel") {
-      const XLSX = await import("xlsx");
-      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Ventas");
-      XLSX.writeFile(wb, `ventas_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      return;
+      const flat: Sale[] = [];
+      let offset = 0;
+      let total = Infinity;
+      while (offset < total) {
+        params.set("offset", String(offset));
+        const res = await fetch(`/api/dashboard/sales?${params.toString()}`);
+        if (!res.ok) { toast("Error al exportar ventas", "error"); return; }
+        const data = await res.json();
+        total = data.total ?? 0;
+        const raw = data.sales ?? [];
+        for (const s of raw) {
+          for (const item of s.items ?? []) {
+            flat.push({ id: s.id, receiptNumber: s.receiptNumber, productId: item.productId, productName: item.productName ?? "—", productSku: item.productSku ?? "—", quantity: item.quantity, unitPrice: item.unitPrice, totalAmount: item.totalPrice ?? item.unitPrice * item.quantity, saleDate: s.saleDate, paymentMethod: s.paymentMethod, sellerName: s.sellerName, status: s.status, createdAt: s.createdAt });
+          }
+        }
+        offset += raw.length;
+      }
+
+      const headers = ["Producto", "SKU", "Cantidad", "Fecha", "Precio Unitario", "Total"];
+      const rows = flat.map((s) => [s.productName, s.productSku, s.quantity, s.saleDate, s.unitPrice, s.totalAmount]);
+
+      if (format === "excel") {
+        const XLSX = await import("xlsx");
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+        XLSX.writeFile(wb, `ventas_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      } else {
+        const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+        const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url;
+        a.download = `ventas_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+      }
+    } catch {
+      toast("Error al exportar ventas", "error");
+    } finally {
+      setLoading(false);
     }
-
-    const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
-    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url;
-    a.download = `ventas_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
   };
 
   const handleImport = async () => {
@@ -299,36 +408,47 @@ export default function SalesPage() {
     e.target.value = "";
   };
 
-  const totalRevenue = sales.reduce((sum, s) => sum + s.totalAmount, 0);
-  const totalUnits = sales.reduce((sum, s) => sum + s.quantity, 0);
-  const uniqueSaleIds = new Set(sales.map((s) => s.id)).size;
-  const filtered = sales.filter((s) => {
-    const matchesSearch = s.productName.toLowerCase().includes(search.toLowerCase()) || s.productSku.toLowerCase().includes(search.toLowerCase());
-    const matchesProduct = filterProduct === "all" || s.productId === filterProduct;
-    let matchesPeriod = true;
-    if (filterPeriod !== "all") {
-      const saleDate = new Date(s.saleDate);
-      const now = new Date();
-      if (filterPeriod === "today") {
-        matchesPeriod = saleDate.toDateString() === now.toDateString();
-      } else if (filterPeriod === "week") {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        matchesPeriod = saleDate >= weekAgo;
-      } else if (filterPeriod === "month") {
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        matchesPeriod = saleDate >= monthAgo;
-      }
-    }
-    return matchesSearch && matchesProduct && matchesPeriod;
-  });
-  const uniqueProducts = [...new Map(sales.map((s) => [s.productId, s.productName])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const totalPages = Math.ceil(totalRows / ITEMS_PER_PAGE);
+  const paginatedSales = sales.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginatedSales = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  // Cuando el usuario cambia de página y faltan datos, cargar todas las ventas necesarias
+  const handlePageChange = async (newPage: number) => {
+    setPage(newPage);
+    if (loadingPageRef.current) return;
+    loadingPageRef.current = true;
+    try {
+      while (
+        loadedRowsRef.current < newPage * ITEMS_PER_PAGE &&
+        loadedSalesRef.current < totalServer
+      ) {
+        const { rows, nextOffset, totalServer: ts, totalRows: tr } = await appendBatch(loadedSalesRef.current);
+        if (rows.length === 0) break;
+        setSales((prev) => [...prev, ...rows]);
+        loadedRowsRef.current += rows.length;
+        loadedSalesRef.current = nextOffset;
+        setTotalServer(ts);
+        if (tr > 0) setTotalRows(tr);
+      }
+    } finally {
+      loadingPageRef.current = false;
+    }
+  };
+
+  const handleFilterChange = (type: "period" | "product", value: string) => {
+    if (type === "period") setFilterPeriod(value);
+    else setFilterProduct(value);
+    setPage(1);
+    loadedSalesRef.current = 0;
+    loadedRowsRef.current = 0;
+    setSales([]);
+  };
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
+    loadedSalesRef.current = 0;
+    loadedRowsRef.current = 0;
+    setSales([]);
   };
 
   return (
@@ -403,7 +523,7 @@ export default function SalesPage() {
         {[
           { label: "Total ventas", value: money.format(totalRevenue), icon: DollarSign, color: "from-primary to-primary-dark" },
           { label: "Unidades vendidas", value: totalUnits, icon: Package, color: "from-sky-500 to-blue-600" },
-          { label: "Transacciones", value: uniqueSaleIds, icon: Hash, color: "from-indigo-500 to-violet-600" },
+          { label: "Transacciones", value: totalServer, icon: Hash, color: "from-indigo-500 to-violet-600" },
         ].map((stat) => (
           <Card key={stat.label} className={`card-hover ${stat.label === "Transacciones" ? "col-span-2 sm:col-span-1" : ""}`}>
             <CardContent className="p-0">
@@ -438,7 +558,7 @@ export default function SalesPage() {
               ].map((opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => { setFilterPeriod(opt.value); setPage(1); }}
+                  onClick={() => { handleFilterChange("period", opt.value); }}
                   className={`px-3 py-1 text-xs font-medium transition ${
                     filterPeriod === opt.value
                       ? "bg-primary text-primary-foreground"
@@ -449,21 +569,21 @@ export default function SalesPage() {
                 </button>
               ))}
             </div>
-            {uniqueProducts.length > 0 && (
+            {products.length > 0 && (
               <select
                 value={filterProduct}
-                onChange={(e) => { setFilterProduct(e.target.value); setPage(1); }}
+                onChange={(e) => { handleFilterChange("product", e.target.value); }}
                 className="h-8 rounded-lg border border-border bg-card px-2 text-xs font-medium text-foreground outline-none transition hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
               >
                 <option value="all">Todos los productos</option>
-                {uniqueProducts.map(([id, name]) => (
-                  <option key={id} value={id}>{name}</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
             )}
             {(filterPeriod !== "all" || filterProduct !== "all") && (
               <button
-                onClick={() => { setFilterPeriod("all"); setFilterProduct("all"); setPage(1); }}
+                onClick={() => { handleFilterChange("period", "all"); handleFilterChange("product", "all"); }}
                 className="px-3 py-1 text-xs font-medium text-danger hover:bg-danger/10 rounded-lg transition"
               >
                 Limpiar filtros
@@ -476,7 +596,7 @@ export default function SalesPage() {
             <div className="p-6">
               <TableSkeleton rows={6} cols={5} />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : sales.length === 0 ? (
             <EmptyState
               icon={ShoppingCart}
               title={search ? "Sin resultados." : "No hay ventas registradas"}
@@ -490,6 +610,7 @@ export default function SalesPage() {
                     <tr>
                       <th className="text-left">Ticket</th>
                       <th className="text-left">Producto</th>
+                      <th className="text-left">Vendedor</th>
                       <th className="text-left">Cantidad</th>
                       <th className="text-left">Fecha</th>
                       <th className="text-left">Precio unit.</th>
@@ -503,6 +624,7 @@ export default function SalesPage() {
                       <tr key={`${sale.id}-${sale.productId}`}>
                         <td className="text-sm font-mono text-muted-foreground">#{sale.receiptNumber ?? "—"}</td>
                         <td><p className="font-semibold">{sale.productName}</p><p className="text-xs text-muted-foreground font-mono">{sale.productSku}</p></td>
+                        <td className="text-sm text-muted-foreground">{sale.sellerName ?? "—"}</td>
                         <td><span className="inline-flex h-7 items-center justify-center rounded-md bg-accent-light px-2.5 text-xs font-bold text-accent">{sale.quantity} uds</span></td>
                         <td className="text-sm text-muted-foreground">{sale.saleDate}</td>
                         <td className="text-sm">{money.format(sale.unitPrice)}</td>
@@ -530,6 +652,7 @@ export default function SalesPage() {
                           {sale.receiptNumber && <Badge tone="muted">#{sale.receiptNumber}</Badge>}
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">{sale.productSku} · {sale.saleDate}</p>
+                        {sale.sellerName && <p className="text-xs text-muted-foreground">Vendedor: {sale.sellerName}</p>}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button onClick={() => openEdit(sale)} title="Editar venta" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"><Pencil className="h-4 w-4" /></button>
@@ -547,9 +670,9 @@ export default function SalesPage() {
             </>
           )}
 
-          {filtered.length > 0 && (
+          {sales.length > 0 && (
             <div className="mt-4 flex justify-center">
-              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+              <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           )}
         </CardContent>

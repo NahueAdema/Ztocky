@@ -3,23 +3,44 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const prisma = getPrisma();
-  const orders = await prisma.purchaseOrder.findMany({
-    where: {
-      workspaceId: user.workspaceId,
-    },
-    include: {
-      supplier: true,
-      items: {
-        include: { product: true },
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search")?.trim() ?? "";
+  const limitParam = searchParams.get("limit");
+  const offsetParam = searchParams.get("offset");
+  const hasPagination = limitParam !== null || offsetParam !== null;
+  const limit = hasPagination ? Math.min(Math.max(Number(limitParam) || 15, 1), 500) : undefined;
+  const offset = hasPagination ? Math.max(Number(offsetParam) || 0, 0) : undefined;
+
+  const where: Record<string, unknown> = {
+    workspaceId: user.workspaceId,
+  };
+
+  if (search) {
+    where.OR = [
+      { supplier: { name: { contains: search, mode: "insensitive" } } },
+      { id: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const [total, orders] = await Promise.all([
+    prisma.purchaseOrder.count({ where }),
+    prisma.purchaseOrder.findMany({
+      where,
+      include: {
+        supplier: true,
+        items: {
+          include: { product: true },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...(limit !== undefined ? { skip: offset ?? 0, take: limit } : {}),
+    }),
+  ]);
 
   return NextResponse.json({
     orders: orders.map((o) => ({
@@ -45,6 +66,7 @@ export async function GET() {
       createdAt: o.createdAt.toISOString(),
       updatedAt: o.updatedAt.toISOString(),
     })),
+    total,
   });
 }
 

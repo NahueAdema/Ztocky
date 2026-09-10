@@ -69,6 +69,8 @@ export default function POSPage() {
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [pendingSales, setPendingSales] = useState<PendingSale[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
 
@@ -105,6 +107,8 @@ export default function POSPage() {
 
   const {
     fetchProducts,
+    searchProducts,
+    loadMoreProducts,
     fetchRegister,
     fetchDailySummary,
     fetchCustomers,
@@ -119,11 +123,23 @@ export default function POSPage() {
     setCustomers,
     setWorkspaceName,
     setStoreSettings,
+    setTotalProducts,
+    setLoadingMore,
   });
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // Búsqueda server-side con debounce
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      searchProducts(search);
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search, searchProducts]);
 
   // Cargar ventas pendientes guardadas localmente
   useEffect(() => {
@@ -295,6 +311,9 @@ export default function POSPage() {
     stopCamera,
     videoRef,
     register,
+    totalProducts,
+    loadingMore,
+    onLoadMore: () => loadMoreProducts(search, products.length),
   };
 
   const cartPanelProps = {

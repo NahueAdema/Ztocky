@@ -3,29 +3,47 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const prisma = getPrisma();
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search")?.trim() ?? "";
+  const limitParam = searchParams.get("limit");
+  const offsetParam = searchParams.get("offset");
+  const hasPagination = limitParam !== null || offsetParam !== null;
+  const limit = hasPagination ? Math.min(Math.max(Number(limitParam) || 20, 1), 500) : undefined;
+  const offset = hasPagination ? Math.max(Number(offsetParam) || 0, 0) : undefined;
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-  const products = await prisma.product.findMany({
-    where: {
-      workspaceId: user.workspaceId,
-    },
-    include: {
-      catalogItems: {
-        include: { supplier: { select: { name: true } } },
+  const where: Record<string, unknown> = { workspaceId: user.workspaceId };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { sku: { contains: search, mode: "insensitive" } },
+      { category: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const [total, products] = await Promise.all([
+    prisma.product.count({ where }),
+    prisma.product.findMany({
+      where,
+      include: {
+        catalogItems: {
+          include: { supplier: { select: { name: true } } },
+        },
+        saleItems: {
+          where: { sale: { saleDate: { gte: ninetyDaysAgo } } },
+          select: { quantity: true, sale: { select: { saleDate: true } } },
+        },
       },
-      saleItems: {
-        where: { sale: { saleDate: { gte: ninetyDaysAgo } } },
-        select: { quantity: true, sale: { select: { saleDate: true } } },
-      },
-    },
-    orderBy: { name: "asc" },
-    take: 200,
-  });
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      ...(limit !== undefined ? { skip: offset ?? 0, take: limit } : {}),
+    }),
+  ]);
 
   return NextResponse.json({
     products: products.map((p) => {
@@ -60,6 +78,7 @@ export async function GET() {
         })),
       };
     }),
+    total,
   });
 }
 

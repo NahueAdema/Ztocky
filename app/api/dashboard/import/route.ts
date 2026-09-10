@@ -24,17 +24,21 @@ export async function POST(request: NextRequest) {
   if (type === "products") {
     for (const record of records) {
       try {
+        const lower: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(record)) {
+          lower[k.trim().toLowerCase()] = v;
+        }
         await prisma.product.create({
           data: {
-            name: record.name,
-            sku: record.sku,
-            description: record.description ?? null,
-            currentStock: Number(record.currentStock) ?? 0,
-            minStock: Number(record.minStock) ?? 10,
-            costPrice: Number(record.costPrice) ?? 0,
-            sellingPrice: Number(record.sellingPrice) ?? 0,
-            category: record.category ?? null,
-            isActive: record.isActive !== "false" && record.isActive !== false,
+            name: String(lower.name ?? ""),
+            sku: String(lower.sku ?? ""),
+            description: lower.description ? String(lower.description) : null,
+            currentStock: Number(lower.currentstock) || 0,
+            minStock: Number(lower.minstock) || 10,
+            costPrice: Number(lower.costprice) || 0,
+            sellingPrice: Number(lower.sellingprice) || 0,
+            category: lower.category ? String(lower.category) : null,
+            isActive: String(lower.isactive ?? "true") !== "false",
             workspaceId: user.workspaceId,
           },
         });
@@ -46,15 +50,19 @@ export async function POST(request: NextRequest) {
   } else if (type === "suppliers") {
     for (const record of records) {
       try {
+        const lower: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(record)) {
+          lower[k.trim().toLowerCase()] = v;
+        }
         await prisma.supplier.create({
           data: {
-            name: record.name,
-            contactEmail: record.contactEmail ?? null,
-            contactPhone: record.contactPhone ?? null,
-            leadTime: Number(record.leadTime) ?? 7,
-            shippingCost: Number(record.shippingCost) ?? 0,
-            reliability: Number(record.reliability) ?? 4.5,
-            notes: record.notes ?? null,
+            name: String(lower.name ?? ""),
+            contactEmail: lower.contactemail ? String(lower.contactemail) : null,
+            contactPhone: lower.contactphone ? String(lower.contactphone) : null,
+            leadTime: Number(lower.leadtime) || 7,
+            shippingCost: Number(lower.shippingcost) || 0,
+            reliability: Number(lower.reliability) || 4.5,
+            notes: lower.notes ? String(lower.notes) : null,
             workspaceId: user.workspaceId,
           },
         });
