@@ -3,24 +3,53 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const prisma = getPrisma();
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search")?.trim() ?? "";
+  const limitParam = searchParams.get("limit");
+  const offsetParam = searchParams.get("offset");
+  const hasPagination = limitParam !== null || offsetParam !== null;
+  const limit = hasPagination ? Math.min(Math.max(Number(limitParam) || 50, 1), 500) : undefined;
+  const offset = hasPagination ? Math.max(Number(offsetParam) || 0, 0) : undefined;
 
-  const returns = await prisma.return.findMany({
-    where: { workspaceId: user.workspaceId },
-    include: {
-      items: {
-        include: {
-          saleItem: { include: { product: true } },
+  const where: Record<string, unknown> = { workspaceId: user.workspaceId };
+  if (search) {
+    const numSearch = Number(search);
+    const productWhere: Record<string, unknown> = {
+      OR: [
+        { name: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+      ],
+    };
+    const conditions: Record<string, unknown>[] = [
+      { items: { some: { saleItem: { product: productWhere } } } },
+    ];
+    if (Number.isFinite(numSearch)) {
+      conditions.push({ sale: { receiptNumber: numSearch } });
+    }
+    where.OR = conditions;
+  }
+
+  const [total, returns] = await Promise.all([
+    prisma.return.count({ where }),
+    prisma.return.findMany({
+      where,
+      include: {
+        items: {
+          include: {
+            saleItem: { include: { product: true } },
+          },
         },
+        sale: true,
       },
-      sale: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...(limit !== undefined ? { skip: offset ?? 0, take: limit } : {}),
+    }),
+  ]);
 
   return NextResponse.json({
     returns: returns.map((r) => ({
@@ -40,6 +69,7 @@ export async function GET() {
         total: Number(item.total),
       })),
     })),
+    total,
   });
 }
 

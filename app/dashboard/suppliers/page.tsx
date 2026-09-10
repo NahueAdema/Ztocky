@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,6 +73,9 @@ export default function SuppliersPage() {
   const { toast } = useToast();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalServer, setTotalServer] = useState(0);
+  const loadedCountRef = useRef(0);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
@@ -120,20 +123,47 @@ export default function SuppliersPage() {
     total: number;
     errors?: string[];
   } | null>(null);
+  const [importing, setImporting] = useState(false);
   const [_importType, setImportType] = useState<"csv" | "excel">("csv");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const fetchSuppliers = useCallback(async () => {
+  const fetchSuppliers = useCallback(async (searchTerm?: string, offset?: number, append = false) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard/suppliers");
-      if (res.ok) setSuppliers((await res.json()).suppliers);
+      const params = new URLSearchParams({ limit: "50" });
+      if (searchTerm) params.set("search", searchTerm);
+      if (offset !== undefined) params.set("offset", String(offset));
+      const res = await fetch(`/api/dashboard/suppliers?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.suppliers ?? [];
+        if (append) {
+          setSuppliers((prev) => [...prev, ...list]);
+        } else {
+          setSuppliers(list);
+        }
+        loadedCountRef.current = append ? loadedCountRef.current + list.length : list.length;
+        setTotalServer(data.total ?? 0);
+      }
     } catch {
     } finally {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => { fetchSuppliers(); }, [fetchSuppliers]);
+
+  // Búsqueda server-side con debounce
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setPage(1);
+      loadedCountRef.current = 0;
+      fetchSuppliers(search);
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search, fetchSuppliers]);
 
   const fetchPriceHistory = useCallback(async (supplierId: string) => {
     setLoadingHistory(true);
@@ -148,10 +178,6 @@ export default function SuppliersPage() {
       setLoadingHistory(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchSuppliers();
-  }, [fetchSuppliers]);
 
   const openCreate = () => {
     setEditingSupplier(null);
@@ -198,7 +224,7 @@ export default function SuppliersPage() {
         return;
       }
       setShowModal(false);
-      fetchSuppliers();
+      fetchSuppliers(search);
       toast(editingSupplier ? "Proveedor actualizado" : "Proveedor creado", "success");
     } catch {
       setError("Error de conexión");
@@ -216,7 +242,7 @@ export default function SuppliersPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        fetchSuppliers();
+        fetchSuppliers(search);
         toast("Proveedor eliminado", "success", supplier
           ? { label: "Deshacer", onClick: () => restoreSupplier(supplier) }
           : undefined);
@@ -245,7 +271,7 @@ export default function SuppliersPage() {
       });
       if (res.ok) {
         toast("Proveedor restaurado", "success");
-        fetchSuppliers();
+        fetchSuppliers(search);
       } else {
         const data = await res.json().catch(() => ({}));
         toast(data.error ?? "No se pudo restaurar el proveedor", "error");
@@ -300,6 +326,11 @@ export default function SuppliersPage() {
   const handleImport = async () => {
     setImportResult(null);
     const lines = importText.trim().split("\n").filter(Boolean);
+    await runImport(lines);
+  };
+
+  const runImport = async (lines: string[]) => {
+    if (importing) return;
     if (lines.length < 2) {
       setImportResult({ created: 0, total: 0, errors: ["Formato invalido."] });
       return;
@@ -315,6 +346,7 @@ export default function SuppliersPage() {
       });
       return record;
     });
+    setImporting(true);
     try {
       const res = await fetch("/api/dashboard/import", {
         method: "POST",
@@ -323,14 +355,31 @@ export default function SuppliersPage() {
       });
       const data = await res.json();
       setImportResult(data);
-      if (data.created > 0) fetchSuppliers();
+      if (data.created > 0) fetchSuppliers(search);
     } catch {
       setImportResult({
         created: 0,
         total: records.length,
         errors: ["Error de conexión"],
       });
+    } finally {
+      setImporting(false);
     }
+  };
+
+  const handleImportCsvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      setImportText(text);
+      setShowImportModal(true);
+      await runImport(text.trim().split("\n").filter(Boolean));
+    } catch {
+      setImportResult({ created: 0, total: 0, errors: ["Error al leer el archivo CSV."] });
+    }
+    e.target.value = "";
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -362,7 +411,7 @@ export default function SuppliersPage() {
       });
       const result = await res.json();
       setImportResult(result);
-      if (result.created > 0) fetchSuppliers();
+      if (result.created > 0) fetchSuppliers(search);
     } catch {
       setImportResult({ created: 0, total: 0, errors: ["Error al leer el archivo Excel."] });
     }
@@ -378,7 +427,7 @@ export default function SuppliersPage() {
     try {
       const [catalogRes, productsRes] = await Promise.all([
         fetch(`/api/dashboard/catalog?supplierId=${supplier.id}`),
-        fetch("/api/dashboard/products"),
+        fetch(`/api/dashboard/products?limit=500&offset=0`),
       ]);
       if (catalogRes.ok) {
         const data = await catalogRes.json();
@@ -510,14 +559,17 @@ export default function SuppliersPage() {
     finally { setImportingPrices(false); }
   };
 
-  const filtered = suppliers.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.contactEmail ?? "").toLowerCase().includes(search.toLowerCase()),
-  );
+  const totalPages = Math.ceil(totalServer / ITEMS_PER_PAGE);
+  const paginatedSuppliers = suppliers.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginatedSuppliers = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  // Cuando el usuario cambia de página y faltan datos, cargar más proveedores
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    const neededIndex = newPage * ITEMS_PER_PAGE;
+    if (neededIndex > loadedCountRef.current && loadedCountRef.current < totalServer) {
+      fetchSuppliers(search, loadedCountRef.current, true);
+    }
+  };
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -574,7 +626,16 @@ export default function SuppliersPage() {
                 setShowImportModal(true);
               }}
             >
-              CSV
+              CSV (pegar)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileText className="h-4 w-4" />}
+              onClick={() => {
+                setImportResult(null);
+                document.getElementById("import-csv-input")?.click();
+              }}
+            >
+              Archivo CSV (.csv)
             </DropdownMenuItem>
             <DropdownMenuItem
               icon={<FileSpreadsheet className="h-4 w-4" />}
@@ -586,6 +647,13 @@ export default function SuppliersPage() {
               Excel (.xlsx)
             </DropdownMenuItem>
           </DropdownMenu>
+          <input
+            id="import-csv-input"
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleImportCsvFile}
+          />
           <input
             id="import-excel-input"
             type="file"
@@ -618,7 +686,7 @@ export default function SuppliersPage() {
             <div className="p-6">
               <TableSkeleton rows={6} cols={4} />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : suppliers.length === 0 ? (
             <EmptyState
               icon={Factory}
               title={search ? "Sin resultados." : "No hay proveedores"}
@@ -808,9 +876,9 @@ export default function SuppliersPage() {
             </>
           )}
 
-          {filtered.length > 0 && (
+          {suppliers.length > 0 && (
             <div className="mt-4 flex justify-center">
-              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+              <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           )}
         </CardContent>
@@ -1229,8 +1297,11 @@ export default function SuppliersPage() {
               <Button variant="ghost" onClick={() => setShowImportModal(false)}>
                 Cerrar
               </Button>
-              <Button onClick={handleImport} disabled={!importText.trim()}>
-                Importar
+              <Button
+                onClick={handleImport}
+                disabled={!importText.trim() || importing}
+              >
+                {importing ? "Importando..." : "Importar"}
               </Button>
             </div>
           </div>

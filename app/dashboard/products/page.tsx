@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,31 +82,51 @@ export default function ProductsPage() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStock, setFilterStock] = useState("all");
   const [filterMargin, setFilterMargin] = useState("all");
+  const [totalServer, setTotalServer] = useState(0);
+  const loadedCountRef = useRef(0);
+  const loadingPageRef = useRef(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (searchTerm?: string) => {
     setLoading(true);
     try {
+      const params = new URLSearchParams({ limit: "500" });
+      if (searchTerm) params.set("search", searchTerm);
       const [prodRes, supRes] = await Promise.all([
-        fetch("/api/dashboard/products"),
+        fetch(`/api/dashboard/products?${params.toString()}`),
         fetch("/api/dashboard/suppliers"),
       ]);
       if (prodRes.ok) {
         const data = await prodRes.json();
-        setProducts(data.products);
+        const newProducts = data.products ?? [];
+        setProducts(newProducts);
+        loadedCountRef.current = newProducts.length;
+        setTotalServer(data.total ?? 0);
         const map = new Map<string, ProductSupplier[]>();
-        for (const p of data.products) {
+        for (const p of newProducts) {
           if (p.suppliers && p.suppliers.length > 0) {
             map.set(p.id, p.suppliers);
           }
         }
         setProductSuppliers(map);
       }
-      if (supRes.ok) setSuppliers((await supRes.json()).suppliers);
+      if (supRes?.ok) setSuppliers((await supRes.json()).suppliers);
     } catch {}
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Búsqueda server-side con debounce
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setPage(1);
+      loadedCountRef.current = 0;
+      fetchData(search);
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search, fetchData]);
 
   const openCreate = () => { setEditingProduct(null); setForm(emptyForm); setLinkToSupplier(false); setError(null); setShowModal(true); };
   const openEdit = (p: Product) => {
@@ -197,8 +217,12 @@ export default function ProductsPage() {
   };
 
   const handleExport = async (format: "csv" | "excel") => {
+    // Fetch all products for export
+    const res = await fetch(`/api/dashboard/products?limit=500&offset=0${search ? `&search=${encodeURIComponent(search)}` : ""}`);
+    const data = res.ok ? await res.json() : { products: [] };
+    const allProducts = data.products ?? [];
     const headers = ["Nombre", "SKU", "Categoria", "Stock", "Stock Minimo", "Costo", "Venta", "Activo"];
-    const rows = products.map((p) => [p.name, p.sku, p.category ?? "", p.currentStock, p.minStock, p.costPrice, p.sellingPrice, p.isActive ? "Si" : "No"]);
+    const rows = allProducts.map((p: Product) => [p.name, p.sku, p.category ?? "", p.currentStock, p.minStock, p.costPrice, p.sellingPrice, p.isActive ? "Si" : "No"]);
 
     if (format === "excel") {
       const XLSX = await import("xlsx");
@@ -209,7 +233,7 @@ export default function ProductsPage() {
       return;
     }
 
-    const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map((r: (string | number | boolean)[]) => r.map((v: string | number | boolean) => `"${v}"`).join(","))].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `productos_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
@@ -258,6 +282,22 @@ export default function ProductsPage() {
     setImportStatus("done");
     setImportResult({ created: totalCreated, total: records.length, errors: allErrors.length > 0 ? allErrors : undefined });
     if (totalCreated > 0) fetchData();
+  };
+
+  const handleImportCsvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      setImportText(text);
+      setShowImportModal(true);
+      await handleImport();
+    } catch {
+      setImportResult({ created: 0, total: 0, errors: ["Error al leer el archivo CSV."] });
+      setImportStatus("done");
+    }
+    e.target.value = "";
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,9 +358,6 @@ export default function ProductsPage() {
   };
 
   const filtered = products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase()) ||
-      (p.category ?? "").toLowerCase().includes(search.toLowerCase());
     const matchesCategory = filterCategory === "all" || (p.category ?? "Sin categoría") === filterCategory;
     const matchesStock = filterStock === "all" ||
       (filterStock === "low" && p.currentStock <= p.minStock) ||
@@ -330,17 +367,31 @@ export default function ProductsPage() {
       (filterMargin === "low" && margin < 25) ||
       (filterMargin === "medium" && margin >= 25 && margin < 40) ||
       (filterMargin === "high" && margin >= 40);
-    return matchesSearch && matchesCategory && matchesStock && matchesMargin;
+    return matchesCategory && matchesStock && matchesMargin;
   });
   const lowStockCount = products.filter((p) => p.currentStock <= p.minStock).length;
   const categories = [...new Set(products.map((p) => p.category ?? "Sin categoría"))].sort();
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const hasFilters = filterCategory !== "all" || filterStock !== "all" || filterMargin !== "all";
+  const totalPages = Math.ceil((hasFilters ? filtered.length : totalServer) / ITEMS_PER_PAGE);
   const paginatedProducts = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  // Cuando el usuario cambia de página, cargar más productos si es necesario
+  const handlePageChange = async (newPage: number) => {
+    setPage(newPage);
+    const neededIndex = newPage * ITEMS_PER_PAGE;
+    if (neededIndex > loadedCountRef.current && loadedCountRef.current < totalServer && !loadingPageRef.current) {
+      loadingPageRef.current = true;
+      try {
+        await fetchData(search);
+      } finally {
+        loadingPageRef.current = false;
+      }
+    }
+  };
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    setPage(1);
   };
 
   return (
@@ -385,7 +436,13 @@ export default function ProductsPage() {
               icon={<FileText className="h-4 w-4" />}
               onClick={() => { setImportText(""); setImportResult(null); setShowImportModal(true); }}
             >
-              CSV
+              CSV (pegar)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileText className="h-4 w-4" />}
+              onClick={() => document.getElementById("import-products-csv")?.click()}
+            >
+              Archivo CSV (.csv)
             </DropdownMenuItem>
             <DropdownMenuItem
               icon={<FileSpreadsheet className="h-4 w-4" />}
@@ -394,6 +451,13 @@ export default function ProductsPage() {
               Excel (.xlsx)
             </DropdownMenuItem>
           </DropdownMenu>
+          <input
+            id="import-products-csv"
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleImportCsvFile}
+          />
           <input
             id="import-products-excel"
             type="file"
@@ -597,7 +661,7 @@ export default function ProductsPage() {
 
           {filtered.length > 0 && (
             <div className="mt-4 flex justify-center">
-              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+              <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           )}
         </CardContent>

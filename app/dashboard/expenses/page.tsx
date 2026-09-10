@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { moneyFormatter } from "@/lib/format";
 import { Pencil, Plus, ReceiptText, Trash2, TrendingDown, TrendingUp, Wallet, BarChart3, Lock, History } from "lucide-react";
@@ -119,6 +120,11 @@ export default function ExpensesPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalServer, setTotalServer] = useState(0);
+  const loadedCountRef = useRef(0);
+
+  const BATCH_SIZE = 50;
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -139,14 +145,21 @@ export default function ExpensesPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setPage(1);
+    loadedCountRef.current = 0;
     try {
       const [expRes, repRes, closeRes, trendRes] = await Promise.all([
-        fetch(`/api/dashboard/expenses?month=${month}`),
+        fetch(`/api/dashboard/expenses?month=${month}&limit=${BATCH_SIZE}&offset=0`),
         fetch(`/api/dashboard/expenses/report?month=${month}`),
         fetch(`/api/dashboard/expenses/close`),
         fetch(`/api/dashboard/expenses/trend`),
       ]);
-      if (expRes.ok) setExpenses((await expRes.json()).expenses ?? []);
+      if (expRes.ok) {
+        const data = await expRes.json();
+        setExpenses(data.expenses ?? []);
+        loadedCountRef.current = (data.expenses ?? []).length;
+        setTotalServer(data.count ?? 0);
+      }
       if (repRes.ok) setReport(await repRes.json());
       if (closeRes.ok) {
         const c = await closeRes.json();
@@ -162,6 +175,33 @@ export default function ExpensesPage() {
       setLoading(false);
     }
   }, [month, toast]);
+
+  // Cargar más gastos cuando el usuario pasa de las páginas ya cargadas
+  const fetchMoreExpenses = async () => {
+    const offset = loadedCountRef.current;
+    if (offset >= totalServer) return;
+    try {
+      const res = await fetch(`/api/dashboard/expenses?month=${month}&limit=${BATCH_SIZE}&offset=${offset}`);
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.expenses ?? [];
+        setExpenses((prev) => [...prev, ...list]);
+        loadedCountRef.current = offset + list.length;
+        setTotalServer(data.count ?? totalServer);
+      }
+    } catch {}
+  };
+
+  const totalPages = Math.ceil(totalServer / ITEMS_PER_PAGE);
+  const paginatedExpenses = expenses.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    const neededIndex = newPage * ITEMS_PER_PAGE;
+    if (neededIndex > loadedCountRef.current && loadedCountRef.current < totalServer) {
+      fetchMoreExpenses();
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -408,7 +448,7 @@ export default function ExpensesPage() {
           <CardContent>
             {loading ? (
               <p className="text-sm text-muted-foreground py-8 text-center">Cargando...</p>
-            ) : expenses.length === 0 ? (
+            ) : paginatedExpenses.length === 0 ? (
               <>
                 <EmptyState
                   icon={ReceiptText}
@@ -423,6 +463,7 @@ export default function ExpensesPage() {
                 </div>
               </>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -437,7 +478,7 @@ export default function ExpensesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {expenses.map((e) => (
+                    {paginatedExpenses.map((e) => (
                       <tr key={e.id} className="border-b border-border/50 last:border-0">
                         <td className="py-2.5 pr-4 whitespace-nowrap text-muted-foreground">
                           {new Date(e.date).toLocaleDateString("es-AR")}
@@ -480,6 +521,12 @@ export default function ExpensesPage() {
                   </tbody>
                 </table>
               </div>
+              {totalPages > 1 && (
+                <div className="mt-4 flex justify-center">
+                  <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+                </div>
+              )}
+              </>
             )}
           </CardContent>
         </Card>

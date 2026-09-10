@@ -40,73 +40,58 @@ export default function SearchPage() {
     }
     setLoading(true);
     try {
+      const term = q.trim();
       const [productsRes, suppliersRes, ordersRes] = await Promise.all([
-        fetch("/api/dashboard/products"),
-        fetch("/api/dashboard/suppliers"),
-        fetch("/api/dashboard/purchase-orders"),
+        fetch(`/api/dashboard/products?search=${encodeURIComponent(term)}&limit=20`),
+        fetch(`/api/dashboard/suppliers?search=${encodeURIComponent(term)}&limit=20`),
+        fetch(`/api/dashboard/purchase-orders?search=${encodeURIComponent(term)}&limit=20`),
       ]);
 
       const items: SearchResult[] = [];
 
       if (productsRes.ok) {
         const data = await productsRes.json();
-        data.products
-          .filter((p: { name: string; sku: string; category: string }) =>
-            p.name.toLowerCase().includes(q.toLowerCase()) ||
-            p.sku.toLowerCase().includes(q.toLowerCase()) ||
-            (p.category ?? "").toLowerCase().includes(q.toLowerCase())
-          )
-          .forEach((p: { id: string; name: string; sku: string; category: string; currentStock: number; minStock: number }) => {
-            items.push({
-              type: "product",
-              id: p.id,
-              title: p.name,
-              subtitle: `${p.sku} · Stock: ${p.currentStock}`,
-              badge: p.category ?? "Producto",
-              badgeTone: p.currentStock <= p.minStock ? "danger" : "success",
-              href: "/dashboard/products",
-            });
+        data.products.forEach((p: { id: string; name: string; sku: string; category: string; currentStock: number; minStock: number }) => {
+          items.push({
+            type: "product",
+            id: p.id,
+            title: p.name,
+            subtitle: `${p.sku} · Stock: ${p.currentStock}`,
+            badge: p.category ?? "Producto",
+            badgeTone: p.currentStock <= p.minStock ? "danger" : "success",
+            href: "/dashboard/products",
           });
+        });
       }
 
       if (suppliersRes.ok) {
         const data = await suppliersRes.json();
-        data.suppliers
-          .filter((s: { name: string; contactEmail: string }) =>
-            s.name.toLowerCase().includes(q.toLowerCase()) ||
-            (s.contactEmail ?? "").toLowerCase().includes(q.toLowerCase())
-          )
-          .forEach((s: { id: string; name: string; contactEmail: string; leadTime: number }) => {
-            items.push({
-              type: "supplier",
-              id: s.id,
-              title: s.name,
-              subtitle: s.contactEmail ?? "Sin email",
-              badge: `${s.leadTime}d lead`,
-              badgeTone: "default",
-              href: "/dashboard/suppliers",
-            });
+        data.suppliers.forEach((s: { id: string; name: string; contactEmail: string; leadTime: number }) => {
+          items.push({
+            type: "supplier",
+            id: s.id,
+            title: s.name,
+            subtitle: s.contactEmail ?? "Sin email",
+            badge: `${s.leadTime}d lead`,
+            badgeTone: "default",
+            href: "/dashboard/suppliers",
           });
+        });
       }
 
       if (ordersRes.ok) {
         const data = await ordersRes.json();
-        data.orders
-          .filter((o: { supplierName: string; id: string; status: string }) =>
-            o.supplierName.toLowerCase().includes(q.toLowerCase()) ||
-            o.id.toLowerCase().includes(q.toLowerCase())
-          )
-          .forEach((o: { id: string; supplierName: string; status: string; totalAmount: number }) => {
-            items.push({
-              type: "order",
-              id: o.id,
-              title: `Orden ${o.id.slice(0, 8).toUpperCase()}`,
-              subtitle: `${o.supplierName}`,
-              badge: o.status,
-              badgeTone: o.status === "RECEIVED" ? "success" : o.status === "DRAFT" ? "muted" : "warning",
-              href: "/dashboard/purchase-orders",
-            });
+        data.orders.forEach((o: { id: string; supplierName: string; status: string }) => {
+          items.push({
+            type: "order",
+            id: o.id,
+            title: `Orden ${o.id.slice(0, 8).toUpperCase()}`,
+            subtitle: `${o.supplierName}`,
+            badge: o.status,
+            badgeTone: o.status === "RECEIVED" ? "success" : o.status === "DRAFT" ? "muted" : "warning",
+            href: "/dashboard/purchase-orders",
           });
+        });
       }
 
       setResults(items);

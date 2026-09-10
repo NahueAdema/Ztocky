@@ -3,19 +3,41 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!user.workspaceId) return NextResponse.json({ error: "Workspace no encontrado" }, { status: 400 });
 
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search")?.trim() ?? "";
+  const limitParam = searchParams.get("limit");
+  const offsetParam = searchParams.get("offset");
+  const hasPagination = limitParam !== null || offsetParam !== null;
+  const limit = hasPagination ? Math.min(Math.max(Number(limitParam) || 50, 1), 500) : undefined;
+  const offset = hasPagination ? Math.max(Number(offsetParam) || 0, 0) : undefined;
+
   const prisma = getPrisma();
-  const customers = await prisma.customer.findMany({
-    where: { workspaceId: user.workspaceId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { sales: true, accountPayments: true } },
-    },
-  });
+
+  const where: Record<string, unknown> = { workspaceId: user.workspaceId };
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { phone: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const [total, customers] = await Promise.all([
+    prisma.customer.count({ where }),
+    prisma.customer.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: {
+        _count: { select: { sales: true, accountPayments: true } },
+      },
+      ...(limit !== undefined ? { skip: offset ?? 0, take: limit } : {}),
+    }),
+  ]);
 
   return NextResponse.json({
     customers: customers.map((c) => ({
@@ -28,6 +50,7 @@ export async function GET() {
       _count: { sales: c._count.sales, accountPayments: c._count.accountPayments },
       sales: [],
     })),
+    total,
   });
 }
 

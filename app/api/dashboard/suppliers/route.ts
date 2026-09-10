@@ -3,22 +3,44 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { assertCanWrite, READ_ONLY_ERROR } from "@/lib/subscription";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const prisma = getPrisma();
-  const suppliers = await prisma.supplier.findMany({
-    where: {
-      workspaceId: user.workspaceId,
-    },
-    include: {
-      catalog: {
-        include: { product: true },
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search")?.trim() ?? "";
+  const limitParam = searchParams.get("limit");
+  const offsetParam = searchParams.get("offset");
+  const hasPagination = limitParam !== null || offsetParam !== null;
+  const limit = hasPagination ? Math.min(Math.max(Number(limitParam) || 15, 1), 500) : undefined;
+  const offset = hasPagination ? Math.max(Number(offsetParam) || 0, 0) : undefined;
+
+  const where: Record<string, unknown> = {
+    workspaceId: user.workspaceId,
+  };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { contactEmail: { contains: search, mode: "insensitive" } },
+      { contactPhone: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const [total, suppliers] = await Promise.all([
+    prisma.supplier.count({ where }),
+    prisma.supplier.findMany({
+      where,
+      include: {
+        catalog: {
+          include: { product: true },
+        },
       },
-    },
-    orderBy: { name: "asc" },
-  });
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      ...(limit !== undefined ? { skip: offset ?? 0, take: limit } : {}),
+    }),
+  ]);
 
   return NextResponse.json({
     suppliers: suppliers.map((s) => ({
@@ -39,6 +61,7 @@ export async function GET() {
       createdAt: s.createdAt.toISOString(),
       updatedAt: s.updatedAt.toISOString(),
     })),
+    total,
   });
 }
 

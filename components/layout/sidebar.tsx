@@ -47,6 +47,14 @@ const sections = [
     ],
   },
   {
+    label: "Administrar",
+    items: [
+      { href: "/dashboard/products", label: "Productos", icon: Boxes },
+      { href: "/dashboard/expenses", label: "Gastos", icon: ReceiptText },
+      { href: "/dashboard/finanzas", label: "Finanzas", icon: Landmark },
+    ],
+  },
+  {
     label: "Comprar",
     items: [
       { href: "/dashboard/purchase-orders", label: "Órdenes", icon: ClipboardList },
@@ -54,18 +62,10 @@ const sections = [
       { href: "/dashboard/supplier-notifications", label: "Notif. Proveedores", icon: Bell },
     ],
   },
-  {
-    label: "Administrar",
-    items: [
-      { href: "/dashboard/products", label: "Productos", icon: Boxes },
-      { href: "/dashboard/expenses", label: "Gastos", icon: ReceiptText },
-      { href: "/dashboard/finanzas", label: "Finanzas", icon: Landmark },
-      { href: "/dashboard/scan", label: "Escanear", icon: ScanLine },
-    ],
-  },
 ];
 
 const tools = [
+  { href: "/dashboard/scan", label: "Escanear", icon: ScanLine },
   { href: "/dashboard/simulator", label: "Simulador", icon: ChartNoAxesCombined },
   { href: "/dashboard/ai-console", label: "Consola IA", icon: Bot },
 ];

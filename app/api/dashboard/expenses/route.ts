@@ -17,6 +17,11 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const month = searchParams.get("month"); // YYYY-MM
   const category = searchParams.get("category");
+  const limitParam = searchParams.get("limit");
+  const offsetParam = searchParams.get("offset");
+  const hasPagination = limitParam !== null || offsetParam !== null;
+  const limit = hasPagination ? Math.min(Math.max(Number(limitParam) || 20, 1), 500) : undefined;
+  const offset = hasPagination ? Math.max(Number(offsetParam) || 0, 0) : undefined;
 
   const prisma = getPrisma();
 
@@ -31,13 +36,18 @@ export async function GET(request: NextRequest) {
     where.category = category;
   }
 
-  const expenses = await prisma.expense.findMany({
-    where,
-    orderBy: { date: "desc" },
-  });
-  const total = expenses.reduce((acc, e) => acc + Number(e.amount), 0);
+  const [totalAgg, count, expenses] = await Promise.all([
+    prisma.expense.aggregate({ where, _sum: { amount: true } }),
+    prisma.expense.count({ where }),
+    prisma.expense.findMany({
+      where,
+      orderBy: [{ date: "desc" }, { id: "desc" }],
+      ...(limit !== undefined ? { skip: offset ?? 0, take: limit } : {}),
+    }),
+  ]);
+  const total = totalAgg._sum.amount ?? 0;
 
-  return NextResponse.json({ expenses, total });
+  return NextResponse.json({ expenses, total, count });
 }
 
 export async function POST(request: NextRequest) {

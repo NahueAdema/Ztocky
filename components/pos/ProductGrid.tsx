@@ -1,10 +1,10 @@
 "use client";
 
-import { RefObject } from "react";
+import { RefObject, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { moneyFormatter } from "@/lib/format";
-import { Search, ScanLine, Package, Camera, X } from "lucide-react";
+import { Search, ScanLine, Package, Camera, X, Loader2 } from "lucide-react";
 import { type Product, type CashRegister } from "./types";
 import { getCategoryColor } from "./constants";
 
@@ -24,6 +24,9 @@ interface ProductGridProps {
   stopCamera: () => void;
   videoRef: RefObject<HTMLVideoElement | null>;
   register: CashRegister | null;
+  totalProducts?: number;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
   mode?: "desktop" | "mobile";
 }
 
@@ -37,22 +40,33 @@ export function ProductGrid({
   onAddToCart,
   onBarcodeSubmit,
   cameraActive,
+  setCameraActive,
   cameraError,
   startCamera,
   stopCamera,
   videoRef,
   register,
+  totalProducts = 0,
+  loadingMore = false,
+  onLoadMore,
   mode = "desktop",
 }: ProductGridProps) {
-  const filtered = products.filter((p) => {
-    if (!p.isActive) return false;
-    const q = search.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.sku.toLowerCase().includes(q) ||
-      (p.category ?? "").toLowerCase().includes(q)
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!onLoadMore || !sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && products.length < totalProducts) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 }
     );
-  });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onLoadMore, loadingMore, products.length, totalProducts]);
 
   const gridCols = mode === "desktop" ? "grid-cols-3 xl:grid-cols-5" : "grid-cols-2";
 
@@ -121,7 +135,7 @@ export function ProductGrid({
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && search) {
-                const product = filtered[0];
+                const product = products[0];
                 if (product) onAddToCart(product);
               }
             }}
@@ -131,71 +145,61 @@ export function ProductGrid({
         </div>
       </div>
 
-      {/* Category chips */}
-      <div className="px-4 py-2 flex gap-2 overflow-x-auto border-b border-border">
-        {Array.from(
-          new Set(
-            products
-              .filter((p) => p.isActive)
-              .map((p) => p.category)
-              .filter(Boolean) as string[]
-          )
-        ).map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSearch(cat)}
-            className="shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
       {/* Product grid */}
       <div className={`flex-1 overflow-y-auto p-4${mode === "mobile" ? " pb-24" : ""}`}>
-        {filtered.length === 0 ? (
+        {products.length === 0 && !loadingMore ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <Package className="h-12 w-12 mb-3 opacity-50" />
             <p className="text-sm">{search ? "Sin resultados" : "No hay productos"}</p>
           </div>
         ) : (
-          <div className={`grid ${gridCols} gap-3`}>
-            {filtered.map((product) => (
-              <button
-                key={product.id}
-                onClick={() => onAddToCart(product)}
-                disabled={product.currentStock <= 0}
-                className="text-left p-3 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed group"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div
-                    className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getCategoryColor(product.category)}`}
-                  >
-                    {product.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="text-sm font-semibold text-foreground group-hover:text-primary truncate">
-                    {product.name}
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground">{product.sku}</div>
-                <div className="text-lg font-bold text-primary mt-2">
-                  {moneyFormatter.format(product.sellingPrice)}
-                </div>
-                <Badge
-                  tone={
-                    product.currentStock <= 0
-                      ? "danger"
-                      : product.currentStock <= 10
-                        ? "warning"
-                        : "success"
-                  }
-                  className="mt-1 text-[10px]"
+          <>
+            <div className={`grid ${gridCols} gap-3`}>
+              {products.map((product) => (
+                <button
+                  key={product.id}
+                  onClick={() => onAddToCart(product)}
+                  disabled={product.currentStock <= 0}
+                  className="text-left p-3 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed group"
                 >
-                  Stock: {product.currentStock}
-                </Badge>
-              </button>
-            ))}
-          </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getCategoryColor(product.category)}`}
+                    >
+                      {product.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="text-sm font-semibold text-foreground group-hover:text-primary truncate">
+                      {product.name}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{product.sku}</div>
+                  <div className="text-lg font-bold text-primary mt-2">
+                    {moneyFormatter.format(product.sellingPrice)}
+                  </div>
+                  <Badge
+                    tone={
+                      product.currentStock <= 0
+                        ? "danger"
+                        : product.currentStock <= 10
+                          ? "warning"
+                          : "success"
+                    }
+                    className="mt-1 text-[10px]"
+                  >
+                    Stock: {product.currentStock}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="h-1" />
+            {loadingMore && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Cargando más productos...</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

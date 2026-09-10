@@ -143,7 +143,7 @@ export default function PurchaseOrdersPage() {
     try {
       const [ordersRes, productsRes, suppliersRes] = await Promise.all([
         fetch("/api/dashboard/purchase-orders"),
-        fetch("/api/dashboard/products"),
+        fetch("/api/dashboard/products?limit=500&offset=0"),
         fetch("/api/dashboard/suppliers"),
       ]);
       if (ordersRes.ok) setOrders((await ordersRes.json()).orders);

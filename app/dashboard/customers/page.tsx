@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeleton";
+import { Pagination, ITEMS_PER_PAGE } from "@/components/ui/pagination";
 import { Search, Users, ExternalLink, Phone, Mail } from "lucide-react";
 
 type Customer = {
@@ -21,13 +22,30 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalServer, setTotalServer] = useState(0);
+  const loadedCountRef = useRef(0);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const fetchCustomers = useCallback(async () => {
+  const BATCH_SIZE = 50;
+
+  const fetchCustomers = useCallback(async (searchTerm?: string, offset?: number, append = false) => {
     try {
-      const res = await fetch("/api/dashboard/customers");
+      setLoading(true);
+      const params = new URLSearchParams({ limit: String(BATCH_SIZE) });
+      if (searchTerm) params.set("search", searchTerm);
+      if (offset !== undefined) params.set("offset", String(offset));
+      const res = await fetch(`/api/dashboard/customers?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setCustomers(data.customers ?? []);
+        const list = data.customers ?? [];
+        if (append) {
+          setCustomers((prev) => [...prev, ...list]);
+        } else {
+          setCustomers(list);
+        }
+        loadedCountRef.current = append ? loadedCountRef.current + list.length : list.length;
+        setTotalServer(data.total ?? 0);
       }
     } catch {} finally {
       setLoading(false);
@@ -36,17 +54,34 @@ export default function CustomersPage() {
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
+  // Búsqueda server-side con debounce
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setPage(1);
+      loadedCountRef.current = 0;
+      fetchCustomers(search);
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search, fetchCustomers]);
+
   const getBalance = (c: Customer) => {
     const totalOwed = (c.sales ?? []).reduce((sum, s) => sum + Number(s.totalAmount), 0);
     const totalPaid = c._count?.accountPayments ?? 0;
     return { totalOwed, saleCount: c._count?.sales ?? 0, paymentCount: totalPaid };
   };
 
-  const filtered = customers.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone?.toLowerCase().includes(search.toLowerCase()) ||
-    c.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const totalPages = Math.ceil(totalServer / ITEMS_PER_PAGE);
+  const paginatedCustomers = customers.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  // Cuando el usuario cambia de página y faltan datos, cargar más clientes
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    const neededIndex = newPage * ITEMS_PER_PAGE;
+    if (neededIndex > loadedCountRef.current && loadedCountRef.current < totalServer) {
+      fetchCustomers(search, loadedCountRef.current, true);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -67,7 +102,7 @@ export default function CustomersPage() {
 
       {loading ? (
         <TableSkeleton rows={5} cols={4} />
-      ) : filtered.length === 0 ? (
+      ) : paginatedCustomers.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center py-16 text-center">
             <Users className="h-12 w-12 text-muted-foreground/50 mb-3" />
@@ -76,8 +111,9 @@ export default function CustomersPage() {
           </CardContent>
         </Card>
       ) : (
+        <>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((customer) => {
+          {paginatedCustomers.map((customer) => {
             const { saleCount } = getBalance(customer);
             return (
               <Link key={customer.id} href={`/dashboard/customers/${customer.id}`}>
@@ -116,6 +152,12 @@ export default function CustomersPage() {
             );
           })}
         </div>
+        {totalPages > 1 && (
+          <div className="mt-4 flex justify-center">
+            <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          </div>
+        )}
+        </>
       )}
     </div>
   );

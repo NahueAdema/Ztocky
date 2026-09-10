@@ -10,23 +10,63 @@ export async function GET(request: NextRequest) {
   const prisma = getPrisma();
   const { searchParams } = new URL(request.url);
   const limit = Math.min(Number(searchParams.get("limit")) || 100, 500);
+  const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
+  const search = searchParams.get("search") || "";
+  const period = searchParams.get("period") || "all";
+  const productFilter = searchParams.get("product") || "all";
 
-  const sales = await prisma.sale.findMany({
-    where: {
-      workspaceId: user.workspaceId,
-    },
-    include: {
-      items: { include: { product: true } },
-    },
-    orderBy: { saleDate: "desc" },
-    take: limit,
-  });
+  const where: Record<string, unknown> = { workspaceId: user.workspaceId };
+
+  if (search) {
+    where.OR = [
+      { items: { some: { product: { name: { contains: search, mode: "insensitive" } } } } },
+      { items: { some: { product: { sku: { contains: search, mode: "insensitive" } } } } },
+    ];
+  }
+
+  if (period !== "all") {
+    const now = new Date();
+    let from: Date;
+    if (period === "today") {
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === "week") {
+      from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else {
+      from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+    where.saleDate = { gte: from };
+  }
+
+  if (productFilter !== "all") {
+    where.items = { some: { productId: productFilter } };
+  }
+
+  const [total, salesWithItems, totalItems, sales, totalRevenueAgg, totalUnitsAgg] = await Promise.all([
+    prisma.sale.count({ where }),
+    prisma.sale.count({ where: { ...where, items: { some: {} } } }),
+    prisma.saleItem.count({ where: { sale: where } }),
+    prisma.sale.findMany({
+      where,
+      include: {
+        items: { include: { product: true } },
+        user: { select: { name: true } },
+      },
+      orderBy: [{ saleDate: "desc" }, { id: "desc" }],
+      skip: offset,
+      take: limit,
+    }),
+    prisma.sale.aggregate({ where, _sum: { totalAmount: true } }),
+    prisma.saleItem.aggregate({ where: { sale: where }, _sum: { quantity: true } }),
+  ]);
+
+  const totalRows = totalItems + (total - salesWithItems);
 
   return NextResponse.json({
     sales: sales.map((s) => ({
       id: s.id,
       receiptNumber: s.receiptNumber,
       items: s.items.map((item) => ({
+        saleItemId: item.id,
         productId: item.productId,
         productName: item.product.name,
         productSku: item.product.sku,
@@ -34,6 +74,7 @@ export async function GET(request: NextRequest) {
         unitPrice: Number(item.unitPrice),
         totalPrice: Number(item.totalPrice),
       })),
+      sellerName: s.user.name,
       totalAmount: Number(s.totalAmount),
       discountAmount: Number(s.discountAmount),
       paymentMethod: s.paymentMethod,
@@ -41,6 +82,10 @@ export async function GET(request: NextRequest) {
       saleDate: s.saleDate.toISOString().slice(0, 10),
       createdAt: s.createdAt.toISOString(),
     })),
+    total,
+    totalItems: totalRows,
+    totalRevenue: Number(totalRevenueAgg._sum.totalAmount ?? 0),
+    totalUnits: Number(totalUnitsAgg._sum.quantity ?? 0),
   });
 }
 
